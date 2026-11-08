@@ -131,6 +131,12 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.company.name").value("Körkem ЖШС"))
                 .andExpect(jsonPath("$.vatRate").value(12));
 
+        mvc.perform(get("/api/invoices").param("from", today).param("to", today).header("Authorization", auth))
+                .andExpect(jsonPath("$.items[?(@.id == " + invId + ")]").exists());
+        String yesterday = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty")).minusDays(1).toString();
+        mvc.perform(get("/api/invoices").param("to", yesterday).header("Authorization", auth))
+                .andExpect(jsonPath("$.items[?(@.id == " + invId + ")]").doesNotExist());
+
         // A client with invoices cannot be deleted
         mvc.perform(delete("/api/clients/" + clientId).header("Authorization", auth))
                 .andExpect(status().isConflict());

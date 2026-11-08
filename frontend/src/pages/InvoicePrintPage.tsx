@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import type { Invoice } from '../api/types'
+import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
@@ -21,7 +22,7 @@ export function InvoicePrintPage() {
     api.invoices.get(Number(id)).then(setInv).catch((e: Error) => setError(e.message))
   }, [id])
 
-  if (error) return <section className="page"><div className="alert">{error}</div></section>
+  if (error) return <section className="page"><Alert>{error}</Alert></section>
   if (!inv) return <section className="page"><p className="muted">Жүктелуде…</p></section>
 
   const qty = inv.lines.reduce((s, l) => s + l.quantity, 0)

@@ -4,22 +4,24 @@ import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
 import type { Category, Product } from '../api/types'
+import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
+import { RowActions, rowProps } from '../components/RowActions'
+import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmt, parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
-import { useNarrow } from '../lib/useNarrow'
 
 export function ProductsPage() {
-  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
+  const toast = useToast()
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const list = useList<Product>((p) => api.products.list({ ...p, categoryId }))
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
-  const [confirm, setConfirm] = useState(false)
+  const [deleting, setDeleting] = useState<Product | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
 
@@ -45,12 +47,13 @@ export function ProductsPage() {
     })
 
   const remove = async () => {
-    setConfirm(false)
-    if (!list.selected) return
+    const p = deleting
+    setDeleting(null)
+    if (!p) return
     try {
-      await api.products.remove(list.selected.id)
-      list.setSelectedId(null)
+      await api.products.remove(p.id)
       list.reload()
+      toast.show(`«${p.name}» жойылды`)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -61,15 +64,13 @@ export function ProductsPage() {
       <PageHeader eyebrow="Анықтамалық" title="Баға тізімі" />
       <Toolbar
         onCreate={() => setEditing('new')}
-        onEdit={() => list.selected && setEditing(list.selected)}
-        onDelete={isAdmin ? () => setConfirm(true) : undefined}
-        hasSelection={!!list.selected}
         search={list.q}
         onSearch={list.search}
         searchPlaceholder="Атауы бойынша іздеу"
       >
         <select
           className="input toolbar__select"
+          aria-label="Санат бойынша сүзу"
           value={categoryId ?? ''}
           onChange={(e) => {
             setCategoryId(e.target.value ? Number(e.target.value) : null)
@@ -83,18 +84,19 @@ export function ProductsPage() {
           ))}
         </select>
       </Toolbar>
-      {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       <div className="table-wrap">
         <table className="table table--cards">
           <thead>
             <tr>
               <th>Атауы</th>
               <th className="num" style={{ width: 160 }}>Бағасы</th>
-              <th className="num" style={{ width: 140 }}>Реті</th>
+              <th className="num" style={{ width: 120 }}>Реті</th>
+              <th aria-label="Әрекеттер" style={{ width: 96 }} />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={3} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={4} />
             {groups.map(([key, items]) => (
               <GroupRows
                 key={key}
@@ -103,9 +105,8 @@ export function ProductsPage() {
                 collapsed={collapsed.has(key)}
                 onToggle={() => toggle(key)}
                 selectedId={list.selected?.id ?? null}
-                onSelect={list.setSelectedId}
                 onOpen={setEditing}
-                narrow={narrow}
+                onDelete={isAdmin ? setDeleting : undefined}
               />
             ))}
           </tbody>
@@ -123,44 +124,50 @@ export function ProductsPage() {
             setEditing(null)
             list.setSelectedId(p.id)
             list.reload()
+            toast.show('Тауар сақталды')
           }}
         />
       )}
-      {confirm && list.selected && (
-        <ConfirmModal confirmLabel="Жою" cancelLabel="Болдырмау" danger text={`«${list.selected.name}» тауарын жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+      {deleting && (
+        <ConfirmModal
+          title="Тауарды жою"
+          confirmLabel="Жою"
+          cancelLabel="Болдырмау"
+          danger
+          text={`«${deleting.name}» тауарын жою керек пе? Бұрынғы жүкқұжаттарда атауы сақталады.`}
+          onConfirm={remove}
+          onClose={() => setDeleting(null)}
+        />
       )}
     </section>
   )
 }
 
-function GroupRows({ title, items, collapsed, onToggle, selectedId, onSelect, onOpen, narrow }: {
+function GroupRows({ title, items, collapsed, onToggle, selectedId, onOpen, onDelete }: {
   title: string
   items: Product[]
   collapsed: boolean
   onToggle: () => void
   selectedId: number | null
-  onSelect: (id: number) => void
   onOpen: (p: Product) => void
-  narrow: boolean
+  onDelete?: (p: Product) => void
 }) {
   return (
     <>
-      <tr className="group-row" onClick={onToggle}>
-        <td colSpan={3}>
-          <span className="group-row__icon">{collapsed ? '▸' : '▾'}</span> {title} ({items.length})
+      <tr className="group-row">
+        <td colSpan={4}>
+          <button className="group-row__toggle" aria-expanded={!collapsed} onClick={onToggle}>
+            <span className="group-row__icon" aria-hidden="true">{collapsed ? '▸' : '▾'}</span> {title} ({items.length})
+          </button>
         </td>
       </tr>
       {!collapsed &&
         items.map((p) => (
-          <tr
-            key={p.id}
-            className={selectedId === p.id ? 'is-selected' : ''}
-            onClick={() => (narrow ? onOpen(p) : onSelect(p.id))}
-            onDoubleClick={() => onOpen(p)}
-          >
+          <tr key={p.id} {...rowProps(() => onOpen(p), onDelete ? () => onDelete(p) : undefined, selectedId === p.id)}>
             <td className="indent strong" data-title>{p.name}</td>
             <td className="num cell-amount">{fmt(p.price)} ₸</td>
             <td className="num" data-label="Реті">{p.sortOrder}</td>
+            <RowActions name={p.name} onEdit={() => onOpen(p)} onDelete={onDelete ? () => onDelete(p) : undefined} />
           </tr>
         ))}
     </>
@@ -224,7 +231,7 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
         <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
-        {errors._ && <div className="alert">{errors._}</div>}
+        {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />
       </form>
     </Modal>

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
 import { Horns, Logo } from '../components/Ornament'
 
@@ -55,7 +56,7 @@ export function LoginPage() {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Мені есте сақтау
         </label>
-        {error && <div className="alert">{error}</div>}
+        {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
         <button className="btn btn--primary btn--lg btn--block" disabled={busy || !username || !password}>
           {busy ? 'Кіру…' : 'Кіру'}
         </button>

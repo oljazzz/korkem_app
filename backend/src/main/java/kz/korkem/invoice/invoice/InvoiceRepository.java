@@ -1,5 +1,6 @@
 package kz.korkem.invoice.invoice;
 
+import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
               and (:q = '' or lower(c.name) like lower(concat('%', :q, '%'))
                            or lower(coalesce(c.address, '')) like lower(concat('%', :q, '%')))
               and (:clientId is null or c.id = :clientId)
+              and (cast(:from as timestamp) is null or i.createdAt >= :from)
+              and (cast(:to as timestamp) is null or i.createdAt < :to)
             """,
             countQuery = """
             select count(i) from Invoice i left join i.client c
@@ -24,9 +27,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
               and (:q = '' or lower(c.name) like lower(concat('%', :q, '%'))
                            or lower(coalesce(c.address, '')) like lower(concat('%', :q, '%')))
               and (:clientId is null or c.id = :clientId)
+              and (cast(:from as timestamp) is null or i.createdAt >= :from)
+              and (cast(:to as timestamp) is null or i.createdAt < :to)
             """)
     Page<Invoice> search(@Param("number") Long number, @Param("q") String q,
-                         @Param("clientId") Long clientId, Pageable pageable);
+                         @Param("clientId") Long clientId, @Param("from") Instant from,
+                         @Param("to") Instant to, Pageable pageable);
 
     @EntityGraph(attributePaths = {"client", "lines"})
     @Query("select i from Invoice i where i.id = :id")

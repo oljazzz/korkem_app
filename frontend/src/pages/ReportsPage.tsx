@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import type { SalesReport } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
+import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { fmtDate, fmtMoney, isoDay } from '../lib/format'
@@ -135,7 +136,7 @@ export function ReportsPage() {
         )}
       </div>
 
-      {error && <div className="alert">{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       {/* Print header, as in the legacy report template */}
       <div className="print-only report__print-head">

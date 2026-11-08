@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
 
 interface Props {
@@ -14,13 +14,14 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 /** Dialog: Esc and backdrop close it, Tab stays inside, focus returns to the opener on close. */
 export function Modal({ title, onClose, children, footer, width = 460 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  // Captured during the first render, before React's autoFocus moves focus into the dialog
+  const [opener] = useState(() => document.activeElement as HTMLElement | null)
   const onCloseRef = useRef(onClose)
   useEffect(() => {
     onCloseRef.current = onClose
   })
 
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
     const dialog = dialogRef.current
     if (dialog && !dialog.contains(document.activeElement)) {
       // Respect autoFocus inside the dialog; otherwise focus the first control
@@ -49,7 +50,7 @@ export function Modal({ title, onClose, children, footer, width = 460 }: Props) 
       window.removeEventListener('keydown', onKey)
       if (opener && document.contains(opener)) opener.focus()
     }
-  }, [])
+  }, [opener])
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>

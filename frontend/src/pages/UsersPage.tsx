@@ -3,22 +3,24 @@ import { api } from '../api'
 import { ApiError } from '../api/http'
 import type { Role, User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
 import { PageHeader, ROLE_LABEL } from '../components/Layout'
 import { ConfirmModal, Modal } from '../components/Modal'
+import { RowActions, rowProps } from '../components/RowActions'
+import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
-import { useNarrow } from '../lib/useNarrow'
 
 /** User management (ADMIN only; the route and the API both enforce it). */
 export function UsersPage() {
   const { user: me } = useAuth()
-  const narrow = useNarrow()
+  const toast = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [highlight, setHighlight] = useState<number | null>(null)
   const [editing, setEditing] = useState<User | 'new' | null>(null)
-  const [confirm, setConfirm] = useState(false)
+  const [deleting, setDeleting] = useState<User | null>(null)
 
   const load = useCallback(() => {
     api.users
@@ -33,15 +35,14 @@ export function UsersPage() {
 
   useEffect(load, [load])
 
-  const selected = users.find((u) => u.id === selectedId) ?? null
-
   const remove = async () => {
-    setConfirm(false)
-    if (!selected) return
+    const u = deleting
+    setDeleting(null)
+    if (!u) return
     try {
-      await api.users.remove(selected.id)
-      setSelectedId(null)
+      await api.users.remove(u.id)
       load()
+      toast.show(`«${u.username}» жойылды`)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -50,13 +51,8 @@ export function UsersPage() {
   return (
     <section className="page">
       <PageHeader eyebrow="Баптаулар" title="Пайдаланушылар" />
-      <Toolbar
-        onCreate={() => setEditing('new')}
-        onEdit={() => selected && setEditing(selected)}
-        onDelete={() => setConfirm(true)}
-        hasSelection={!!selected && selected.id !== me?.id}
-      />
-      {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
+      <Toolbar onCreate={() => setEditing('new')} />
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       <div className="table-wrap">
         <table className="table table--cards">
           <thead>
@@ -67,25 +63,26 @@ export function UsersPage() {
               <th>Рөлі</th>
               <th>Email</th>
               <th>Күйі</th>
+              <th aria-label="Әрекеттер" />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={loading} error={null} empty={users.length === 0} colSpan={6} />
-            {users.map((u) => (
-              <tr
-                key={u.id}
-                className={selectedId === u.id ? 'is-selected' : ''}
-                onClick={() => (narrow ? setEditing(u) : setSelectedId(u.id))}
-                onDoubleClick={() => setEditing(u)}
-              >
-                <td className="strong" data-title>{u.username}{u.id === me?.id ? ' (сіз)' : ''}</td>
-                <td data-label="Аты">{u.firstName}</td>
-                <td data-label="Тегі">{u.lastName}</td>
-                <td data-label="Рөлі">{ROLE_LABEL[u.role]}</td>
-                <td data-label="Email">{u.email}</td>
-                <td className={u.active ? '' : 'muted-cell'} data-label="Күйі">{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
-              </tr>
-            ))}
+            <TableState loading={loading} error={null} empty={users.length === 0} colSpan={7} />
+            {users.map((u) => {
+              const self = u.id === me?.id
+              const del = self ? undefined : () => setDeleting(u)
+              return (
+                <tr key={u.id} {...rowProps(() => setEditing(u), del, highlight === u.id)}>
+                  <td className="strong" data-title>{u.username}{self ? ' (сіз)' : ''}</td>
+                  <td data-label="Аты">{u.firstName}</td>
+                  <td data-label="Тегі">{u.lastName}</td>
+                  <td data-label="Рөлі">{ROLE_LABEL[u.role]}</td>
+                  <td data-label="Email">{u.email}</td>
+                  <td className={u.active ? '' : 'muted-cell'} data-label="Күйі">{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
+                  <RowActions name={u.username} onEdit={() => setEditing(u)} onDelete={del} />
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -96,19 +93,21 @@ export function UsersPage() {
           onClose={() => setEditing(null)}
           onSaved={(u) => {
             setEditing(null)
-            setSelectedId(u.id)
+            setHighlight(u.id)
             load()
+            toast.show('Пайдаланушы сақталды')
           }}
         />
       )}
-      {confirm && selected && (
+      {deleting && (
         <ConfirmModal
-          text={`«${selected.username}» пайдаланушысын жою керек пе?`}
+          title="Пайдаланушыны жою"
+          text={`«${deleting.username}» пайдаланушысын жою керек пе?`}
           confirmLabel="Жою"
           cancelLabel="Болдырмау"
           danger
           onConfirm={remove}
-          onClose={() => setConfirm(false)}
+          onClose={() => setDeleting(null)}
         />
       )}
     </section>
@@ -195,7 +194,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
           <input type="checkbox" checked={form.active} disabled={isSelf} onChange={(e) => set('active', e.target.checked)} />
           Белсенді (бұғатталған пайдаланушы бірден жүйеден шығарылады)
         </label>
-        {errors._ && <div className="alert">{errors._}</div>}
+        {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />
       </form>
     </Modal>

@@ -1,26 +1,38 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { useIsAdmin } from '../auth/AuthContext'
 import type { InvoiceListItem } from '../api/types'
+import { useIsAdmin } from '../auth/AuthContext'
+import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
-import { Notice } from '../components/Notice'
 import { ConfirmModal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
+import { RowActions, rowProps } from '../components/RowActions'
+import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useList } from '../lib/useList'
-import { useNarrow } from '../lib/useNarrow'
 
 export function InvoicesPage() {
-  const narrow = useNarrow()
-  const isAdmin = useIsAdmin()
   const navigate = useNavigate()
-  const list = useList<InvoiceListItem>((p) => api.invoices.list(p))
+  const isAdmin = useIsAdmin()
+  const toast = useToast()
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const list = useList<InvoiceListItem>((p) => api.invoices.list({ ...p, from: from || null, to: to || null }))
   const [checked, setChecked] = useState<Map<number, number>>(new Map()) // id -> number
-  const [confirm, setConfirm] = useState(false)
+  const [deleting, setDeleting] = useState<InvoiceListItem | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const open = (i: InvoiceListItem) => navigate(`/invoices/${i.id}`)
+
+  const setPeriod = (f: string, t: string) => {
+    setFrom(f)
+    setTo(t)
+    list.setPage(0)
+    list.reload()
+  }
 
   const toggle = (i: InvoiceListItem) =>
     setChecked((m) => {
@@ -39,12 +51,18 @@ export function InvoicesPage() {
     })
 
   const remove = async () => {
-    setConfirm(false)
-    if (!list.selected) return
+    const inv = deleting
+    setDeleting(null)
+    if (!inv) return
     try {
-      await api.invoices.remove(list.selected.id)
-      list.setSelectedId(null)
+      await api.invoices.remove(inv.id)
+      setChecked((m) => {
+        const n = new Map(m)
+        n.delete(inv.id)
+        return n
+      })
       list.reload()
+      toast.show(`№ ${inv.number} жүкқұжат жойылды`)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -52,7 +70,6 @@ export function InvoicesPage() {
 
   return (
     <section className="page">
-      <Notice />
       <PageHeader eyebrow="Сатылым" title="Жүкқұжаттар">
         <button
           className="btn btn--outline"
@@ -67,21 +84,21 @@ export function InvoicesPage() {
 
       <Toolbar
         onCreate={() => navigate('/invoices/new')}
-        onEdit={() => list.selected && navigate(`/invoices/${list.selected.id}`)}
-        onDelete={isAdmin ? () => setConfirm(true) : undefined}
-        hasSelection={!!list.selected}
+        createLabel="Жаңа жүкқұжат"
         search={list.q}
         onSearch={list.search}
         searchPlaceholder="Нөмір немесе клиент"
       >
-        <button
-          className="btn btn--ghost"
-          disabled={!list.selected}
-          onClick={() => list.selected && navigate(`/invoices/${list.selected.id}/print`)}
-        >
-          <Icon name="print" />
-          З-2 басып шығару
-        </button>
+        <div className="daterange" role="group" aria-label="Кезең">
+          <input type="date" className="input" value={from} max={to || undefined} aria-label="Басталу күні"
+            onChange={(e) => setPeriod(e.target.value, to)} />
+          <span aria-hidden="true">—</span>
+          <input type="date" className="input" value={to} min={from || undefined} aria-label="Аяқталу күні"
+            onChange={(e) => setPeriod(from, e.target.value)} />
+          {(from || to) && (
+            <button className="btn btn--ghost btn--s" onClick={() => setPeriod('', '')}>Тазалау</button>
+          )}
+        </div>
       </Toolbar>
 
       {checked.size > 0 && (
@@ -94,37 +111,47 @@ export function InvoicesPage() {
           <button className="link-btn" onClick={() => setChecked(new Map())}>Белгілерді алу</button>
         </div>
       )}
-      {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       <div className="table-wrap">
         <table className="table table--cards">
           <thead>
             <tr>
               <th className="check">
-                <input type="checkbox" aria-label="Беттегінің бәрін белгілеу" checked={allOnPage} onChange={toggleAll} />
+                <label className="check__hit">
+                  <input type="checkbox" aria-label="Беттегінің бәрін белгілеу" checked={allOnPage} onChange={toggleAll} />
+                </label>
               </th>
               <th style={{ width: 120 }}>№</th>
               <th style={{ width: 130 }}>Күні</th>
               <th>Клиент</th>
-              <th className="num" style={{ width: 170 }}>Сомасы, ₸</th>
+              <th className="num" style={{ width: 160 }}>Сомасы, ₸</th>
+              <th aria-label="Әрекеттер" style={{ width: 136 }} />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={5} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={6} />
             {list.data.items.map((i) => (
-              <tr
-                key={i.id}
-                className={list.selected?.id === i.id ? 'is-selected' : ''}
-                onClick={() => (narrow ? navigate(`/invoices/${i.id}`) : list.setSelectedId(i.id))}
-                onDoubleClick={() => navigate(`/invoices/${i.id}`)}
-              >
-                <td className="check" onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" aria-label={`№${i.number} белгілеу`} checked={checked.has(i.id)} onChange={() => toggle(i)} />
+              <tr key={i.id} {...rowProps(() => open(i), isAdmin ? () => setDeleting(i) : undefined)}>
+                <td className="check">
+                  <label className="check__hit">
+                    <input type="checkbox" aria-label={`№${i.number} белгілеу`} checked={checked.has(i.id)} onChange={() => toggle(i)} />
+                  </label>
                 </td>
                 <td className="mono strong" data-title>№ {i.number}</td>
                 <td className="muted-cell" data-label="Күні">{fmtDate(i.createdAt)}</td>
                 <td data-label="Клиент">{i.clientName}</td>
                 <td className="num strong cell-amount">{fmtMoney(i.total)} ₸</td>
+                <RowActions
+                  name={`№ ${i.number}`}
+                  onEdit={() => open(i)}
+                  onDelete={isAdmin ? () => setDeleting(i) : undefined}
+                >
+                  <button className="icon-btn" title="З-2 басып шығару" aria-label={`№ ${i.number} — З-2 басып шығару`}
+                    onClick={() => navigate(`/invoices/${i.id}/print`)}>
+                    <Icon name="print" />
+                  </button>
+                </RowActions>
               </tr>
             ))}
           </tbody>
@@ -134,14 +161,15 @@ export function InvoicesPage() {
         <Pagination page={list.page} size={list.data.size} total={list.data.total} onChange={list.setPage} />
       </div>
 
-      {confirm && list.selected && (
+      {deleting && (
         <ConfirmModal
-          text={`№ ${list.selected.number} жүкқұжатты жою керек пе? Бұл әрекетті қайтару мүмкін емес.`}
+          title="Жүкқұжатты жою"
+          text={`№ ${deleting.number} жүкқұжатты жою керек пе? Бұл әрекетті қайтару мүмкін емес.`}
           confirmLabel="Жою"
           cancelLabel="Болдырмау"
           danger
           onConfirm={remove}
-          onClose={() => setConfirm(false)}
+          onClose={() => setDeleting(null)}
         />
       )}
     </section>

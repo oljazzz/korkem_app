@@ -561,3 +561,34 @@ input[type='checkbox']:checked {
   .quick-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .quick-add__btn, .quick-add__sum { grid-column: 1 / -1; }
 }
+
+/* ---------- Medium-priority UX: clickable rows, row actions, alerts, hit areas ---------- */
+.table tbody tr.row-link { cursor: pointer; user-select: auto; }
+.table tbody tr.row-link:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--kr-info-500); background: var(--surface-sunken); }
+.row-actions { width: 1%; }
+.row-actions .icon-btn { opacity: 0.55; transition: opacity var(--kr-motion), background-color var(--kr-motion); }
+.table tbody tr:hover .row-actions .icon-btn,
+.table tbody tr:focus-within .row-actions .icon-btn,
+.row-actions .icon-btn:focus-visible { opacity: 1; }
+@media (hover: none) { .row-actions .icon-btn { opacity: 1; } }
+
+/* 44px hit area around small checkboxes */
+.table .check { padding: 0 0 0 var(--kr-mu050); }
+.check__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+
+/* Product category group toggle is a real button (keyboard + aria-expanded) */
+.group-row__toggle { display: inline-flex; align-items: center; gap: var(--kr-mu025); border: 0; background: none; padding: 0; font: inherit; font-weight: var(--kr-weight-bold); color: inherit; cursor: pointer; }
+.group-row__toggle:focus-visible { box-shadow: var(--focus-ring); border-radius: var(--kr-radius-s); }
+
+/* Alert with a close button */
+.alert { display: flex; align-items: flex-start; gap: var(--kr-mu050); }
+.alert__text { flex: 1; min-width: 0; padding-block: 2px; }
+.alert__close { flex: none; width: 28px; height: 28px; margin: -4px -6px -4px 0; color: var(--text-secondary); }
+
+.toast-region:empty { display: none; }
+.toolbar .daterange { flex-wrap: wrap; }
+
+@media (max-width: 760px) {
+  .table--cards .row-actions { display: none; } /* rows open on tap; deleting is a desktop action */
+  .toolbar .daterange { flex: 1 1 100%; }
+}

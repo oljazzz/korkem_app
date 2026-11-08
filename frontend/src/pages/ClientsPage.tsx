@@ -4,32 +4,33 @@ import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
 import type { Client } from '../api/types'
+import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
+import { RowActions, rowProps } from '../components/RowActions'
+import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { useList } from '../lib/useList'
-import { useNarrow } from '../lib/useNarrow'
 
 export function ClientsPage() {
-  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
+  const toast = useToast()
   const list = useList<Client>((p) => api.clients.list(p))
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
-  const [confirm, setConfirm] = useState(false)
+  const [deleting, setDeleting] = useState<Client | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const remove = async () => {
-    setConfirm(false)
-    if (!list.selected) return
+    const c = deleting
+    setDeleting(null)
+    if (!c) return
     try {
-      await api.clients.remove(list.selected.id)
-      list.setSelectedId(null)
+      await api.clients.remove(c.id)
       list.reload()
+      toast.show(`«${c.name}» жойылды`)
     } catch (e) {
-      setError(
-        (e as ApiError).status === 409 ? 'Клиенттің жүкқұжаттары бар — жоюға болмайды' : (e as Error).message,
-      )
+      setError((e as ApiError).status === 409 ? 'Клиенттің жүкқұжаттары бар — жоюға болмайды' : (e as Error).message)
     }
   }
 
@@ -38,33 +39,27 @@ export function ClientsPage() {
       <PageHeader eyebrow="Анықтамалық" title="Клиенттер" />
       <Toolbar
         onCreate={() => setEditing('new')}
-        onEdit={() => list.selected && setEditing(list.selected)}
-        onDelete={isAdmin ? () => setConfirm(true) : undefined}
-        hasSelection={!!list.selected}
         search={list.q}
         onSearch={list.search}
         searchPlaceholder="Аты немесе мекенжайы бойынша іздеу"
       />
-      {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       <div className="table-wrap">
         <table className="table table--cards">
           <thead>
             <tr>
               <th style={{ width: '40%' }}>Аты</th>
               <th>Мекенжайы</th>
+              <th aria-label="Әрекеттер" />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={2} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={3} />
             {list.data.items.map((c) => (
-              <tr
-                key={c.id}
-                className={list.selected?.id === c.id ? 'is-selected' : ''}
-                onClick={() => (narrow ? setEditing(c) : list.setSelectedId(c.id))}
-                onDoubleClick={() => setEditing(c)}
-              >
+              <tr key={c.id} {...rowProps(() => setEditing(c), isAdmin ? () => setDeleting(c) : undefined, list.selected?.id === c.id)}>
                 <td className="strong" data-title>{c.name}</td>
                 <td data-label="Мекенжайы">{c.address}</td>
+                <RowActions name={c.name} onEdit={() => setEditing(c)} onDelete={isAdmin ? () => setDeleting(c) : undefined} />
               </tr>
             ))}
           </tbody>
@@ -80,11 +75,20 @@ export function ClientsPage() {
             setEditing(null)
             list.setSelectedId(c.id)
             list.reload()
+            toast.show('Клиент сақталды')
           }}
         />
       )}
-      {confirm && list.selected && (
-        <ConfirmModal confirmLabel="Жою" cancelLabel="Болдырмау" danger text={`«${list.selected.name}» клиентін жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+      {deleting && (
+        <ConfirmModal
+          title="Клиентті жою"
+          confirmLabel="Жою"
+          cancelLabel="Болдырмау"
+          danger
+          text={`«${deleting.name}» клиентін жою керек пе?`}
+          onConfirm={remove}
+          onClose={() => setDeleting(null)}
+        />
       )}
     </section>
   )
@@ -131,7 +135,7 @@ export function ClientForm({ client, onClose, onSaved }: {
         <Field label="Мекенжайы" error={errors.address}>
           <textarea className="input" rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
         </Field>
-        {errors._ && <div className="alert">{errors._}</div>}
+        {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />
       </form>
     </Modal>

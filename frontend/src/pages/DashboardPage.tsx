@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Dashboard } from '../api/types'
+import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
 import { BarList, ColumnChart } from '../components/Charts'
 import { Icon } from '../components/Icon'
@@ -145,7 +146,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {error && <div className="alert">{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       <div className={`kpis ${loading ? 'is-loading' : ''}`}>
         <Stat label="Түсім" value={data?.current.revenue} prev={data?.previous.revenue} money />

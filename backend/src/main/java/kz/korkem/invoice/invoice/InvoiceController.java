@@ -2,11 +2,13 @@ package kz.korkem.invoice.invoice;
 
 import jakarta.validation.Valid;
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,9 +24,11 @@ public class InvoiceController {
     @GetMapping
     public PageResponse<InvoiceListItem> list(@RequestParam(defaultValue = "") String q,
                                               @RequestParam(required = false) Long clientId,
+                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "50") int size) {
-        return service.list(q, clientId, page, size);
+        return service.list(q, clientId, from, to, page, size);
     }
 
     @GetMapping("/units")

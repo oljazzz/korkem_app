@@ -6,7 +6,9 @@ import type { Category, InvoiceLine, Product, Unit, UnitCode } from '../api/type
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
 import { Field } from '../components/Field'
 import { Icon } from '../components/Icon'
+import { Alert } from '../components/Alert'
 import { ConfirmModal, Modal } from '../components/Modal'
+import { useToast } from '../components/Toast'
 import { calcLine, fmt, fmt2, fmtMoney, parseNum } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
@@ -31,6 +33,7 @@ export function InvoiceEditPage() {
   const isNew = id === undefined
   const navigate = useNavigate()
   const { vatRate } = useSettings()
+  const toast = useToast()
 
   const [number, setNumber] = useState<number | null>(null)
   const [client, setClient] = useState<Option | null>(null)
@@ -107,9 +110,10 @@ export function InvoiceEditPage() {
   const ok = useCallback(async () => {
     if ((await save()) !== null) {
       allowNextNavigation()
-      navigate('/invoices', { state: { notice: 'Жүкқұжат сақталды' } })
+      navigate('/invoices')
+      toast.show('Жүкқұжат сақталды')
     }
-  }, [save, allowNextNavigation, navigate])
+  }, [save, allowNextNavigation, navigate, toast])
 
   const report = async () => {
     const savedId = dirty || isNew ? await save() : Number(id)
@@ -241,7 +245,7 @@ export function InvoiceEditPage() {
         />
       </div>
 
-      {error && <div className="alert" role="alert">{error}</div>}
+      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       <div className="editor-actions">
         <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>

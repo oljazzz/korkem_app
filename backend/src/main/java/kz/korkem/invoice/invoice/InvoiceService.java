@@ -2,8 +2,12 @@ package kz.korkem.invoice.invoice;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import kz.korkem.invoice.category.Category;
 import kz.korkem.invoice.category.CategoryRepository;
 import kz.korkem.invoice.client.ClientRepository;
@@ -30,7 +34,15 @@ public class InvoiceService {
     private final InvoiceCalculator calculator;
 
     @Transactional(readOnly = true)
-    public PageResponse<InvoiceListItem> list(String q, Long clientId, int page, int size) {
+    /**
+     * Invoice list. A purely numeric query searches by invoice number; [from, to] are calendar days
+     * in the Almaty time zone, both inclusive and optional.
+     */
+    public PageResponse<InvoiceListItem> list(String q, Long clientId, LocalDate from,
+                                              LocalDate to, int page, int size) {
+        ZoneId zone = ZoneId.of("Asia/Almaty");
+        Instant fromTs = from == null ? null : from.atStartOfDay(zone).toInstant();
+        Instant toTs = to == null ? null : to.plusDays(1).atStartOfDay(zone).toInstant();
         String query = q == null ? "" : q.trim();
         Long number = null;
         String digits = query.replaceAll("\\s", "");
@@ -38,9 +50,9 @@ public class InvoiceService {
             number = Long.parseLong(digits);
             query = "";
         }
-        var result = invoices.search(number, query, clientId,
-                PageRequest.of(page, kz.korkem.invoice.common.PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "number")));
-        java.util.Map<Long, BigDecimal> totals = new java.util.HashMap<>();
+        var result = invoices.search(number, query, clientId, fromTs, toTs,
+                PageRequest.of(page, PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "number")));
+        Map<Long, BigDecimal> totals = new HashMap<>();
         if (!result.isEmpty()) {
             invoices.totalsFor(result.map(Invoice::getId).getContent())
                     .forEach(r -> totals.put((Long) r[0], (BigDecimal) r[1]));
