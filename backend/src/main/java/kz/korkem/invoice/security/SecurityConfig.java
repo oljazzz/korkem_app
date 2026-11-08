@@ -19,6 +19,8 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -47,7 +49,7 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps) throws Exception {
         http
                 // CSRF tokens are not needed: the auth cookie is SameSite=Strict, so cross-site requests carry no credentials
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -69,7 +71,7 @@ public class SecurityConfig {
                 }))
                 .headers(h -> h
                         .contentTypeOptions(Customizer.withDefaults())
-                        .frameOptions(f -> f.deny())
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
                         .referrerPolicy(r -> r.policy(
                                 org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
         return http.build();
