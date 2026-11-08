@@ -3,3 +3,7 @@ spring:
     url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     username: sa
     password:
+app:
+  vat:
+    # Tests assert legacy figures computed at 12%, independent of the configured default
+    rate: 12

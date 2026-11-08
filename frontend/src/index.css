@@ -451,3 +451,113 @@ input[type='checkbox']:checked {
   .chips { width: 100%; }
   .chip { flex: 1 1 auto; }
 }
+
+/* =====================================================================
+   UX additions: sticky list toolbar, inline line entry, mobile cards, toast
+   ===================================================================== */
+
+/* Sticky list toolbar; table headers stick right below it (height published as --toolbar-h) */
+.toolbar--sticky {
+  position: sticky; top: 0; z-index: 15;
+  margin-bottom: 0; padding-block: var(--kr-mu075);
+  background: var(--surface-page);
+}
+.table th { top: var(--toolbar-h, 0px); }
+@media (min-width: 861px) {
+  /* A scrolling wrapper would trap the sticky header; wide tables only need it on small screens */
+  .table-wrap { overflow: visible; }
+  .table thead th:first-child { border-top-left-radius: var(--kr-radius-l); }
+  .table thead th:last-child { border-top-right-radius: var(--kr-radius-l); }
+}
+
+/* Buttons */
+.btn--danger-solid { background: var(--kr-danger-600); color: #fff; }
+.btn--danger-solid:hover:not(:disabled) { background: var(--kr-danger-700); }
+.icon-btn { color: var(--text-secondary); }
+.icon-btn:hover { background: var(--surface-sunken); color: var(--text); }
+.icon-btn--danger:hover { background: var(--danger-soft); color: var(--danger); }
+.input.is-invalid { border-color: var(--danger); }
+.num-input { text-align: right; }
+
+/* Autocomplete option hint (price · category) */
+.combo__option { display: flex; align-items: baseline; justify-content: space-between; gap: var(--kr-mu075); }
+.combo__label { min-width: 0; }
+.combo__hint { flex: none; font-size: var(--kr-font-03); color: var(--text-muted); white-space: nowrap; }
+.combo__option.is-active .combo__hint { color: var(--text-secondary); }
+
+/* Invoice lines */
+.table--lines td { vertical-align: middle; }
+.row-actions { white-space: nowrap; text-align: right; padding-top: 4px !important; padding-bottom: 4px !important; }
+.quick-add {
+  display: grid; align-items: end; gap: var(--kr-mu075);
+  grid-template-columns: minmax(260px, 3fr) minmax(96px, 1fr) minmax(88px, 1fr) 104px 104px minmax(112px, 1fr) auto;
+  margin-top: var(--kr-mu075); padding: var(--kr-mu100);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--kr-radius-l);
+  box-shadow: var(--kr-shadow-s);
+}
+.quick-add__product { min-width: 0; }
+.quick-add__total { display: flex; align-items: center; min-height: var(--kr-control-m); font-weight: var(--kr-weight-bold); white-space: nowrap; }
+.line-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--kr-mu050); padding-top: var(--kr-mu075); border-top: 1px solid var(--border); }
+
+/* Success toast */
+.notice {
+  position: fixed; z-index: 70; left: 50%; bottom: calc(var(--kr-mu150) + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--kr-mu050); max-width: calc(100vw - 32px);
+  padding: var(--kr-mu075) var(--kr-mu075) var(--kr-mu075) var(--kr-mu100);
+  border-radius: var(--kr-radius-l); background: var(--kr-slate-800); color: #fff; box-shadow: var(--kr-shadow-l);
+  font-size: var(--kr-font-04); font-weight: var(--kr-weight-semibold);
+}
+.notice > svg { color: var(--kr-green-400); flex: none; }
+.notice .icon-btn { color: var(--kr-slate-300); width: 32px; height: 32px; }
+.notice .icon-btn:hover { background: var(--kr-slate-700); color: #fff; }
+@media (prefers-reduced-motion: no-preference) {
+  .notice { animation: notice-in 0.2s ease-out; }
+  @keyframes notice-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+}
+
+@media (max-width: 1100px) {
+  .quick-add { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .quick-add__product { grid-column: 1 / -1; }
+}
+
+@media (max-width: 860px) {
+  .toolbar--sticky { top: 56px; } /* below the top navigation bar */
+}
+
+/* Phones: list rows become cards, create is a floating button, row tap opens the item */
+@media (max-width: 760px) {
+  .page { padding-bottom: 96px; }
+  .page-head__actions .btn:disabled { display: none; }
+  .toolbar__selection { display: none; }
+  .toolbar .btn--ghost:disabled { display: none; } /* selection-only actions; rows open on tap here */
+  .toolbar__create {
+    position: fixed; z-index: 20;
+    right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 56px; min-height: 56px; height: 56px; padding: 0; border-radius: 50%; box-shadow: var(--kr-shadow-l);
+  }
+  .toolbar__create .btn__label { display: none; }
+  .toolbar__create svg { width: 24px; height: 24px; }
+
+  .table--cards, .table--cards tbody, .table--cards tfoot { display: block; }
+  .table--cards thead, .table--cards .check { display: none; }
+  .table--cards tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--kr-mu075); align-items: baseline;
+    padding: var(--kr-mu075) var(--kr-mu100); border-bottom: 1px solid var(--border);
+  }
+  .table--cards tbody tr:last-child { border-bottom: 0; }
+  .table--cards td { display: block; padding: 0; border: 0; text-align: left; }
+  .table--cards td[data-title] { grid-column: 1; font-size: var(--kr-font-05); font-weight: var(--kr-weight-bold); }
+  .table--cards td.cell-amount { grid-column: 2; grid-row: 1; text-align: right; font-size: var(--kr-font-05); font-weight: var(--kr-weight-bold); }
+  .table--cards td[data-label] { grid-column: 1 / -1; font-size: var(--kr-font-04); color: var(--text-secondary); }
+  .table--cards td[data-label]:empty { display: none; }
+  .table--cards td[data-label]::before { content: attr(data-label) ': '; color: var(--text-muted); }
+  .table--cards td.indent { padding-left: 0; }
+  .table--cards tr.is-selected td:first-child { box-shadow: none; }
+  .table--cards .group-row { display: block; padding: var(--kr-mu050) var(--kr-mu100); background: var(--surface-sunken); }
+  .table--cards .group-row td { background: transparent; }
+  .table--cards .table__msg { grid-column: 1 / -1; }
+  .table--cards tfoot tr { display: flex; justify-content: space-between; padding: var(--kr-mu075) var(--kr-mu100); }
+
+  .quick-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-add__btn, .quick-add__sum { grid-column: 1 / -1; }
+}

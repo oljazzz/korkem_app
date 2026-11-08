@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 
 export interface Option {
   id: number
   label: string
+  /** Secondary text shown on the right of an option (e.g. price, category). */
+  hint?: string
 }
 
 interface Props<T extends Option> {
@@ -12,10 +14,15 @@ interface Props<T extends Option> {
   placeholder?: string
   autoFocus?: boolean
   invalid?: boolean
+  /** Lets the parent move focus into the field (e.g. back to it after adding a line). */
+  inputRef?: RefObject<HTMLInputElement | null>
+  ariaLabel?: string
 }
 
-/** Searchable select: loads options from the server as the user types. */
-export function AsyncSelect<T extends Option>({ value, onChange, load, placeholder, autoFocus, invalid }: Props<T>) {
+/** Searchable select (ARIA combobox): loads options from the server as the user types. */
+export function AsyncSelect<T extends Option>({
+  value, onChange, load, placeholder, autoFocus, invalid, inputRef, ariaLabel,
+}: Props<T>) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [options, setOptions] = useState<T[]>([])
@@ -23,6 +30,7 @@ export function AsyncSelect<T extends Option>({ value, onChange, load, placehold
   const [loading, setLoading] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
   const loadRef = useRef(load)
+  const listId = useId()
   useEffect(() => {
     loadRef.current = load
   })
@@ -56,20 +64,31 @@ export function AsyncSelect<T extends Option>({ value, onChange, load, placehold
   }, [])
 
   const pick = (o: T) => {
-    onChange(o)
     setOpen(false)
     setText('')
+    onChange(o)
   }
+
+  const activeId = open && options[active] ? `${listId}-${active}` : undefined
 
   return (
     <div className="combo" ref={boxRef}>
       <div className={`combo__control ${invalid ? 'is-invalid' : ''}`}>
         <input
+          ref={inputRef}
           className="combo__input"
+          role="combobox"
+          aria-label={ariaLabel ?? placeholder}
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeId}
+          aria-invalid={invalid || undefined}
           value={open ? text : (value?.label ?? '')}
           placeholder={open ? (value?.label ?? placeholder) : placeholder}
           autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
           onChange={(e) => {
             setText(e.target.value)
             setOpen(true)
@@ -88,21 +107,24 @@ export function AsyncSelect<T extends Option>({ value, onChange, load, placehold
             } else if (e.key === 'Escape' && open) {
               e.stopPropagation()
               setOpen(false)
+            } else if (e.key === 'Tab') {
+              setOpen(false)
             }
           }}
         />
         {value && (
-          <button type="button" className="combo__clear" title="Тазалау" onClick={() => onChange(null)}>×</button>
+          <button type="button" className="combo__clear" title="Тазалау" aria-label="Тазалау" onClick={() => onChange(null)}>×</button>
         )}
-        <span className="combo__arrow" onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}>▾</span>
+        <span className="combo__arrow" aria-hidden="true" onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}>▾</span>
       </div>
       {open && (
-        <ul className="combo__list" role="listbox">
+        <ul className="combo__list" role="listbox" id={listId}>
           {loading && options.length === 0 && <li className="combo__empty">Жүктелуде…</li>}
           {!loading && options.length === 0 && <li className="combo__empty">Ештеңе табылмады</li>}
           {options.map((o, i) => (
             <li
               key={o.id}
+              id={`${listId}-${i}`}
               role="option"
               aria-selected={value?.id === o.id}
               className={`combo__option ${i === active ? 'is-active' : ''} ${value?.id === o.id ? 'is-selected' : ''}`}
@@ -112,7 +134,8 @@ export function AsyncSelect<T extends Option>({ value, onChange, load, placehold
                 pick(o)
               }}
             >
-              {o.label}
+              <span className="combo__label">{o.label}</span>
+              {o.hint && <span className="combo__hint">{o.hint}</span>}
             </li>
           ))}
         </ul>

@@ -5,13 +5,16 @@ import { useIsAdmin } from '../auth/AuthContext'
 import type { InvoiceListItem } from '../api/types'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
+import { Notice } from '../components/Notice'
 import { ConfirmModal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useNarrow } from '../lib/useNarrow'
 
 export function InvoicesPage() {
+  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
   const navigate = useNavigate()
   const list = useList<InvoiceListItem>((p) => api.invoices.list(p))
@@ -49,6 +52,7 @@ export function InvoicesPage() {
 
   return (
     <section className="page">
+      <Notice />
       <PageHeader eyebrow="Сатылым" title="Жүкқұжаттар">
         <button
           className="btn btn--outline"
@@ -93,7 +97,7 @@ export function InvoicesPage() {
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
 
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th className="check">
@@ -111,16 +115,16 @@ export function InvoicesPage() {
               <tr
                 key={i.id}
                 className={list.selected?.id === i.id ? 'is-selected' : ''}
-                onClick={() => list.setSelectedId(i.id)}
+                onClick={() => (narrow ? navigate(`/invoices/${i.id}`) : list.setSelectedId(i.id))}
                 onDoubleClick={() => navigate(`/invoices/${i.id}`)}
               >
                 <td className="check" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" aria-label={`№${i.number} белгілеу`} checked={checked.has(i.id)} onChange={() => toggle(i)} />
                 </td>
-                <td className="mono strong">{i.number}</td>
-                <td className="muted-cell">{fmtDate(i.createdAt)}</td>
-                <td>{i.clientName}</td>
-                <td className="num strong">{fmtMoney(i.total)}</td>
+                <td className="mono strong" data-title>№ {i.number}</td>
+                <td className="muted-cell" data-label="Күні">{fmtDate(i.createdAt)}</td>
+                <td data-label="Клиент">{i.clientName}</td>
+                <td className="num strong cell-amount">{fmtMoney(i.total)} ₸</td>
               </tr>
             ))}
           </tbody>
@@ -132,7 +136,10 @@ export function InvoicesPage() {
 
       {confirm && list.selected && (
         <ConfirmModal
-          text={`№ ${list.selected.number} жүкқұжатты жою керек пе?`}
+          text={`№ ${list.selected.number} жүкқұжатты жою керек пе? Бұл әрекетті қайтару мүмкін емес.`}
+          confirmLabel="Жою"
+          cancelLabel="Болдырмау"
+          danger
           onConfirm={remove}
           onClose={() => setConfirm(false)}
         />

@@ -29,5 +29,7 @@ public final class InvoiceDtos {
             @DecimalMin(value = "0", message = "Жеңілдік 0..100") @DecimalMax(value = "100", message = "Жеңілдік 0..100") BigDecimal discount,
             Integer sortOrder) {}
 
-    public record InvoiceRequest(Long clientId, @NotNull List<@Valid LineRequest> lines) {}
+    public record InvoiceRequest(
+            @NotNull(message = "Клиентті таңдаңыз") Long clientId,
+            @NotEmpty(message = "Кемінде бір тауар қосыңыз") List<@Valid LineRequest> lines) {}
 }

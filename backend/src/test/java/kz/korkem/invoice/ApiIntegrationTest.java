@@ -146,6 +146,11 @@ class ApiIntegrationTest {
     @Test
     void validationErrors() throws Exception {
         String auth = login();
+        mvc.perform(post("/api/invoices").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"clientId\":null,\"lines\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.clientId").exists())
+                .andExpect(jsonPath("$.fields.lines").exists());
         mvc.perform(post("/api/products").header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest())

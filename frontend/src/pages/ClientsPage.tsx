@@ -9,8 +9,10 @@ import { ConfirmModal, Modal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { useList } from '../lib/useList'
+import { useNarrow } from '../lib/useNarrow'
 
 export function ClientsPage() {
+  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
   const list = useList<Client>((p) => api.clients.list(p))
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
@@ -45,7 +47,7 @@ export function ClientsPage() {
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th style={{ width: '40%' }}>Аты</th>
@@ -58,11 +60,11 @@ export function ClientsPage() {
               <tr
                 key={c.id}
                 className={list.selected?.id === c.id ? 'is-selected' : ''}
-                onClick={() => list.setSelectedId(c.id)}
+                onClick={() => (narrow ? setEditing(c) : list.setSelectedId(c.id))}
                 onDoubleClick={() => setEditing(c)}
               >
-                <td>{c.name}</td>
-                <td>{c.address}</td>
+                <td className="strong" data-title>{c.name}</td>
+                <td data-label="Мекенжайы">{c.address}</td>
               </tr>
             ))}
           </tbody>
@@ -82,7 +84,7 @@ export function ClientsPage() {
         />
       )}
       {confirm && list.selected && (
-        <ConfirmModal text={`«${list.selected.name}» клиентін жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+        <ConfirmModal confirmLabel="Жою" cancelLabel="Болдырмау" danger text={`«${list.selected.name}» клиентін жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
       )}
     </section>
   )

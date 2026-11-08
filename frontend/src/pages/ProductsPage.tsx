@@ -10,8 +10,10 @@ import { Pagination } from '../components/Pagination'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmt, parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useNarrow } from '../lib/useNarrow'
 
 export function ProductsPage() {
+  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
@@ -83,7 +85,7 @@ export function ProductsPage() {
       </Toolbar>
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th>Атауы</th>
@@ -103,6 +105,7 @@ export function ProductsPage() {
                 selectedId={list.selected?.id ?? null}
                 onSelect={list.setSelectedId}
                 onOpen={setEditing}
+                narrow={narrow}
               />
             ))}
           </tbody>
@@ -124,13 +127,13 @@ export function ProductsPage() {
         />
       )}
       {confirm && list.selected && (
-        <ConfirmModal text={`«${list.selected.name}» тауарын жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+        <ConfirmModal confirmLabel="Жою" cancelLabel="Болдырмау" danger text={`«${list.selected.name}» тауарын жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
       )}
     </section>
   )
 }
 
-function GroupRows({ title, items, collapsed, onToggle, selectedId, onSelect, onOpen }: {
+function GroupRows({ title, items, collapsed, onToggle, selectedId, onSelect, onOpen, narrow }: {
   title: string
   items: Product[]
   collapsed: boolean
@@ -138,6 +141,7 @@ function GroupRows({ title, items, collapsed, onToggle, selectedId, onSelect, on
   selectedId: number | null
   onSelect: (id: number) => void
   onOpen: (p: Product) => void
+  narrow: boolean
 }) {
   return (
     <>
@@ -151,12 +155,12 @@ function GroupRows({ title, items, collapsed, onToggle, selectedId, onSelect, on
           <tr
             key={p.id}
             className={selectedId === p.id ? 'is-selected' : ''}
-            onClick={() => onSelect(p.id)}
+            onClick={() => (narrow ? onOpen(p) : onSelect(p.id))}
             onDoubleClick={() => onOpen(p)}
           >
-            <td className="indent">{p.name}</td>
-            <td className="num">{fmt(p.price)}</td>
-            <td className="num">{p.sortOrder}</td>
+            <td className="indent strong" data-title>{p.name}</td>
+            <td className="num cell-amount">{fmt(p.price)} ₸</td>
+            <td className="num" data-label="Реті">{p.sortOrder}</td>
           </tr>
         ))}
     </>

@@ -7,10 +7,12 @@ import { Field } from '../components/Field'
 import { PageHeader, ROLE_LABEL } from '../components/Layout'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { TableState, Toolbar } from '../components/Toolbar'
+import { useNarrow } from '../lib/useNarrow'
 
 /** User management (ADMIN only; the route and the API both enforce it). */
 export function UsersPage() {
   const { user: me } = useAuth()
+  const narrow = useNarrow()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +58,7 @@ export function UsersPage() {
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th>Логин</th>
@@ -73,15 +75,15 @@ export function UsersPage() {
               <tr
                 key={u.id}
                 className={selectedId === u.id ? 'is-selected' : ''}
-                onClick={() => setSelectedId(u.id)}
+                onClick={() => (narrow ? setEditing(u) : setSelectedId(u.id))}
                 onDoubleClick={() => setEditing(u)}
               >
-                <td className="strong">{u.username}{u.id === me?.id ? ' (сіз)' : ''}</td>
-                <td>{u.firstName}</td>
-                <td>{u.lastName}</td>
-                <td>{ROLE_LABEL[u.role]}</td>
-                <td>{u.email}</td>
-                <td className={u.active ? '' : 'muted-cell'}>{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
+                <td className="strong" data-title>{u.username}{u.id === me?.id ? ' (сіз)' : ''}</td>
+                <td data-label="Аты">{u.firstName}</td>
+                <td data-label="Тегі">{u.lastName}</td>
+                <td data-label="Рөлі">{ROLE_LABEL[u.role]}</td>
+                <td data-label="Email">{u.email}</td>
+                <td className={u.active ? '' : 'muted-cell'} data-label="Күйі">{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
               </tr>
             ))}
           </tbody>
@@ -102,6 +104,9 @@ export function UsersPage() {
       {confirm && selected && (
         <ConfirmModal
           text={`«${selected.username}» пайдаланушысын жою керек пе?`}
+          confirmLabel="Жою"
+          cancelLabel="Болдырмау"
+          danger
           onConfirm={remove}
           onClose={() => setConfirm(false)}
         />

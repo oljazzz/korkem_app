@@ -10,8 +10,10 @@ import { Pagination } from '../components/Pagination'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useNarrow } from '../lib/useNarrow'
 
 export function CategoriesPage() {
+  const narrow = useNarrow()
   const isAdmin = useIsAdmin()
   const list = useList<Category>((p) => api.categories.list(p))
   const [editing, setEditing] = useState<Category | 'new' | null>(null)
@@ -44,7 +46,7 @@ export function CategoriesPage() {
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th>Санат</th>
@@ -57,11 +59,11 @@ export function CategoriesPage() {
               <tr
                 key={c.id}
                 className={list.selected?.id === c.id ? 'is-selected' : ''}
-                onClick={() => list.setSelectedId(c.id)}
+                onClick={() => (narrow ? setEditing(c) : list.setSelectedId(c.id))}
                 onDoubleClick={() => setEditing(c)}
               >
-                <td>{c.name}</td>
-                <td>{c.sortOrder}</td>
+                <td className="strong" data-title>{c.name}</td>
+                <td data-label="Реті">{c.sortOrder}</td>
               </tr>
             ))}
           </tbody>
@@ -82,6 +84,9 @@ export function CategoriesPage() {
       )}
       {confirm && list.selected && (
         <ConfirmModal
+          confirmLabel="Жою"
+          cancelLabel="Болдырмау"
+          danger
           text={`«${list.selected.name}» санатын жою керек пе? Тауарлар санатсыз қалады.`}
           onConfirm={remove}
           onClose={() => setConfirm(false)}
