@@ -6,20 +6,18 @@ import java.util.Arrays;
 import java.util.List;
 import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/invoices")
+@RequiredArgsConstructor
 public class InvoiceController {
 
     public record UnitDto(Unit value, String label) {}
 
     private final InvoiceService service;
-
-    public InvoiceController(InvoiceService service) {
-        this.service = service;
-    }
 
     @GetMapping
     public PageResponse<InvoiceListItem> list(@RequestParam(defaultValue = "") String q,

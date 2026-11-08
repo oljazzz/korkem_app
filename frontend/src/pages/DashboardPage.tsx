@@ -6,8 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { BarList, ColumnChart } from '../components/Charts'
 import { Icon } from '../components/Icon'
 import { Horns } from '../components/Ornament'
-import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay } from '../lib/format'
-import { plural } from '../lib/words'
+import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay, MONTHS_SHORT } from '../lib/format'
 
 type PresetKey = '30d' | 'month' | 'year' | '12m' | 'all'
 
@@ -32,19 +31,19 @@ function presetRange(key: PresetKey): [string, string] {
 }
 
 const PRESETS: { key: PresetKey; label: string }[] = [
-  { key: '30d', label: '30 дней' },
-  { key: 'month', label: 'Этот месяц' },
-  { key: 'year', label: 'Этот год' },
-  { key: '12m', label: '12 месяцев' },
-  { key: 'all', label: 'Всё время' },
+  { key: '30d', label: '30 күн' },
+  { key: 'month', label: 'Осы ай' },
+  { key: 'year', label: 'Осы жыл' },
+  { key: '12m', label: '12 ай' },
+  { key: 'all', label: 'Барлық уақыт' },
 ]
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Almaty', hour: 'numeric', hour12: false }).format(new Date()))
-  if (h < 5) return 'Доброй ночи'
-  if (h < 12) return 'Доброе утро'
-  if (h < 18) return 'Добрый день'
-  return 'Добрый вечер'
+  if (h < 5) return 'Қайырлы түн'
+  if (h < 12) return 'Қайырлы таң'
+  if (h < 18) return 'Қайырлы күн'
+  return 'Қайырлы кеш'
 }
 
 export function DashboardPage() {
@@ -78,7 +77,7 @@ export function DashboardPage() {
       (data?.series ?? []).map((p) => ({
         label: data?.granularity === 'month' ? monthLabel(p.start) : p.label,
         value: p.revenue,
-        hint: `${p.invoices} ${plural(p.invoices, ['накладная', 'накладные', 'накладных'])}`,
+        hint: `${p.invoices} жүкқұжат`,
       })),
     [data],
   )
@@ -98,15 +97,15 @@ export function DashboardPage() {
           </h1>
           {data?.lastInvoiceAt && (
             <p className="muted">
-              Последняя накладная — {fmtDate(data.lastInvoiceAt)} ·{' '}
-              <Link to="/invoices/new" className="text-link">оформить новую</Link>
+              Соңғы жүкқұжат — {fmtDate(data.lastInvoiceAt)} ·{' '}
+              <Link to="/invoices/new" className="text-link">жаңасын рәсімдеу</Link>
             </p>
           )}
         </div>
         <Horns width={120} className="dash__horns" strokeWidth={2} />
       </header>
 
-      <div className="filters" role="group" aria-label="Период">
+      <div className="filters" role="group" aria-label="Кезең">
         <div className="chips">
           {PRESETS.map((p) => (
             <button
@@ -129,7 +128,7 @@ export function DashboardPage() {
               setPreset(null)
               if (e.target.value) setRange([e.target.value, range[1]])
             }}
-            aria-label="С даты"
+            aria-label="Басталу күні"
           />
           <span>—</span>
           <input
@@ -141,7 +140,7 @@ export function DashboardPage() {
               setPreset(null)
               if (e.target.value) setRange([range[0], e.target.value])
             }}
-            aria-label="По дату"
+            aria-label="Аяқталу күні"
           />
         </div>
       </div>
@@ -149,23 +148,23 @@ export function DashboardPage() {
       {error && <div className="alert">{error}</div>}
 
       <div className={`kpis ${loading ? 'is-loading' : ''}`}>
-        <Stat label="Выручка" value={data?.current.revenue} prev={data?.previous.revenue} money />
-        <Stat label="Накладных" value={data?.current.invoices} prev={data?.previous.invoices} />
-        <Stat label="Средний чек" value={data?.current.avgCheck} prev={data?.previous.avgCheck} money />
-        <Stat label="Покупателей" value={data?.current.clients} prev={data?.previous.clients} />
+        <Stat label="Түсім" value={data?.current.revenue} prev={data?.previous.revenue} money />
+        <Stat label="Жүкқұжаттар" value={data?.current.invoices} prev={data?.previous.invoices} />
+        <Stat label="Орташа чек" value={data?.current.avgCheck} prev={data?.previous.avgCheck} money />
+        <Stat label="Сатып алушылар" value={data?.current.clients} prev={data?.previous.clients} />
       </div>
 
       <div className="card">
         <div className="card__head">
           <div>
-            <h2 className="card__title">Выручка</h2>
+            <h2 className="card__title">Түсім</h2>
             <p className="card__sub">
-              по {data?.granularity === 'month' ? 'месяцам' : 'дням'}, ₸ · в т.ч. НДС {data ? fmtCompact(data.current.vat) : '—'}
+              {data?.granularity === 'month' ? 'айлар' : 'күндер'} бойынша, ₸ · оның ішінде ҚҚС {data ? fmtCompact(data.current.vat) : '—'}
             </p>
           </div>
           <Link className="btn btn--ghost" to={`/reports?from=${range[0]}&to=${range[1]}`}>
             <Icon name="report" />
-            Отчёт за период
+            Кезең есебі
           </Link>
         </div>
         {data && <ColumnChart data={series} />}
@@ -174,27 +173,27 @@ export function DashboardPage() {
       <div className="grid-2">
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Ходовые товары</h2>
-            <span className="card__sub">по выручке, ₸</span>
+            <h2 className="card__title">Көп сатылатын тауарлар</h2>
+            <span className="card__sub">түсім бойынша, ₸</span>
           </div>
           <BarList
             items={(data?.topProducts ?? []).map((p) => ({
               name: p.name,
               value: p.revenue,
-              hint: `${fmtMoney(p.quantity)} шт · ${p.invoices} ${plural(p.invoices, ['накладная', 'накладные', 'накладных'])}`,
+              hint: `${fmtMoney(p.quantity)} дана · ${p.invoices} жүкқұжат`,
             }))}
           />
         </div>
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Лучшие покупатели</h2>
-            <span className="card__sub">по выручке, ₸</span>
+            <h2 className="card__title">Үздік сатып алушылар</h2>
+            <span className="card__sub">түсім бойынша, ₸</span>
           </div>
           <BarList
             items={(data?.topClients ?? []).map((c) => ({
               name: c.name,
               value: c.revenue,
-              hint: `${c.invoices} ${plural(c.invoices, ['накладная', 'накладные', 'накладных'])}`,
+              hint: `${c.invoices} жүкқұжат`,
             }))}
           />
         </div>
@@ -202,8 +201,8 @@ export function DashboardPage() {
 
       <div className="card">
         <div className="card__head">
-          <h2 className="card__title">Категории</h2>
-          <span className="card__sub">доля выручки за период</span>
+          <h2 className="card__title">Санаттар</h2>
+          <span className="card__sub">кезеңдегі түсім үлесі</span>
         </div>
         <BarList items={foldCategories(data)} />
       </div>
@@ -219,15 +218,14 @@ function foldCategories(d: Dashboard | null) {
   const items = top.map((c) => ({ name: c.name, value: c.revenue, hint: `${((c.revenue / total) * 100).toFixed(1)}%` }))
   if (rest.length) {
     const v = rest.reduce((s, c) => s + c.revenue, 0)
-    items.push({ name: `Прочие (${rest.length})`, value: v, hint: `${((v / total) * 100).toFixed(1)}%` })
+    items.push({ name: `Басқалары (${rest.length})`, value: v, hint: `${((v / total) * 100).toFixed(1)}%` })
   }
   return items
 }
 
-const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 function monthLabel(iso: string) {
   const [y, m] = iso.split('-').map(Number)
-  return m === 1 ? `${MONTHS[0]} ${String(y).slice(2)}` : MONTHS[m - 1]
+  return m === 1 ? `${MONTHS_SHORT[0]} ${String(y).slice(2)}` : MONTHS_SHORT[m - 1]
 }
 
 function Stat({ label, value, prev, money }: { label: string; value?: number; prev?: number; money?: boolean }) {
@@ -243,7 +241,7 @@ function Stat({ label, value, prev, money }: { label: string; value?: number; pr
       {delta !== null ? (
         <div className={`stat__delta ${up ? 'is-up' : 'is-down'}`}>
           <Icon name={up ? 'arrowUp' : 'arrowDown'} size={14} />
-          {Math.abs(delta).toFixed(1)}%<span>к прошлому периоду</span>
+          {Math.abs(delta).toFixed(1)}%<span>өткен кезеңмен салыстырғанда</span>
         </div>
       ) : (
         <div className="stat__delta">&nbsp;</div>

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
-import type { User } from '../api/types'
+import type { Role, User } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
 import { Field } from '../components/Field'
+import { PageHeader, ROLE_LABEL } from '../components/Layout'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { TableState, Toolbar } from '../components/Toolbar'
 
+/** User management (ADMIN only; the route and the API both enforce it). */
 export function UsersPage() {
+  const { user: me } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,24 +47,24 @@ export function UsersPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Настройки" title="Пользователи" />
+      <PageHeader eyebrow="Баптаулар" title="Пайдаланушылар" />
       <Toolbar
         onCreate={() => setEditing('new')}
         onEdit={() => selected && setEditing(selected)}
         onDelete={() => setConfirm(true)}
-        hasSelection={!!selected}
+        hasSelection={!!selected && selected.id !== me?.id}
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th>Имя пользователя</th>
-              <th>Имя</th>
-              <th>Фамилия</th>
+              <th>Логин</th>
+              <th>Аты</th>
+              <th>Тегі</th>
+              <th>Рөлі</th>
               <th>Email</th>
-              <th>Часовой пояс</th>
-              <th>Активный</th>
+              <th>Күйі</th>
             </tr>
           </thead>
           <tbody>
@@ -73,12 +76,12 @@ export function UsersPage() {
                 onClick={() => setSelectedId(u.id)}
                 onDoubleClick={() => setEditing(u)}
               >
-                <td>{u.username}</td>
+                <td className="strong">{u.username}{u.id === me?.id ? ' (сіз)' : ''}</td>
                 <td>{u.firstName}</td>
                 <td>{u.lastName}</td>
+                <td>{ROLE_LABEL[u.role]}</td>
                 <td>{u.email}</td>
-                <td>{u.timeZone}</td>
-                <td>{u.active ? '☑' : '☐'}</td>
+                <td className={u.active ? '' : 'muted-cell'}>{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
               </tr>
             ))}
           </tbody>
@@ -87,6 +90,7 @@ export function UsersPage() {
       {editing && (
         <UserForm
           user={editing === 'new' ? null : editing}
+          isSelf={editing !== 'new' && editing.id === me?.id}
           onClose={() => setEditing(null)}
           onSaved={(u) => {
             setEditing(null)
@@ -96,24 +100,34 @@ export function UsersPage() {
         />
       )}
       {confirm && selected && (
-        <ConfirmModal text={`Удалить пользователя «${selected.username}»?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+        <ConfirmModal
+          text={`«${selected.username}» пайдаланушысын жою керек пе?`}
+          onConfirm={remove}
+          onClose={() => setConfirm(false)}
+        />
       )}
     </section>
   )
 }
 
-function UserForm({ user, onClose, onSaved }: { user: User | null; onClose: () => void; onSaved: (u: User) => void }) {
+function UserForm({ user, isSelf, onClose, onSaved }: {
+  user: User | null
+  isSelf: boolean
+  onClose: () => void
+  onSaved: (u: User) => void
+}) {
   const [form, setForm] = useState({
     username: user?.username ?? '',
     firstName: user?.firstName ?? '',
     lastName: user?.lastName ?? '',
     email: user?.email ?? '',
     timeZone: user?.timeZone ?? 'Asia/Almaty',
+    role: (user?.role ?? 'MANAGER') as Role,
     active: user?.active ?? true,
     password: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
 
   const save = async () => {
     const body = {
@@ -134,12 +148,12 @@ function UserForm({ user, onClose, onSaved }: { user: User | null; onClose: () =
 
   return (
     <Modal
-      title={user ? 'Пользователь' : 'Новый пользователь'}
+      title={user ? 'Пайдаланушы' : 'Жаңа пайдаланушы'}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сохранить</button>
-          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={save}>Сақтау</button>
+          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
         </>
       }
     >
@@ -147,31 +161,34 @@ function UserForm({ user, onClose, onSaved }: { user: User | null; onClose: () =
         <Field label="Логин" required error={errors.username}>
           <input className="input" autoFocus value={form.username} onChange={(e) => set('username', e.target.value)} />
         </Field>
-        <Field label={user ? 'Новый пароль' : 'Пароль'} required={!user} error={errors.password}>
+        <Field label={user ? 'Жаңа құпиясөз' : 'Құпиясөз'} required={!user} error={errors.password}>
           <input
             className="input"
             type="password"
             autoComplete="new-password"
-            placeholder={user ? 'оставьте пустым, чтобы не менять' : ''}
+            placeholder={user ? 'өзгертпеу үшін бос қалдырыңыз' : 'кемінде 8 таңба'}
             value={form.password}
             onChange={(e) => set('password', e.target.value)}
           />
         </Field>
-        <Field label="Имя">
+        <Field label="Рөлі" required error={errors.role}>
+          <select className="input" value={form.role} disabled={isSelf} onChange={(e) => set('role', e.target.value as Role)}>
+            <option value="MANAGER">{ROLE_LABEL.MANAGER} — жүкқұжаттар, баға тізімі, есептер</option>
+            <option value="ADMIN">{ROLE_LABEL.ADMIN} — бәрі, пайдаланушыларды басқару және жою</option>
+          </select>
+        </Field>
+        <Field label="Аты">
           <input className="input" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
         </Field>
-        <Field label="Фамилия">
+        <Field label="Тегі">
           <input className="input" value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
         </Field>
         <Field label="Email" error={errors.email}>
           <input className="input" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
         </Field>
-        <Field label="Часовой пояс">
-          <input className="input" value={form.timeZone} onChange={(e) => set('timeZone', e.target.value)} />
-        </Field>
         <label className="checkbox field__offset">
-          <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
-          Активный
+          <input type="checkbox" checked={form.active} disabled={isSelf} onChange={(e) => set('active', e.target.checked)} />
+          Белсенді (бұғатталған пайдаланушы бірден жүйеден шығарылады)
         </label>
         {errors._ && <div className="alert">{errors._}</div>}
         <button hidden />

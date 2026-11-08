@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
+import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
 import type { Client } from '../api/types'
@@ -10,6 +11,7 @@ import { TableState, Toolbar } from '../components/Toolbar'
 import { useList } from '../lib/useList'
 
 export function ClientsPage() {
+  const isAdmin = useIsAdmin()
   const list = useList<Client>((p) => api.clients.list(p))
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
   const [confirm, setConfirm] = useState(false)
@@ -24,30 +26,30 @@ export function ClientsPage() {
       list.reload()
     } catch (e) {
       setError(
-        (e as ApiError).status === 409 ? 'У клиента есть накладные — удалить нельзя' : (e as Error).message,
+        (e as ApiError).status === 409 ? 'Клиенттің жүкқұжаттары бар — жоюға болмайды' : (e as Error).message,
       )
     }
   }
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Справочник" title="Клиенты" />
+      <PageHeader eyebrow="Анықтамалық" title="Клиенттер" />
       <Toolbar
         onCreate={() => setEditing('new')}
         onEdit={() => list.selected && setEditing(list.selected)}
-        onDelete={() => setConfirm(true)}
+        onDelete={isAdmin ? () => setConfirm(true) : undefined}
         hasSelection={!!list.selected}
         search={list.q}
         onSearch={list.search}
-        searchPlaceholder="Поиск по имени или адресу"
+        searchPlaceholder="Аты немесе мекенжайы бойынша іздеу"
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: '40%' }}>Имя</th>
-              <th>Адрес</th>
+              <th style={{ width: '40%' }}>Аты</th>
+              <th>Мекенжайы</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +82,7 @@ export function ClientsPage() {
         />
       )}
       {confirm && list.selected && (
-        <ConfirmModal text={`Удалить клиента «${list.selected.name}»?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+        <ConfirmModal text={`«${list.selected.name}» клиентін жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
       )}
     </section>
   )
@@ -111,20 +113,20 @@ export function ClientForm({ client, onClose, onSaved }: {
 
   return (
     <Modal
-      title="Редактор клиента"
+      title="Клиент"
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save} disabled={busy}>Сохранить</button>
-          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={save} disabled={busy}>Сақтау</button>
+          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Имя" required error={errors.name}>
+        <Field label="Аты" required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Адрес" error={errors.address}>
+        <Field label="Мекенжайы" error={errors.address}>
           <textarea className="input" rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
         </Field>
         {errors._ && <div className="alert">{errors._}</div>}

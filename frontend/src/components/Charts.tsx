@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { fmtCompact, fmtMoney } from '../lib/format'
 
-// Бір қатарлы графиктер: бір түс (--chart), жіңішке белгілер, жұқа тор, hover-подсказка.
+// Single-series charts: one color (--chart), thin marks, hairline grid, hover tooltip.
 
 interface ColumnPoint {
   label: string
@@ -9,7 +9,7 @@ interface ColumnPoint {
   hint?: string
 }
 
-/** Жұмыр қадам: 1, 2, 5 × 10ⁿ. */
+/** Round step: 1, 2, 5 × 10ⁿ. */
 function niceStep(v: number) {
   if (v <= 0) return 1
   const p = 10 ** Math.floor(Math.log10(v))
@@ -17,7 +17,7 @@ function niceStep(v: number) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p
 }
 
-/** Бағаналы график (уақыт бойынша түсім). */
+/** Column chart (revenue over time). */
 export function ColumnChart({ data, height = 240, unit = '₸' }: { data: ColumnPoint[]; height?: number; unit?: string }) {
   const [hover, setHover] = useState<number | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -49,7 +49,7 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
 
   return (
     <div className="chart" ref={boxRef} onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Выручка по периодам" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Кезеңдер бойынша түсім" preserveAspectRatio="none">
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={y(t)} y2={y(t)} className="chart__grid" />
@@ -103,8 +103,8 @@ interface BarItem {
   hint?: string
 }
 
-/** Көлденең рейтинг: атауы, жіңішке жолақ, мәні. */
-export function BarList({ items, emptyText = 'Нет данных' }: { items: BarItem[]; emptyText?: string }) {
+/** Horizontal ranking: name, thin bar, value. */
+export function BarList({ items, emptyText = 'Деректер жоқ' }: { items: BarItem[]; emptyText?: string }) {
   const max = useMemo(() => Math.max(1, ...items.map((i) => i.value)), [items])
   if (items.length === 0) return <p className="muted">{emptyText}</p>
   return (

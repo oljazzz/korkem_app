@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import kz.korkem.invoice.common.NotFoundException;
 import kz.korkem.invoice.common.PageResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/categories")
+@RequiredArgsConstructor
 public class CategoryController {
 
     public record CategoryDto(Long id, String name, Integer sortOrder) {
@@ -27,19 +29,15 @@ public class CategoryController {
 
     private final CategoryRepository repo;
 
-    public CategoryController(CategoryRepository repo) {
-        this.repo = repo;
-    }
-
     @GetMapping
     public PageResponse<CategoryDto> list(@RequestParam(defaultValue = "") String q,
                                           @RequestParam(defaultValue = "0") int page,
                                           @RequestParam(defaultValue = "50") int size) {
-        return PageResponse.of(repo.findByNameContainingIgnoreCase(q.trim(), PageRequest.of(page, size, SORT)),
-                CategoryDto::of);
+        return PageResponse.of(repo.findByNameContainingIgnoreCase(q.trim(),
+                PageRequest.of(page, PageResponse.clampSize(size), SORT)), CategoryDto::of);
     }
 
-    /** Таңдау тізімдері (select) үшін барлық категориялар. */
+    /** All categories, for select inputs. */
     @GetMapping("/all")
     public List<CategoryDto> all() {
         return repo.findAll(SORT).stream().map(CategoryDto::of).toList();
@@ -80,6 +78,6 @@ public class CategoryController {
     }
 
     private Category find(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Категория табылмады"));
+        return repo.findById(id).orElseThrow(() -> new NotFoundException("Санат табылмады"));
     }
 }

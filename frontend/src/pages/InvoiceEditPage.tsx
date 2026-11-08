@@ -9,6 +9,7 @@ import { Field } from '../components/Field'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { ClientForm } from './ClientsPage'
 import { calcLine, fmt, fmt2, parseNum } from '../lib/format'
+import { useSettings } from '../lib/settings'
 
 type Line = InvoiceLine & { key: number }
 let keySeq = 1
@@ -25,7 +26,7 @@ export function InvoiceEditPage() {
   const [editingLine, setEditingLine] = useState<Line | 'new' | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [newClient, setNewClient] = useState(false)
-  const [units, setUnits] = useState<Unit[]>([{ value: 'SHT', label: 'Шт' }])
+  const [units, setUnits] = useState<Unit[]>([{ value: 'SHT', label: 'дана' }])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
@@ -95,7 +96,7 @@ export function InvoiceEditPage() {
   }
 
   const close = () => {
-    if (dirty && !window.confirm('Есть несохранённые изменения. Закрыть без сохранения?')) return
+    if (dirty && !window.confirm('Сақталмаған өзгерістер бар. Сақтамай жабу керек пе?')) return
     navigate('/invoices')
   }
 
@@ -109,24 +110,24 @@ export function InvoiceEditPage() {
     setDirty(true)
   }
 
-  if (loading) return <section className="page"><p>Загрузка…</p></section>
+  if (loading) return <section className="page"><p>Жүктелуде…</p></section>
 
   return (
     <section className="page page--editor">
       <div className="breadcrumbs">
-        <Link to="/invoices">Накладные</Link> › {isNew ? 'Новая' : `№ ${number ?? ''}`}
+        <Link to="/invoices">Жүкқұжаттар</Link> › {isNew ? 'Жаңа' : `№ ${number ?? ''}`}
       </div>
-      <h1 className="page-title">{isNew ? 'Новая накладная' : `Накладная № ${number ?? ''}`}</h1>
+      <h1 className="page-title">{isNew ? 'Жаңа жүкқұжат' : `Жүкқұжат № ${number ?? ''}`}</h1>
 
       <div className="form-grid">
-        <Field label="Номер накладного">
-          <input className="input" disabled value={number?.toLocaleString('ru-RU') ?? 'будет присвоен при сохранении'} />
+        <Field label="Жүкқұжат нөмірі">
+          <input className="input" disabled value={(number !== null ? fmt(number) : null) ?? 'сақтағанда беріледі'} />
         </Field>
         <Field label="Клиент">
           <div className="inline">
             <AsyncSelect
               value={client}
-              placeholder="Выберите клиента"
+              placeholder="Клиентті таңдаңыз"
               onChange={(o) => {
                 setClient(o)
                 setDirty(true)
@@ -135,37 +136,37 @@ export function InvoiceEditPage() {
                 api.clients.list({ q, size: 30 }).then((p) => p.items.map((c) => ({ id: c.id, label: c.displayName })))
               }
             />
-            <button className="btn btn--outline btn--icon" title="Новый клиент" onClick={() => setNewClient(true)}><Icon name="plus" /></button>
+            <button className="btn btn--outline btn--icon" title="Жаңа клиент" onClick={() => setNewClient(true)}><Icon name="plus" /></button>
           </div>
         </Field>
       </div>
 
       <div className="panel">
-        <div className="panel__head"><h2 className="card__title">Товары</h2><span className="card__sub">{lines.length} поз. · {fmt2(totals.total)} ₸</span></div>
+        <div className="panel__head"><h2 className="card__title">Тауарлар</h2><span className="card__sub">{lines.length} поз. · {fmt2(totals.total)} ₸</span></div>
         <div className="toolbar">
-          <button className="btn btn--primary" onClick={() => setEditingLine('new')}><Icon name="plus" />Добавить товар</button>
+          <button className="btn btn--primary" onClick={() => setEditingLine('new')}><Icon name="plus" />Тауар қосу</button>
           <button className="btn btn--ghost" disabled={!selected} onClick={() => selected && setEditingLine(selected)}>
-            <Icon name="edit" />Изменить
+            <Icon name="edit" />Өзгерту
           </button>
-          <button className="btn btn--ghost" disabled={!selected} onClick={() => setConfirmDelete(true)}><Icon name="trash" />Удалить</button>
+          <button className="btn btn--ghost" disabled={!selected} onClick={() => setConfirmDelete(true)}><Icon name="trash" />Жою</button>
         </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Товар</th>
-                <th className="num">Сортировка</th>
-                <th className="num">Цена</th>
-                <th>Мера измерения</th>
-                <th className="num">Количество</th>
-                <th className="num">Общая сумма</th>
-                <th className="num">НДС</th>
-                <th className="num">Скидка (%)</th>
+                <th>Тауар</th>
+                <th className="num">Реті</th>
+                <th className="num">Бағасы</th>
+                <th>Өлшем бірлігі</th>
+                <th className="num">Саны</th>
+                <th className="num">Жалпы сома</th>
+                <th className="num">ҚҚС</th>
+                <th className="num">Жеңілдік (%)</th>
               </tr>
             </thead>
             <tbody>
               {lines.length === 0 && (
-                <tr><td colSpan={8} className="table__msg">Добавьте товары кнопкой «Создать»</td></tr>
+                <tr><td colSpan={8} className="table__msg">Тауарларды «Тауар қосу» батырмасымен қосыңыз</td></tr>
               )}
               {lines.map((l) => (
                 <tr
@@ -188,7 +189,7 @@ export function InvoiceEditPage() {
             {lines.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={5}>Итого</td>
+                  <td colSpan={5}>Барлығы</td>
                   <td className="num">{fmt2(totals.total)}</td>
                   <td className="num">{fmt2(totals.vat)}</td>
                   <td />
@@ -202,10 +203,10 @@ export function InvoiceEditPage() {
       {error && <div className="alert">{error}</div>}
 
       <div className="editor-actions">
-        <button className="btn btn--primary" onClick={ok} disabled={busy}>Сохранить</button>
-        <button className="btn btn--ghost" onClick={close}>Закрыть</button>
-        <button className="btn btn--outline" onClick={report} disabled={busy || (lines.length === 0 && isNew)}><Icon name="print" />Печать З-2</button>
-        {dirty && <span className="muted">Есть несохранённые изменения</span>}
+        <button className="btn btn--primary" onClick={ok} disabled={busy}>Сақтау</button>
+        <button className="btn btn--ghost" onClick={close}>Жабу</button>
+        <button className="btn btn--outline" onClick={report} disabled={busy || (lines.length === 0 && isNew)}><Icon name="print" />З-2 басып шығару</button>
+        {dirty && <span className="muted">Сақталмаған өзгерістер бар</span>}
       </div>
 
       {editingLine && (
@@ -220,7 +221,7 @@ export function InvoiceEditPage() {
       )}
       {confirmDelete && selected && (
         <ConfirmModal
-          text={`Удалить «${selected.productName}» из накладной?`}
+          text={`«${selected.productName}» жүкқұжаттан жойылсын ба?`}
           onClose={() => setConfirmDelete(false)}
           onConfirm={() => {
             setLines((ls) => ls.filter((l) => l.key !== selected.key))
@@ -255,6 +256,7 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   onClose: () => void
   onSave: (l: Line) => void
 }) {
+  const { vatRate } = useSettings()
   const [categoryId, setCategoryId] = useState<number | null>(line?.categoryId ?? null)
   const [product, setProduct] = useState<Option | null>(
     line ? { id: line.productId ?? -1, label: line.productName } : null,
@@ -270,13 +272,13 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   const p = parseNum(price)
   const q = parseNum(quantity)
   const d = parseNum(discount)
-  const calc = p !== null && q !== null ? calcLine(p, q, d) : null
+  const calc = p !== null && q !== null ? calcLine(p, q, d, vatRate) : null
 
   const submit = () => {
     const errs: Record<string, string> = {}
-    if (!product) errs.product = 'Выберите товар'
-    if (p === null || p < 0) errs.price = 'Укажите цену'
-    if (q === null || q <= 0) errs.quantity = 'Укажите количество'
+    if (!product) errs.product = 'Тауарды таңдаңыз'
+    if (p === null || p < 0) errs.price = 'Бағасын көрсетіңіз'
+    if (q === null || q <= 0) errs.quantity = 'Санын көрсетіңіз'
     if (d !== null && (d < 0 || d > 100)) errs.discount = '0–100'
     setErrors(errs)
     if (Object.keys(errs).length || !calc || !product) return
@@ -299,35 +301,35 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
 
   return (
     <Modal
-      title="Редактор ед. товара"
+      title="Тауар жолы"
       width={520}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={submit}>Сохранить</button>
-          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={submit}>Сақтау</button>
+          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); submit() }}>
-        <Field label="Категория">
+        <Field label="Санат">
           <select
             className="input"
             value={categoryId ?? ''}
             onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
           >
-            <option value="">Все категории</option>
+            <option value="">Барлық санаттар</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </Field>
-        <Field label="Товар" required error={errors.product}>
+        <Field label="Тауар" required error={errors.product}>
           <AsyncSelect<ProductOption>
             value={product}
             autoFocus={!line}
             invalid={!!errors.product}
-            placeholder="Начните вводить название"
+            placeholder="Атауын жаза бастаңыз"
             onChange={(o) => {
               setProduct(o)
               setProductId(o?.product.id ?? null)
@@ -343,17 +345,17 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
             }
           />
         </Field>
-        <Field label="Мера измерения">
+        <Field label="Өлшем бірлігі">
           <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as UnitCode)}>
             {units.map((u) => (
               <option key={u.value} value={u.value}>{u.label}</option>
             ))}
           </select>
         </Field>
-        <Field label="Цена" required error={errors.price}>
+        <Field label="Бағасы" required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
         </Field>
-        <Field label="Количество" required error={errors.quantity}>
+        <Field label="Саны" required error={errors.quantity}>
           <input
             className="input"
             inputMode="decimal"
@@ -362,16 +364,16 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
             onChange={(e) => setQuantity(e.target.value)}
           />
         </Field>
-        <Field label="Общая сумма">
+        <Field label="Жалпы сома">
           <input className="input" disabled value={calc ? fmt2(calc.total) : ''} />
         </Field>
-        <Field label="НДС (12%)">
+        <Field label={`ҚҚС (${vatRate}%)`}>
           <input className="input" disabled value={calc ? fmt2(calc.vat) : ''} />
         </Field>
-        <Field label="Скидка (%)" error={errors.discount}>
+        <Field label="Жеңілдік (%)" error={errors.discount}>
           <input className="input" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
         </Field>
-        <Field label="Сортировка">
+        <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         <button hidden />

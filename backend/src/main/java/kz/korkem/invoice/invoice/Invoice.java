@@ -5,12 +5,20 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import kz.korkem.invoice.client.Client;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "invoice")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Setter(AccessLevel.NONE)
     private Long id;
 
     @Column(nullable = false, unique = true, updatable = false)
@@ -28,18 +36,8 @@ public class Invoice {
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC, id ASC")
+    @Setter(AccessLevel.NONE)
     private List<InvoiceLine> lines = new ArrayList<>();
-
-    public Long getId() { return id; }
-    public Long getNumber() { return number; }
-    public void setNumber(Long number) { this.number = number; }
-    public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
-    public List<InvoiceLine> getLines() { return lines; }
 
     public void replaceLines(List<InvoiceLine> newLines) {
         lines.clear();

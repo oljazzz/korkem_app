@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import kz.korkem.invoice.common.NotFoundException;
 import kz.korkem.invoice.common.PageResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/clients")
+@RequiredArgsConstructor
 public class ClientController {
 
     public record ClientDto(Long id, String name, String address, String displayName) {
@@ -24,16 +26,12 @@ public class ClientController {
 
     private final ClientRepository repo;
 
-    public ClientController(ClientRepository repo) {
-        this.repo = repo;
-    }
-
     @GetMapping
     public PageResponse<ClientDto> list(@RequestParam(defaultValue = "") String q,
                                         @RequestParam(defaultValue = "0") int page,
                                         @RequestParam(defaultValue = "50") int size) {
-        return PageResponse.of(repo.search(q.trim(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "name"))),
-                ClientDto::of);
+        return PageResponse.of(repo.search(q.trim(),
+                PageRequest.of(page, PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "name"))), ClientDto::of);
     }
 
     @GetMapping("/{id}")
@@ -63,7 +61,7 @@ public class ClientController {
     @Transactional
     public void delete(@PathVariable Long id) {
         repo.delete(find(id));
-        repo.flush(); // накладнойда қолданылса, 409 қайтару үшін қатені осында шығарамыз
+        repo.flush(); // surface the FK violation here so it maps to 409 when the client has invoices
     }
 
     private void apply(Client c, ClientRequest req) {

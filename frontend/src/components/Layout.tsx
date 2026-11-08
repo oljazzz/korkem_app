@@ -14,15 +14,17 @@ function readTheme(): Theme {
   }
 }
 
-const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
-  { to: '/', label: 'Главная', icon: 'home', end: true },
-  { to: '/invoices', label: 'Накладные', icon: 'invoice' },
-  { to: '/reports', label: 'Отчёты', icon: 'report' },
-  { to: '/products', label: 'Прайс-лист', icon: 'tag' },
-  { to: '/categories', label: 'Категории', icon: 'folder' },
-  { to: '/clients', label: 'Клиенты', icon: 'client' },
-  { to: '/users', label: 'Пользователи', icon: 'users' },
+const NAV: { to: string; label: string; icon: IconName; end?: boolean; adminOnly?: boolean }[] = [
+  { to: '/', label: 'Басты бет', icon: 'home', end: true },
+  { to: '/invoices', label: 'Жүкқұжаттар', icon: 'invoice' },
+  { to: '/reports', label: 'Есептер', icon: 'report' },
+  { to: '/products', label: 'Баға тізімі', icon: 'tag' },
+  { to: '/categories', label: 'Санаттар', icon: 'folder' },
+  { to: '/clients', label: 'Клиенттер', icon: 'client' },
+  { to: '/users', label: 'Пайдаланушылар', icon: 'users', adminOnly: true },
 ]
+
+export const ROLE_LABEL = { ADMIN: 'Әкімші', MANAGER: 'Менеджер' } as const
 
 export function Layout() {
   const { user, logout } = useAuth()
@@ -33,23 +35,23 @@ export function Layout() {
     try {
       localStorage.setItem('korkem_theme', theme)
     } catch {
-      /* браузер сақтауға рұқсат бермесе — елемейміз */
+      /* storage may be blocked; ignore */
     }
   }, [theme])
 
   return (
     <div className="shell">
       <aside className="rail">
-        <NavLink to="/" className="rail__brand" aria-label="Көркем — главная">
+        <NavLink to="/" className="rail__brand" aria-label="Көркем — басты бет">
           <Logo size={38} />
           <span className="rail__name">
             Көркем
-            <small>учёт продаж</small>
+            <small>сауда есебі</small>
           </span>
         </NavLink>
 
-        <nav className="rail__nav" aria-label="Разделы">
-          {NAV.map((n) => (
+        <nav className="rail__nav" aria-label="Бөлімдер">
+          {NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN').map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -67,19 +69,19 @@ export function Layout() {
             <span className="avatar">{user?.username.slice(0, 1).toUpperCase()}</span>
             <span className="rail__who">
               {user?.firstName || user?.username}
-              <small>Алматы · GMT+6</small>
+              <small>{user ? ROLE_LABEL[user.role] : ''} · Алматы</small>
             </span>
           </div>
           <div className="rail__actions">
             <button
               className="icon-btn"
-              title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
-              aria-label="Сменить тему"
+              title={theme === 'light' ? 'Қараңғы тақырып' : 'Ашық тақырып'}
+              aria-label="Тақырыпты ауыстыру"
               onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             >
               <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             </button>
-            <button className="icon-btn" title="Выйти" aria-label="Выйти" onClick={logout}>
+            <button className="icon-btn" title="Шығу" aria-label="Шығу" onClick={logout}>
               <Icon name="logout" />
             </button>
           </div>

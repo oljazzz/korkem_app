@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// Dev режимде /api сұраныстары Spring Boot бэкендке (8090) жіберіледі.
+// In dev, /api requests are proxied to the Spring Boot backend on port 8090.
 export default defineConfig({
   plugins: [react()],
   server: {

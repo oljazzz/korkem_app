@@ -1,4 +1,4 @@
--- migrate.sh шақырады; ағымдағы папкада CSV файлдар болуы керек.
+-- Called by migrate.sh; expects the CSV files in the current directory.
 BEGIN;
 
 CREATE TEMP TABLE l_category (id uuid, name text, sort_order int, deleted boolean) ON COMMIT DROP;
@@ -14,14 +14,14 @@ CREATE TEMP TABLE l_item     (id uuid, invoice_id uuid, product_id uuid, categor
 \copy l_invoice  FROM 'invoice.csv' csv
 \copy l_item     FROM 'item.csv' csv
 
--- Ескі UUID -> жаңа сандық ID
+-- Legacy UUID -> new numeric id
 CREATE TEMP TABLE m_category ON COMMIT DROP AS
   SELECT id AS old, row_number() OVER (ORDER BY sort_order NULLS LAST, name, id) AS new
   FROM l_category WHERE NOT deleted;
 CREATE TEMP TABLE m_product ON COMMIT DROP AS
   SELECT id AS old, row_number() OVER (ORDER BY name, id) AS new
   FROM l_product WHERE NOT deleted;
--- Тірі клиенттер + жойылған, бірақ накладнойда қолданылатын клиенттер
+-- Live clients + deleted clients still referenced by invoices
 CREATE TEMP TABLE m_client ON COMMIT DROP AS
   SELECT id AS old, row_number() OVER (ORDER BY name, id) AS new
   FROM l_client c
@@ -47,9 +47,9 @@ SELECT m.new, i.number, mc.new, i.created_date AT TIME ZONE 'UTC', i.created_by
 FROM l_invoice i JOIN m_invoice m ON m.old = i.id
 LEFT JOIN m_client mc ON mc.old = i.client_id;
 
--- Ескі «Цена» скидка шегерілген баға (сомма = баға × саны).
--- Жаңа жүйе Сомма = Баға × Саны × (1 − Скидка/100) деп есептейді, сондықтан скидкаға дейінгі бағаны сақтаймыз.
--- Ескі сомма мен НДС өзгеріссіз көшіріледі.
+-- The legacy "price" is the price after discount (total = price × quantity).
+-- The new system computes total = price × quantity × (1 − discount/100), so store the pre-discount price.
+-- Legacy totals and VAT are copied unchanged.
 INSERT INTO invoice_line (invoice_id, category_id, product_id, product_name, unit, price, quantity, discount,
                           total, vat, sort_order)
 SELECT mi.new, mc.new, mp.new,
@@ -64,7 +64,7 @@ SELECT mi.new, mc.new, mp.new,
        round(coalesce(it.vat, f.total * 12 / 112), 2),
        it.sort_order
 FROM l_item it
--- Ескі базада бірнеше толық емес жол бар: баға жоқ болса — прайс-лист бағасы, саны жоқ болса — 0
+-- A few legacy lines are incomplete: missing price -> price-list price, missing quantity -> 0
 CROSS JOIN LATERAL (
   SELECT coalesce(it.price, (SELECT price FROM l_product WHERE id = it.product_id), 0) AS price,
          coalesce(it.quantity, 0) AS qty
@@ -85,14 +85,14 @@ SELECT setval(pg_get_serial_sequence('invoice', 'id'), GREATEST((SELECT max(id) 
 SELECT setval(pg_get_serial_sequence('invoice_line', 'id'), GREATEST((SELECT max(id) FROM invoice_line), 1));
 SELECT setval('invoice_number_seq', GREATEST((SELECT max(number) FROM invoice), 1));
 
-\echo 'Ескі базада:'
+\echo 'Legacy database:'
 SELECT (SELECT count(*) FROM l_category WHERE NOT deleted) AS categories,
        (SELECT count(*) FROM l_product WHERE NOT deleted) AS products,
        (SELECT count(*) FROM m_client) AS clients,
        (SELECT count(*) FROM l_invoice) AS invoices,
        (SELECT count(*) FROM l_item it WHERE EXISTS (SELECT 1 FROM l_invoice i WHERE i.id = it.invoice_id)) AS lines,
        (SELECT round(sum(total), 2) FROM l_item it WHERE EXISTS (SELECT 1 FROM l_invoice i WHERE i.id = it.invoice_id)) AS total_sum;
-\echo 'Жаңа базада:'
+\echo 'New database:'
 SELECT (SELECT count(*) FROM category) AS categories, (SELECT count(*) FROM product) AS products,
        (SELECT count(*) FROM client) AS clients, (SELECT count(*) FROM invoice) AS invoices,
        (SELECT count(*) FROM invoice_line) AS lines, (SELECT sum(total) FROM invoice_line) AS total_sum;

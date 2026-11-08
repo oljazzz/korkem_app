@@ -14,7 +14,7 @@ interface Props<T extends Option> {
   invalid?: boolean
 }
 
-/** Іздеу арқылы таңдайтын select: жазған сайын серверден нұсқаларды жүктейді. */
+/** Searchable select: loads options from the server as the user types. */
 export function AsyncSelect<T extends Option>({ value, onChange, load, placeholder, autoFocus, invalid }: Props<T>) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
@@ -92,14 +92,14 @@ export function AsyncSelect<T extends Option>({ value, onChange, load, placehold
           }}
         />
         {value && (
-          <button type="button" className="combo__clear" title="Очистить" onClick={() => onChange(null)}>×</button>
+          <button type="button" className="combo__clear" title="Тазалау" onClick={() => onChange(null)}>×</button>
         )}
         <span className="combo__arrow" onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}>▾</span>
       </div>
       {open && (
         <ul className="combo__list" role="listbox">
-          {loading && options.length === 0 && <li className="combo__empty">Загрузка…</li>}
-          {!loading && options.length === 0 && <li className="combo__empty">Ничего не найдено</li>}
+          {loading && options.length === 0 && <li className="combo__empty">Жүктелуде…</li>}
+          {!loading && options.length === 0 && <li className="combo__empty">Ештеңе табылмады</li>}
           {options.map((o, i) => (
             <li
               key={o.id}

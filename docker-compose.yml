@@ -1,36 +1,39 @@
-# Толық жүйені бір командамен қосу: docker compose up --build
+# Run the whole stack: cp .env.example .env, fill in the secrets, then docker compose up --build
+# Only the web front (nginx) is published; the database and the API stay on the internal network.
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: korkem_invoice
       POSTGRES_USER: korkem
-      POSTGRES_PASSWORD: korkem
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
       - db-data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
 
   backend:
     build: ./backend
+    restart: unless-stopped
     environment:
+      APP_ENV: prod
       DB_URL: jdbc:postgresql://db:5432/korkem_invoice
       DB_USER: korkem
-      DB_PASSWORD: korkem
-      JWT_SECRET: change-this-secret-to-something-long-and-random
-      ADMIN_PASSWORD: admin
-      CORS_ORIGINS: http://localhost:3000
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: ${PUBLIC_URL:-https://localhost}
+      VAT_RATE: ${VAT_RATE:-12}
     depends_on:
       - db
-    ports:
-      - "8090:8090"
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "3000:80"
+      - "${WEB_PORT:-3000}:80"
 
 volumes:
   db-data:

@@ -36,28 +36,28 @@ export function LoginPage() {
         </div>
         <div className="login__quote">
           <Horns width={88} strokeWidth={2.4} />
-          <p>Накладные, прайс-лист и отчёты&nbsp;— в&nbsp;одной книге.</p>
+          <p>Жүкқұжаттар, баға тізімі және есептер&nbsp;— бір кітапта.</p>
         </div>
       </section>
       <form className="login__card" onSubmit={submit}>
-        <div className="eyebrow">Вход в систему</div>
+        <div className="eyebrow">Жүйеге кіру</div>
         <h1 className="login__title">Қош келдіңіз!</h1>
-        <p className="muted">Добро пожаловать — войдите, чтобы продолжить.</p>
+        <p className="muted">Жалғастыру үшін логин мен құпиясөзді енгізіңіз.</p>
         <label className="stack">
           <span className="stack__label">Логин</span>
           <input className="input" autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
         </label>
         <label className="stack">
-          <span className="stack__label">Пароль</span>
+          <span className="stack__label">Құпиясөз</span>
           <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          Запомнить меня
+          Мені есте сақтау
         </label>
         {error && <div className="alert">{error}</div>}
         <button className="btn btn--primary btn--lg btn--block" disabled={busy || !username || !password}>
-          {busy ? 'Вход…' : 'Войти'}
+          {busy ? 'Кіру…' : 'Кіру'}
         </button>
       </form>
     </div>

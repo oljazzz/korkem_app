@@ -1,17 +1,17 @@
 /* =====================================================================
-   Көркем Design System — токендер
-   Негізі: Mozaic (ADEO / Leroy Merlin тобының ашық дизайн-жүйесі).
-   Шкалалар Mozaic мәндерімен бірдей; бренд — «Көркем».
+   Korkem Design System — tokens
+   Based on Mozaic, the open design system of ADEO / Leroy Merlin.
+   Scales match Mozaic values; the brand is Korkem.
 
-   Қабаттар:
-   1) Шкалалар   --kr-<түс>-<100..900>, --kr-mu-*, --kr-font-*  (өзгермейді)
-   2) Семантика  --surface, --text, --brand, --border ...       (тақырыпқа қарай)
-   Компоненттер тек 2-қабатты қолданады.
+   Layers:
+   1) Scales     --kr-<hue>-<100..900>, --kr-mu*, --kr-font-*   (fixed)
+   2) Semantics  --surface, --text, --brand, --border ...        (per theme)
+   Components use layer 2 only.
    ===================================================================== */
 
 :root {
-  /* ---------- 1. Түс шкалалары (Mozaic) ---------- */
-  /* Primary 01 — бренд жасылы */
+  /* ---------- 1. Color scales (Mozaic) ---------- */
+  /* Primary 01 — brand green */
   --kr-green-100: #ebf5de;
   --kr-green-200: #c5e39e;
   --kr-green-300: #9ed05f;
@@ -22,7 +22,7 @@
   --kr-green-800: #035010;
   --kr-green-900: #023618;
 
-  /* Primary 02 — көкшіл-сұр (мәзір, қараңғы беттер) */
+  /* Primary 02 — slate (sidebar, dark surfaces) */
   --kr-slate-100: #eeeff1;
   --kr-slate-200: #cfd2d8;
   --kr-slate-300: #b3b7c1;
@@ -33,7 +33,7 @@
   --kr-slate-800: #242938;
   --kr-slate-900: #171b26;
 
-  /* Greys (Mozaic) + 050 — фон үшін қосымша қадам */
+  /* Greys (Mozaic) + 050, an extra step for the page background */
   --kr-grey-000: #ffffff;
   --kr-grey-050: #f5f5f5;
   --kr-grey-100: #e6e6e6;
@@ -72,9 +72,9 @@
   --kr-mu300: 3rem;     /* 48px */
   --kr-mu400: 4rem;     /* 64px */
 
-  /* ---------- 3. Типографика (Mozaic font scale) ---------- */
-  --kr-font: 'Roboto', 'Helvetica Neue', Arial, sans-serif; /* LeroyMerlinSans орнына */
-  --kr-font-01: 0.6875rem; /* 11 — заңдық мәтін */
+  /* ---------- 3. Typography (Mozaic font scale) ---------- */
+  --kr-font: 'Roboto', 'Helvetica Neue', Arial, sans-serif; /* stands in for LeroyMerlinSans */
+  --kr-font-01: 0.6875rem; /* 11 — legal text */
   --kr-font-02: 0.75rem;   /* 12 — caption */
   --kr-font-03: 0.8125rem; /* 13 */
   --kr-font-04: 0.875rem;  /* 14 — body S */
@@ -88,7 +88,7 @@
   --kr-weight-semibold: 600;
   --kr-weight-bold: 700;
 
-  /* ---------- 4. Пішін ---------- */
+  /* ---------- 4. Shape ---------- */
   --kr-radius-s: 2px;
   --kr-radius-m: 4px;
   --kr-radius-l: 8px;
@@ -102,7 +102,7 @@
   --kr-motion: 0.2s ease;
 
   /* =====================================================================
-     Семантикалық токендер — ашық тақырып
+     Semantic tokens — light theme
      ===================================================================== */
   --surface-page: var(--kr-grey-050);
   --surface: var(--kr-grey-000);
@@ -130,7 +130,7 @@
   --brand-active: var(--kr-green-800);
   --brand-soft: var(--kr-green-100);
   --brand-soft-active: var(--kr-green-200);
-  --brand-accent: var(--kr-green-400); /* белгі, индикатор */
+  --brand-accent: var(--kr-green-400); /* marks and indicators only */
 
   --neutral-btn: var(--kr-grey-800);
   --neutral-btn-hover: var(--kr-grey-900);
@@ -157,7 +157,7 @@
 }
 
 /* =====================================================================
-   Қараңғы тақырып — Primary 02 беттер, жасыл 500 акцент
+   Dark theme — Primary 02 surfaces, green accents
    ===================================================================== */
 :root[data-theme='dark'] {
   --surface-page: var(--kr-slate-900);

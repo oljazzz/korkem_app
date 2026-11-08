@@ -14,20 +14,36 @@ spring:
 
 server:
   port: ${PORT:8090}
+  # Trust X-Forwarded-For only from internal proxies (nginx), to log/throttle the real client IP
+  forward-headers-strategy: native
 
 app:
+  # dev | prod. In prod the server refuses to start with default secrets or insecure cookies.
+  env: ${APP_ENV:dev}
   jwt:
-    # Production-да міндетті түрде JWT_SECRET орнатыңыз (кемінде 32 символ)
+    # Required in prod: a random string of at least 32 characters
     secret: ${JWT_SECRET:dev-secret-change-me-dev-secret-change-me-1234}
     ttl-hours: 12
+  auth:
+    cookie:
+      name: korkem_token
+      # Required true in prod (HTTPS only)
+      secure: ${COOKIE_SECURE:false}
+    login:
+      # Lock a username/IP pair after this many failed logins within the window
+      max-failures: 5
+      window-minutes: 15
   cors:
     origins: ${CORS_ORIGINS:http://localhost:5173}
   admin:
-    # Бірінші іске қосқанда пайдаланушы жоқ болса, осы admin жасалады
+    # Created on first start when there are no users. In prod ADMIN_PASSWORD must be set (8+ chars, not "admin").
     username: admin
     password: ${ADMIN_PASSWORD:admin}
   company:
-    # Басып шығарылатын құжаттарда (З-2 нысаны) көрсетіледі
-    name: ${COMPANY_NAME:ТОО Körkem}
-    chief-accountant: ${COMPANY_CHIEF_ACCOUNTANT:не предусмотрен}
+    # Printed on documents (form Z-2)
+    name: ${COMPANY_NAME:Körkem ЖШС}
+    chief-accountant: ${COMPANY_CHIEF_ACCOUNTANT:қарастырылмаған}
     release-allowed-by: ${COMPANY_RELEASE_ALLOWED_BY:Палымбетов Н.М.}
+  vat:
+    # VAT rate in percent, included in prices. Changing it affects new and edited invoice lines only.
+    rate: ${VAT_RATE:16}

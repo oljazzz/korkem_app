@@ -7,11 +7,13 @@ import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import kz.korkem.invoice.user.AppUserRepository;
+import kz.korkem.invoice.user.Role;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,9 +25,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -34,21 +38,40 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class})
 public class SecurityConfig {
 
+    private static final String ADMIN = Role.ADMIN.name();
+
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // токен header арқылы жүреді, cookie жоқ
+                // CSRF tokens are not needed: the auth cookie is SameSite=Strict, so cross-site requests carry no credentials
+                .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/logout").permitAll()
+                        .requestMatchers("/api/users/**").hasRole(ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole(ADMIN)
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll())
-                .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()));
+                        .anyRequest().denyAll())
+                .oauth2ResourceServer(o -> o
+                        .bearerTokenResolver(new CookieOrHeaderTokenResolver(authProps.cookie().name()))
+                        .jwt(j -> j.jwtAuthenticationConverter(jwtConverter)))
+                .exceptionHandling(e -> e.accessDeniedHandler((req, res, ex) -> {
+                    res.setStatus(403);
+                    res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    res.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                    res.getWriter().write("{\"message\":\"Бұл әрекетке рұқсатыңыз жоқ\"}");
+                }))
+                .headers(h -> h
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(f -> f.deny())
+                        .referrerPolicy(r -> r.policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
         return http.build();
     }
 
@@ -56,7 +79,7 @@ public class SecurityConfig {
     SecretKey jwtKey(JwtProperties props) {
         byte[] bytes = props.secret().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
-            throw new IllegalStateException("app.jwt.secret кемінде 32 байт болуы керек");
+            throw new IllegalStateException("app.jwt.secret must be at least 32 bytes");
         }
         return new SecretKeySpec(bytes, "HmacSHA256");
     }
@@ -68,7 +91,10 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(SecretKey key) {
-        return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(JwtProperties.ISSUER)));
+        return decoder;
     }
 
     @Bean
@@ -82,7 +108,7 @@ public class SecurityConfig {
                 .map(u -> User.withUsername(u.getUsername())
                         .password(u.getPasswordHash())
                         .disabled(!u.isActive())
-                        .roles("ADMIN")
+                        .roles(u.getRole().name())
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException(username));
     }
@@ -100,6 +126,7 @@ public class SecurityConfig {
         cfg.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).toList());
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cfg);
         return source;

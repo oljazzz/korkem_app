@@ -9,6 +9,7 @@ import kz.korkem.invoice.category.Category;
 import kz.korkem.invoice.category.CategoryRepository;
 import kz.korkem.invoice.common.NotFoundException;
 import kz.korkem.invoice.common.PageResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/products")
+@RequiredArgsConstructor
 public class ProductController {
 
     public record ProductDto(Long id, Long categoryId, String categoryName, String name,
@@ -41,18 +43,13 @@ public class ProductController {
     private final ProductRepository repo;
     private final CategoryRepository categories;
 
-    public ProductController(ProductRepository repo, CategoryRepository categories) {
-        this.repo = repo;
-        this.categories = categories;
-    }
-
     @GetMapping
     @Transactional(readOnly = true)
     public PageResponse<ProductDto> list(@RequestParam(defaultValue = "") String q,
                                          @RequestParam(required = false) Long categoryId,
                                          @RequestParam(defaultValue = "0") int page,
                                          @RequestParam(defaultValue = "50") int size) {
-        return PageResponse.of(repo.search(q.trim(), categoryId, PageRequest.of(page, Math.min(size, 1000), SORT)),
+        return PageResponse.of(repo.search(q.trim(), categoryId, PageRequest.of(page, PageResponse.clampSize(size), SORT)),
                 ProductDto::of);
     }
 
@@ -91,7 +88,7 @@ public class ProductController {
         p.setPrice(req.price());
         p.setSortOrder(req.sortOrder());
         p.setCategory(req.categoryId() == null ? null : categories.findById(req.categoryId())
-                .orElseThrow(() -> new NotFoundException("Категория табылмады")));
+                .orElseThrow(() -> new NotFoundException("Санат табылмады")));
     }
 
     private Product find(Long id) {

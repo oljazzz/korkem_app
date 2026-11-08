@@ -2,18 +2,18 @@ package kz.korkem.invoice.security;
 
 import kz.korkem.invoice.user.AppUser;
 import kz.korkem.invoice.user.AppUserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import kz.korkem.invoice.user.Role;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/** Базада бірде-бір пайдаланушы болмаса, бастапқы admin жасайды. */
+/** Creates the first ADMIN when the user table is empty. */
+@Slf4j
 @Component
 public class AdminInitializer implements ApplicationRunner {
-    private static final Logger log = LoggerFactory.getLogger(AdminInitializer.class);
 
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
@@ -38,8 +38,9 @@ public class AdminInitializer implements ApplicationRunner {
         admin.setUsername(username);
         admin.setPasswordHash(encoder.encode(password));
         admin.setTimeZone("Asia/Almaty");
+        admin.setRole(Role.ADMIN);
         admin.setActive(true);
         users.save(admin);
-        log.info("Бастапқы пайдаланушы жасалды: {}", username);
+        log.info("Initial admin user created: {}", username);
     }
 }

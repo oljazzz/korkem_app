@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import kz.korkem.invoice.common.BadRequestException;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/reports")
-@EnableConfigurationProperties(CompanyProperties.class)
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class ReportController {
 
     public static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
@@ -41,28 +41,23 @@ public class ReportController {
 
     private record Inv(LocalDate day, Long clientId, BigDecimal total, BigDecimal vat) {}
 
+    /** Upper bound for an explicit invoice selection in the sales report. */
+    private static final int MAX_INVOICE_IDS = 1000;
+
     private final NamedParameterJdbcTemplate jdbc;
-    private final CompanyProperties company;
-
-    public ReportController(NamedParameterJdbcTemplate jdbc, CompanyProperties company) {
-        this.jdbc = jdbc;
-        this.company = company;
-    }
-
-    @GetMapping("/company")
-    public CompanyProperties company() {
-        return company;
-    }
 
     /**
-     * «Отчет по проданным товарам»: тауар бойынша жалпы саны мен сомасы.
-     * Кезең, клиент немесе нақты накладнойлар тізімі бойынша сүзуге болады.
+     * "Sold products" report: total quantity and amount per product.
+     * Filter by period, client or an explicit list of invoices (same as the legacy report).
      */
     @GetMapping("/sales")
     public SalesReport sales(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                              @RequestParam(required = false) Long clientId,
                              @RequestParam(required = false) List<Long> invoiceIds) {
+        if (invoiceIds != null && invoiceIds.size() > MAX_INVOICE_IDS) {
+            throw new BadRequestException("Бір есепке " + MAX_INVOICE_IDS + "-нан артық жүкқұжат таңдауға болмайды");
+        }
         MapSqlParameterSource p = new MapSqlParameterSource();
         String where = filter(from, to, clientId, invoiceIds, p);
         List<SalesRow> rows = jdbc.query("""
@@ -86,16 +81,16 @@ public class ReportController {
                 sum(rows, SalesRow::quantity), sum(rows, SalesRow::total), sum(rows, SalesRow::vat));
     }
 
-    /** Бас беттегі көрсеткіштер: кезең бойынша түсім, алдыңғы кезеңмен салыстыру, динамика, топтар. */
+    /** Dashboard figures: revenue for a period, comparison with the previous period, trend and top lists. */
     @GetMapping("/dashboard")
     public Dashboard dashboard(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        if (to.isBefore(from)) throw new BadRequestException("Кезең қате");
+        if (to.isBefore(from)) throw new BadRequestException("Кезең қате таңдалған");
         long days = ChronoUnit.DAYS.between(from, to) + 1;
         LocalDate prevFrom = from.minusDays(days);
         String granularity = days <= 62 ? "day" : "month";
 
-        // Әр накладнойдың сомасы (алдыңғы кезеңмен бірге) — агрегацияны Java-да жасаймыз (уақыт белдеуі үшін)
+        // Per-invoice totals (current + previous period); aggregated in Java so days follow the Almaty time zone
         MapSqlParameterSource p = new MapSqlParameterSource()
                 .addValue("from", start(prevFrom)).addValue("to", start(to.plusDays(1)));
         List<Inv> invs = jdbc.query("""
@@ -144,12 +139,12 @@ public class ReportController {
                 group by c.id, c.name order by sum(l.total) desc limit 8
                 """, range, this::ranked);
         List<Ranked> categories = jdbc.query("""
-                select coalesce(c.name, 'Без категории') as name, sum(l.total) as revenue, sum(l.quantity) as qty,
+                select coalesce(c.name, 'Санатсыз') as name, sum(l.total) as revenue, sum(l.quantity) as qty,
                        count(distinct l.invoice_id) as invoices
                 from invoice_line l join invoice i on i.id = l.invoice_id
                 left join category c on c.id = l.category_id
                 where i.created_at >= :from and i.created_at < :to
-                group by coalesce(c.name, 'Без категории') order by sum(l.total) desc
+                group by coalesce(c.name, 'Санатсыз') order by sum(l.total) desc
                 """, range, this::ranked);
 
         Timestamp last = jdbc.queryForObject("select max(created_at) from invoice", new MapSqlParameterSource(), Timestamp.class);

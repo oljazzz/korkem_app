@@ -11,7 +11,7 @@ export function Field({ label, required, error, children }: {
       <span className="field__label">{label}</span>
       <span className="field__control">
         {children}
-        {required && <span className="field__req" title="Обязательное поле">*</span>}
+        {required && <span className="field__req" title="Міндетті өріс">*</span>}
         {error && <span className="field__error">{error}</span>}
       </span>
     </label>

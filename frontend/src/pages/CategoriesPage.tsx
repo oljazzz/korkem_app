@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
+import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
 import type { Category } from '../api/types'
@@ -11,6 +12,7 @@ import { parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
 
 export function CategoriesPage() {
+  const isAdmin = useIsAdmin()
   const list = useList<Category>((p) => api.categories.list(p))
   const [editing, setEditing] = useState<Category | 'new' | null>(null)
   const [confirm, setConfirm] = useState(false)
@@ -30,23 +32,23 @@ export function CategoriesPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Справочник" title="Категории" />
+      <PageHeader eyebrow="Анықтамалық" title="Санаттар" />
       <Toolbar
         onCreate={() => setEditing('new')}
         onEdit={() => list.selected && setEditing(list.selected)}
-        onDelete={() => setConfirm(true)}
+        onDelete={isAdmin ? () => setConfirm(true) : undefined}
         hasSelection={!!list.selected}
         search={list.q}
         onSearch={list.search}
-        searchPlaceholder="Поиск категории"
+        searchPlaceholder="Санатты іздеу"
       />
       {error && <div className="alert" onClick={() => setError(null)}>{error}</div>}
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th>Категория</th>
-              <th style={{ width: 200 }}>Сортировка</th>
+              <th>Санат</th>
+              <th style={{ width: 200 }}>Реті</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +82,7 @@ export function CategoriesPage() {
       )}
       {confirm && list.selected && (
         <ConfirmModal
-          text={`Удалить категорию «${list.selected.name}»? Товары останутся без категории.`}
+          text={`«${list.selected.name}» санатын жою керек пе? Тауарлар санатсыз қалады.`}
           onConfirm={remove}
           onClose={() => setConfirm(false)}
         />
@@ -110,20 +112,20 @@ function CategoryForm({ category, onClose, onSaved }: {
 
   return (
     <Modal
-      title="Редактор категории"
+      title="Санат"
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сохранить</button>
-          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={save}>Сақтау</button>
+          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Категория" required error={errors.name}>
+        <Field label="Санат" required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Сортировка">
+        <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         {errors._ && <div className="alert">{errors._}</div>}

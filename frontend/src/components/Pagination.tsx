@@ -11,13 +11,13 @@ export function Pagination({ page, size, total, onChange }: Props) {
   const to = Math.min(total, (page + 1) * size)
   return (
     <div className="pager">
-      <button className="pager__btn" disabled={page === 0} onClick={() => onChange(0)} title="Первая">«</button>
-      <button className="pager__btn" disabled={page === 0} onClick={() => onChange(page - 1)} title="Назад">‹</button>
+      <button className="pager__btn" disabled={page === 0} onClick={() => onChange(0)} title="Бірінші бет">«</button>
+      <button className="pager__btn" disabled={page === 0} onClick={() => onChange(page - 1)} title="Алдыңғы">‹</button>
       <span className="pager__label">
-        {from}-{to} строки из <b>{total}</b>
+        <b>{total}</b> ішінен {from}–{to}
       </span>
-      <button className="pager__btn" disabled={page >= last} onClick={() => onChange(page + 1)} title="Вперёд">›</button>
-      <button className="pager__btn" disabled={page >= last} onClick={() => onChange(last)} title="Последняя">»</button>
+      <button className="pager__btn" disabled={page >= last} onClick={() => onChange(page + 1)} title="Келесі">›</button>
+      <button className="pager__btn" disabled={page >= last} onClick={() => onChange(last)} title="Соңғы бет">»</button>
     </div>
   )
 }

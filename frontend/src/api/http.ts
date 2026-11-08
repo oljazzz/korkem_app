@@ -1,5 +1,4 @@
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? ''
-const TOKEN_KEY = 'korkem_token'
 
 export class ApiError extends Error {
   status: number
@@ -12,33 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-function safe<T>(fn: () => T, fallback: T): T {
-  try {
-    return fn()
-  } catch {
-    return fallback
-  }
-}
-
-export const tokenStore = {
-  get(): string | null {
-    return safe(() => localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY), null)
-  },
-  set(token: string, remember: boolean) {
-    safe(() => {
-      this.clear()
-      ;(remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
-    }, undefined)
-  },
-  clear() {
-    safe(() => {
-      localStorage.removeItem(TOKEN_KEY)
-      sessionStorage.removeItem(TOKEN_KEY)
-    }, undefined)
-  },
-}
-
-/** Токен ескірсе (401), AuthContext осы оқиғаны тыңдап, логин бетіне қайтарады. */
+/** Fired on 401: AuthContext listens and returns the user to the login page. */
 export const LOGOUT_EVENT = 'korkem:logout'
 
 type Query = Record<string, string | number | null | undefined>
@@ -52,10 +25,11 @@ function buildUrl(path: string, query?: Query) {
   return `${BASE}${path}${qs ? `?${qs}` : ''}`
 }
 
+const AUTH_PATHS = ['/api/auth/login', '/api/auth/logout', '/api/auth/me']
+
+// The session lives in an httpOnly cookie set by the server; page scripts never see the token.
 async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
   const headers: Record<string, string> = {}
-  const token = tokenStore.get()
-  if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
   let res: Response
@@ -63,14 +37,14 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
     res = await fetch(buildUrl(path, query), {
       method,
       headers,
+      credentials: BASE ? 'include' : 'same-origin',
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'Серверге қосылу мүмкін болмады')
   }
 
-  if (res.status === 401 && path !== '/api/auth/login') {
-    tokenStore.clear()
+  if (res.status === 401 && !AUTH_PATHS.includes(path)) {
     window.dispatchEvent(new Event(LOGOUT_EVENT))
   }
   if (res.status === 204) return undefined as T

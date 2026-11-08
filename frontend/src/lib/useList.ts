@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Page } from '../api/types'
 
-/** Беттелген тізімді жүктеу, іздеу және таңдалған жолды басқару. */
+/** Loads a paged list and tracks search, page and the selected row. */
 export function useList<T extends { id: number }>(
   fetcher: (params: { q: string; page: number; size: number }) => Promise<Page<T>>,
   size = 50,
@@ -31,7 +31,7 @@ export function useList<T extends { id: number }>(
       cancelled = true
       clearTimeout(t)
     }
-    // fetcher әр рендерде жаңа болуы мүмкін — тек параметрлер өзгергенде жүктейміз
+    // fetcher may be a new function each render; reload only when the inputs change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, page, size, version])
 

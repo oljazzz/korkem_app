@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
 import type { Category, Product } from '../api/types'
@@ -11,6 +12,7 @@ import { fmt, parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
 
 export function ProductsPage() {
+  const isAdmin = useIsAdmin()
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const list = useList<Product>((p) => api.products.list({ ...p, categoryId }))
@@ -26,7 +28,7 @@ export function ProductsPage() {
   const groups = useMemo(() => {
     const map = new Map<string, Product[]>()
     list.data.items.forEach((p) => {
-      const key = p.categoryName ?? '— Без категории —'
+      const key = p.categoryName ?? '— Санатсыз —'
       map.set(key, [...(map.get(key) ?? []), p])
     })
     return [...map.entries()]
@@ -54,15 +56,15 @@ export function ProductsPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Справочник" title="Прайс-лист" />
+      <PageHeader eyebrow="Анықтамалық" title="Баға тізімі" />
       <Toolbar
         onCreate={() => setEditing('new')}
         onEdit={() => list.selected && setEditing(list.selected)}
-        onDelete={() => setConfirm(true)}
+        onDelete={isAdmin ? () => setConfirm(true) : undefined}
         hasSelection={!!list.selected}
         search={list.q}
         onSearch={list.search}
-        searchPlaceholder="Поиск по наименованию"
+        searchPlaceholder="Атауы бойынша іздеу"
       >
         <select
           className="input toolbar__select"
@@ -73,7 +75,7 @@ export function ProductsPage() {
             list.reload()
           }}
         >
-          <option value="">Все категории</option>
+          <option value="">Барлық санаттар</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -84,9 +86,9 @@ export function ProductsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Наименование</th>
-              <th className="num" style={{ width: 160 }}>Цена</th>
-              <th className="num" style={{ width: 140 }}>Сортировка</th>
+              <th>Атауы</th>
+              <th className="num" style={{ width: 160 }}>Бағасы</th>
+              <th className="num" style={{ width: 140 }}>Реті</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +124,7 @@ export function ProductsPage() {
         />
       )}
       {confirm && list.selected && (
-        <ConfirmModal text={`Удалить товар «${list.selected.name}»?`} onConfirm={remove} onClose={() => setConfirm(false)} />
+        <ConfirmModal text={`«${list.selected.name}» тауарын жою керек пе?`} onConfirm={remove} onClose={() => setConfirm(false)} />
       )}
     </section>
   )
@@ -187,17 +189,17 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
 
   return (
     <Modal
-      title="Редактор товара"
+      title="Тауар"
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сохранить</button>
-          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={save}>Сақтау</button>
+          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Категория">
+        <Field label="Санат">
           <select
             className="input"
             value={categoryId ?? ''}
@@ -209,13 +211,13 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
             ))}
           </select>
         </Field>
-        <Field label="Наименование" required error={errors.name}>
+        <Field label="Атауы" required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Цена" required error={errors.price}>
+        <Field label="Бағасы" required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
         </Field>
-        <Field label="Сортировка">
+        <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         {errors._ && <div className="alert">{errors._}</div>}

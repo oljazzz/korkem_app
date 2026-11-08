@@ -1,55 +1,26 @@
-// Сомманы орыс тілінде жазбаша беру (З-2 нысаны үшін): 15200 → «Пятнадцать тысяч двести тенге 00 тиын»
+// Amounts in words, in Kazakh, for form Z-2: 15200 → "Он бес мың екі жүз теңге 00 тиын".
 
-const ONES_M = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять']
-const ONES_F = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять']
-const TEENS = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать',
-  'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать']
-const TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто']
-const HUNDREDS = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот']
+const ONES = ['', 'бір', 'екі', 'үш', 'төрт', 'бес', 'алты', 'жеті', 'сегіз', 'тоғыз']
+const TENS = ['', 'он', 'жиырма', 'отыз', 'қырық', 'елу', 'алпыс', 'жетпіс', 'сексен', 'тоқсан']
+const SCALES = ['', 'мың', 'миллион', 'миллиард', 'триллион']
 
-// [один, два-четыре, пять+], род
-const SCALES: [string[], boolean][] = [
-  [['', '', ''], false],
-  [['тысяча', 'тысячи', 'тысяч'], true],
-  [['миллион', 'миллиона', 'миллионов'], false],
-  [['миллиард', 'миллиарда', 'миллиардов'], false],
-]
-
-export function plural(n: number, forms: [string, string, string] | string[]) {
-  const a = Math.abs(n) % 100
-  const b = a % 10
-  if (a > 10 && a < 20) return forms[2]
-  if (b > 1 && b < 5) return forms[1]
-  if (b === 1) return forms[0]
-  return forms[2]
-}
-
-function triad(n: number, feminine: boolean): string[] {
+function triad(n: number): string[] {
   const words: string[] = []
-  words.push(HUNDREDS[Math.floor(n / 100)])
-  const rest = n % 100
-  if (rest >= 10 && rest < 20) words.push(TEENS[rest - 10])
-  else {
-    words.push(TENS[Math.floor(rest / 10)])
-    words.push((feminine ? ONES_F : ONES_M)[rest % 10])
-  }
+  const h = Math.floor(n / 100)
+  if (h > 0) words.push(...(h === 1 ? ['жүз'] : [ONES[h], 'жүз']))
+  words.push(TENS[Math.floor((n % 100) / 10)], ONES[n % 10])
   return words.filter(Boolean)
 }
 
-/** Бүтін санды сөзбен (еркек тегі): 1234 → «одна тысяча двести тридцать четыре». */
+/** Integer in words: 1234 → "бір мың екі жүз отыз төрт". */
 export function numberToWords(value: number): string {
   let n = Math.floor(Math.abs(value))
-  if (n === 0) return 'ноль'
+  if (n === 0) return 'нөл'
   const parts: string[] = []
   let scale = 0
   while (n > 0 && scale < SCALES.length) {
     const t = n % 1000
-    if (t > 0) {
-      const [forms, fem] = SCALES[scale]
-      const w = triad(t, fem)
-      if (scale > 0) w.push(plural(t, forms))
-      parts.unshift(w.join(' '))
-    }
+    if (t > 0) parts.unshift([...triad(t), SCALES[scale]].filter(Boolean).join(' '))
     n = Math.floor(n / 1000)
     scale++
   }
@@ -62,7 +33,7 @@ export function moneyToWords(amount: number): string {
   const rounded = Math.round(amount * 100) / 100
   const tenge = Math.floor(rounded)
   const tiyn = Math.round((rounded - tenge) * 100)
-  return `${cap(numberToWords(tenge))} тенге ${String(tiyn).padStart(2, '0')} тиын`
+  return `${cap(numberToWords(tenge))} теңге ${String(tiyn).padStart(2, '0')} тиын`
 }
 
 export function quantityToWords(qty: number): string {

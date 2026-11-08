@@ -15,7 +15,7 @@ import { UsersPage } from './pages/UsersPage'
 export default function App() {
   const { user, loading } = useAuth()
 
-  if (loading) return <div className="splash">Загрузка…</div>
+  if (loading) return <div className="splash">Жүктелуде…</div>
 
   return (
     <Routes>
@@ -30,7 +30,7 @@ export default function App() {
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/users" element={<UsersPage />} />
+        <Route path="/users" element={user?.role === 'ADMIN' ? <UsersPage /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>

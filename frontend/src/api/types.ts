@@ -71,6 +71,8 @@ export interface Invoice {
   vat: number
 }
 
+export type Role = 'ADMIN' | 'MANAGER'
+
 export interface User {
   id: number
   username: string
@@ -78,6 +80,7 @@ export interface User {
   lastName: string | null
   email: string | null
   timeZone: string | null
+  role: Role
   active: boolean
 }
 
@@ -85,6 +88,11 @@ export interface Company {
   name: string
   chiefAccountant: string
   releaseAllowedBy: string
+}
+
+export interface Settings {
+  company: Company
+  vatRate: number
 }
 
 export interface SalesRow {

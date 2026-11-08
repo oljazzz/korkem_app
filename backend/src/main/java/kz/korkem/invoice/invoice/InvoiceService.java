@@ -13,26 +13,21 @@ import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
 import kz.korkem.invoice.product.Product;
 import kz.korkem.invoice.product.ProductRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class InvoiceService {
 
     private final InvoiceRepository invoices;
     private final ClientRepository clients;
     private final ProductRepository products;
     private final CategoryRepository categories;
-
-    public InvoiceService(InvoiceRepository invoices, ClientRepository clients,
-                          ProductRepository products, CategoryRepository categories) {
-        this.invoices = invoices;
-        this.clients = clients;
-        this.products = products;
-        this.categories = categories;
-    }
+    private final InvoiceCalculator calculator;
 
     @Transactional(readOnly = true)
     public PageResponse<InvoiceListItem> list(String q, Long clientId, int page, int size) {
@@ -44,7 +39,7 @@ public class InvoiceService {
             query = "";
         }
         var result = invoices.search(number, query, clientId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "number")));
+                PageRequest.of(page, kz.korkem.invoice.common.PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "number")));
         java.util.Map<Long, BigDecimal> totals = new java.util.HashMap<>();
         if (!result.isEmpty()) {
             invoices.totalsFor(result.map(Invoice::getId).getContent())
@@ -113,15 +108,15 @@ public class InvoiceService {
             line.setQuantity(lr.quantity());
             line.setDiscount(lr.discount());
             line.setSortOrder(lr.sortOrder() == null ? index : lr.sortOrder());
-            line.setTotal(InvoiceCalculator.total(lr.price(), lr.quantity(), lr.discount()));
-            line.setVat(InvoiceCalculator.vat(line.getTotal()));
+            line.setTotal(calculator.total(lr.price(), lr.quantity(), lr.discount()));
+            line.setVat(calculator.vat(line.getTotal()));
             lines.add(line);
         }
         inv.replaceLines(lines);
     }
 
     private Invoice find(Long id) {
-        return invoices.findWithLines(id).orElseThrow(() -> new NotFoundException("Накладной табылмады"));
+        return invoices.findWithLines(id).orElseThrow(() -> new NotFoundException("Жүкқұжат табылмады"));
     }
 
     private InvoiceDto toDto(Invoice inv) {

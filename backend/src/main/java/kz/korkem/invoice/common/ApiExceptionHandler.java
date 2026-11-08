@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/** Maps exceptions to a uniform {message, fields} error body. Messages are user-facing (Kazakh). */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -26,6 +27,13 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, e.getMessage(), null);
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<ApiError> tooMany(TooManyRequestsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
+                .body(new ApiError(e.getMessage(), null));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> validation(MethodArgumentNotValidException e) {
         Map<String, String> fields = new LinkedHashMap<>();
@@ -36,13 +44,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> conflict(DataIntegrityViolationException e) {
-        return error(HttpStatus.CONFLICT,
-                "Жазба басқа деректерде қолданылады немесе қайталанады", null);
+        return error(HttpStatus.CONFLICT, "Жазба басқа деректерде қолданылады немесе қайталанады", null);
     }
 
     @ExceptionHandler({BadCredentialsException.class, DisabledException.class})
     ResponseEntity<ApiError> badCredentials(RuntimeException e) {
-        return error(HttpStatus.UNAUTHORIZED, "Логин немесе пароль қате", null);
+        return error(HttpStatus.UNAUTHORIZED, "Логин немесе құпиясөз қате", null);
     }
 
     private ResponseEntity<ApiError> error(HttpStatus status, String message, Map<String, String> fields) {

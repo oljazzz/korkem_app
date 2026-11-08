@@ -1,4 +1,4 @@
-// Сызықты иконкалар (24×24, stroke = currentColor)
+// Line icons (24×24, stroke = currentColor)
 const PATHS: Record<string, string> = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z',
   invoice: 'M6 2h9l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm8 0v6h6M8.5 12.5h7M8.5 16.5h7',

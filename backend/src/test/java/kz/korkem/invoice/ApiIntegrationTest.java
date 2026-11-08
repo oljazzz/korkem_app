@@ -32,11 +32,29 @@ class ApiIntegrationTest {
     }
 
     private String login() throws Exception {
-        String body = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+        return login("admin", "admin");
+    }
+
+    private String login(String username, String password) throws Exception {
+        String setCookie = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isOk())
+                .andReturn().getResponse().getHeader("Set-Cookie");
+        return "Bearer " + cookieValue(setCookie);
+    }
+
+    private static String cookieValue(String setCookie) {
+        return setCookie.substring(setCookie.indexOf('=') + 1, setCookie.indexOf(';'));
+    }
+
+    private String createUser(String admin, String username, String role) throws Exception {
+        String body = mvc.perform(post("/api/users").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"secret-123\",\"role\":\"" + role
+                                + "\",\"active\":true}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value(role))
                 .andReturn().getResponse().getContentAsString();
-        return "Bearer " + extract(body, "token");
+        return extract(body, "id");
     }
 
     private static String extract(String json, String field) {
@@ -86,7 +104,7 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.lines[0].total").value(15200.00))
                 .andExpect(jsonPath("$.lines[0].vat").value(1628.57))
                 .andExpect(jsonPath("$.lines[0].categoryName").value("Эмаль"))
-                .andExpect(jsonPath("$.lines[0].unitLabel").value("Шт"))
+                .andExpect(jsonPath("$.lines[0].unitLabel").value("дана"))
                 .andReturn().getResponse().getContentAsString();
         String invId = extract(inv, "id");
 
@@ -109,14 +127,15 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.granularity").value("day"))
                 .andExpect(jsonPath("$.current.invoices").value(greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.topClients[0].name").exists());
-        mvc.perform(get("/api/reports/company").header("Authorization", auth))
-                .andExpect(jsonPath("$.name").value("ТОО Körkem"));
+        mvc.perform(get("/api/settings").header("Authorization", auth))
+                .andExpect(jsonPath("$.company.name").value("Körkem ЖШС"))
+                .andExpect(jsonPath("$.vatRate").value(12));
 
-        // Клиенттің накладнойы бар — жоюға болмайды
+        // A client with invoices cannot be deleted
         mvc.perform(delete("/api/clients/" + clientId).header("Authorization", auth))
                 .andExpect(status().isConflict());
 
-        // Тауарды жоюға болады: накладнойда атауы сақталады
+        // Deleting a product keeps its name on existing invoices
         mvc.perform(delete("/api/products/" + prodId).header("Authorization", auth))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/invoices/" + invId).header("Authorization", auth))
@@ -132,5 +151,103 @@ class ApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields.name").exists())
                 .andExpect(jsonPath("$.fields.price").exists());
+    }
+
+    @Test
+    void managerRoleIsRestricted() throws Exception {
+        String admin = login();
+        createUser(admin, "manager1", "MANAGER");
+        String manager = login("manager1", "secret-123");
+
+        mvc.perform(get("/api/auth/me").header("Authorization", manager))
+                .andExpect(jsonPath("$.role").value("MANAGER"));
+        mvc.perform(get("/api/users").header("Authorization", manager))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
+
+        String client = mvc.perform(post("/api/clients").header("Authorization", manager)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Менеджер клиенті\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String clientId = extract(client, "id");
+        String inv = mvc.perform(post("/api/invoices").header("Authorization", manager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Бояу\",\"price\":1000,\"quantity\":2}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdBy").value("manager1"))
+                .andReturn().getResponse().getContentAsString();
+
+        mvc.perform(delete("/api/invoices/" + extract(inv, "id")).header("Authorization", manager))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/clients/" + clientId).header("Authorization", manager))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deactivatedUserTokenStopsWorking() throws Exception {
+        String admin = login();
+        String id = createUser(admin, "temp1", "MANAGER");
+        String temp = login("temp1", "secret-123");
+        mvc.perform(get("/api/clients").header("Authorization", temp)).andExpect(status().isOk());
+
+        mvc.perform(put("/api/users/" + id).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"temp1\",\"role\":\"MANAGER\",\"active\":false}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/clients").header("Authorization", temp)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void cannotRemoveLastAdminOrUseWeakPassword() throws Exception {
+        String admin = login();
+        String me = mvc.perform(get("/api/auth/me").header("Authorization", admin))
+                .andReturn().getResponse().getContentAsString();
+        mvc.perform(put("/api/users/" + extract(me, "id")).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"role\":\"MANAGER\",\"active\":true}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/users").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"weak\",\"password\":\"123\",\"role\":\"MANAGER\",\"active\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.password").exists());
+    }
+
+    @Test
+    void authCookieIsHttpOnlyAndWorksAlone() throws Exception {
+        var res = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\",\"remember\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andReturn().getResponse();
+        String setCookie = res.getHeader("Set-Cookie");
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("HttpOnly"), setCookie);
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("SameSite=Strict"), setCookie);
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("Max-Age="), setCookie);
+
+        var cookie = new jakarta.servlet.http.Cookie("korkem_token", cookieValue(setCookie));
+        mvc.perform(get("/api/auth/me").cookie(cookie)).andExpect(status().isOk());
+
+        // A stale cookie does not block signing in again
+        var stale = new jakarta.servlet.http.Cookie("korkem_token", "garbage");
+        mvc.perform(post("/api/auth/login").cookie(stale).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+                .andExpect(status().isOk());
+
+        String cleared = mvc.perform(post("/api/auth/logout").cookie(cookie))
+                .andExpect(status().isNoContent()).andReturn().getResponse().getHeader("Set-Cookie");
+        org.junit.jupiter.api.Assertions.assertTrue(cleared.contains("Max-Age=0"), cleared);
+    }
+
+    @Test
+    void repeatedFailedLoginsAreThrottled() throws Exception {
+        String admin = login();
+        createUser(admin, "victim1", "MANAGER");
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"username\":\"victim1\",\"password\":\"wrong-pass\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
+        // Even the correct password is refused while blocked
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"victim1\",\"password\":\"secret-123\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"));
     }
 }

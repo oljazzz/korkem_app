@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, Client, Company, Dashboard, Invoice, InvoiceListItem, Page, Product, SalesReport, Unit, User } from './types'
+import type { Category, Client, Dashboard, Invoice, InvoiceListItem, Page, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -37,6 +37,7 @@ export type InvoiceRequest = {
 export type UserRequest = Omit<User, 'id'> & { password: string | null }
 
 export const api = {
+  settings: () => http.get<Settings>('/api/settings'),
   clients: crud<Client, ClientRequest>('/api/clients'),
   categories: {
     ...crud<Category, CategoryRequest>('/api/categories'),
@@ -52,7 +53,6 @@ export const api = {
     units: () => http.get<Unit[]>('/api/invoices/units'),
   },
   reports: {
-    company: () => http.get<Company>('/api/reports/company'),
     dashboard: (from: string, to: string) => http.get<Dashboard>('/api/reports/dashboard', { from, to }),
     sales: (p: { from?: string; to?: string; clientId?: number | null; invoiceIds?: string }) =>
       http.get<SalesReport>('/api/reports/sales', p),
