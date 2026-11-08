@@ -1,0 +1,215 @@
+/* =====================================================================
+   Көркем Design System — токендер
+   Негізі: Mozaic (ADEO / Leroy Merlin тобының ашық дизайн-жүйесі).
+   Шкалалар Mozaic мәндерімен бірдей; бренд — «Көркем».
+
+   Қабаттар:
+   1) Шкалалар   --kr-<түс>-<100..900>, --kr-mu-*, --kr-font-*  (өзгермейді)
+   2) Семантика  --surface, --text, --brand, --border ...       (тақырыпқа қарай)
+   Компоненттер тек 2-қабатты қолданады.
+   ===================================================================== */
+
+:root {
+  /* ---------- 1. Түс шкалалары (Mozaic) ---------- */
+  /* Primary 01 — бренд жасылы */
+  --kr-green-100: #ebf5de;
+  --kr-green-200: #c5e39e;
+  --kr-green-300: #9ed05f;
+  --kr-green-400: #78be20;
+  --kr-green-500: #46a610;
+  --kr-green-600: #188803;
+  --kr-green-700: #006902;
+  --kr-green-800: #035010;
+  --kr-green-900: #023618;
+
+  /* Primary 02 — көкшіл-сұр (мәзір, қараңғы беттер) */
+  --kr-slate-100: #eeeff1;
+  --kr-slate-200: #cfd2d8;
+  --kr-slate-300: #b3b7c1;
+  --kr-slate-400: #8f94a3;
+  --kr-slate-500: #6a7081;
+  --kr-slate-600: #494f60;
+  --kr-slate-700: #343b4c;
+  --kr-slate-800: #242938;
+  --kr-slate-900: #171b26;
+
+  /* Greys (Mozaic) + 050 — фон үшін қосымша қадам */
+  --kr-grey-000: #ffffff;
+  --kr-grey-050: #f5f5f5;
+  --kr-grey-100: #e6e6e6;
+  --kr-grey-200: #cccccc;
+  --kr-grey-300: #b3b3b3;
+  --kr-grey-400: #999999;
+  --kr-grey-500: #808080;
+  --kr-grey-600: #666666;
+  --kr-grey-700: #4d4d4d;
+  --kr-grey-800: #333333;
+  --kr-grey-900: #191919;
+
+  /* Status */
+  --kr-info-100: #daeff7;
+  --kr-info-500: #0b96cc;
+  --kr-info-600: #007bb4;
+  --kr-info-700: #005c91;
+  --kr-warning-100: #fdf1e8;
+  --kr-warning-500: #ea7315;
+  --kr-warning-600: #c65200;
+  --kr-danger-100: #fdeaea;
+  --kr-danger-200: #f8bcbb;
+  --kr-danger-500: #ea302d;
+  --kr-danger-600: #c61112;
+  --kr-danger-700: #8c0003;
+
+  /* ---------- 2. Magic unit (1mu = 16px) ---------- */
+  --kr-mu025: 0.25rem;  /*  4px */
+  --kr-mu050: 0.5rem;   /*  8px */
+  --kr-mu075: 0.75rem;  /* 12px */
+  --kr-mu100: 1rem;     /* 16px */
+  --kr-mu125: 1.25rem;  /* 20px */
+  --kr-mu150: 1.5rem;   /* 24px */
+  --kr-mu200: 2rem;     /* 32px */
+  --kr-mu250: 2.5rem;   /* 40px */
+  --kr-mu300: 3rem;     /* 48px */
+  --kr-mu400: 4rem;     /* 64px */
+
+  /* ---------- 3. Типографика (Mozaic font scale) ---------- */
+  --kr-font: 'Roboto', 'Helvetica Neue', Arial, sans-serif; /* LeroyMerlinSans орнына */
+  --kr-font-01: 0.6875rem; /* 11 — заңдық мәтін */
+  --kr-font-02: 0.75rem;   /* 12 — caption */
+  --kr-font-03: 0.8125rem; /* 13 */
+  --kr-font-04: 0.875rem;  /* 14 — body S */
+  --kr-font-05: 1rem;      /* 16 — body M */
+  --kr-font-06: 1.125rem;  /* 18 — body L */
+  --kr-font-07: 1.4375rem; /* 23 — heading S */
+  --kr-font-08: 1.75rem;   /* 28 — heading M */
+  --kr-font-09: 2.125rem;  /* 34 — heading L */
+  --kr-font-10: 2.5625rem; /* 41 — hero */
+  --kr-weight-regular: 400;
+  --kr-weight-semibold: 600;
+  --kr-weight-bold: 700;
+
+  /* ---------- 4. Пішін ---------- */
+  --kr-radius-s: 2px;
+  --kr-radius-m: 4px;
+  --kr-radius-l: 8px;
+  --kr-radius-pill: 999px;
+  --kr-control-s: 2rem;    /* 32px */
+  --kr-control-m: 3rem;    /* 48px */
+  --kr-control-l: 3.5rem;  /* 56px */
+  --kr-shadow-s: 0 1px 5px 0 rgb(25 25 25 / 0.15);
+  --kr-shadow-m: 0 2px 6px 0 rgb(25 25 25 / 0.2);
+  --kr-shadow-l: 0 8px 24px 0 rgb(25 25 25 / 0.2);
+  --kr-motion: 0.2s ease;
+
+  /* =====================================================================
+     Семантикалық токендер — ашық тақырып
+     ===================================================================== */
+  --surface-page: var(--kr-grey-050);
+  --surface: var(--kr-grey-000);
+  --surface-sunken: var(--kr-grey-050);
+  --surface-hover: var(--kr-green-100);
+  --surface-selected: var(--kr-green-100);
+  --surface-inverse: var(--kr-slate-800);
+  --surface-inverse-hover: var(--kr-slate-700);
+
+  --text: var(--kr-grey-900);
+  --text-secondary: var(--kr-grey-700);
+  --text-muted: var(--kr-grey-600);
+  --text-disabled: var(--kr-grey-600);
+  --text-on-brand: var(--kr-grey-000);
+  --text-on-inverse: var(--kr-grey-000);
+  --text-on-inverse-muted: var(--kr-slate-300);
+  --text-link: var(--kr-green-700);
+
+  --border: var(--kr-grey-100);
+  --border-strong: var(--kr-grey-200);
+  --border-control: var(--kr-grey-600);
+
+  --brand: var(--kr-green-600);
+  --brand-hover: var(--kr-green-700);
+  --brand-active: var(--kr-green-800);
+  --brand-soft: var(--kr-green-100);
+  --brand-soft-active: var(--kr-green-200);
+  --brand-accent: var(--kr-green-400); /* белгі, индикатор */
+
+  --neutral-btn: var(--kr-grey-800);
+  --neutral-btn-hover: var(--kr-grey-900);
+
+  --disabled-bg: var(--kr-grey-200);
+
+  --info: var(--kr-info-600);
+  --info-soft: var(--kr-info-100);
+  --success: var(--kr-green-600);
+  --success-soft: var(--kr-green-100);
+  --warning: var(--kr-warning-600);
+  --warning-soft: var(--kr-warning-100);
+  --danger: var(--kr-danger-600);
+  --danger-hover: var(--kr-danger-700);
+  --danger-soft: var(--kr-danger-100);
+
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--kr-info-500);
+
+  --chart: var(--kr-green-600);
+  --chart-track: var(--kr-green-100);
+  --chart-grid: var(--kr-grey-100);
+
+  color-scheme: light;
+}
+
+/* =====================================================================
+   Қараңғы тақырып — Primary 02 беттер, жасыл 500 акцент
+   ===================================================================== */
+:root[data-theme='dark'] {
+  --surface-page: var(--kr-slate-900);
+  --surface: var(--kr-slate-800);
+  --surface-sunken: #1e2230;
+  --surface-hover: #2b3242;
+  --surface-selected: #23361c;
+  --surface-inverse: #10131b;
+  --surface-inverse-hover: var(--kr-slate-800);
+
+  --text: var(--kr-slate-100);
+  --text-secondary: var(--kr-slate-200);
+  --text-muted: var(--kr-slate-400);
+  --text-disabled: var(--kr-slate-400);
+  --text-on-brand: var(--kr-grey-000);
+  --text-on-inverse: var(--kr-slate-100);
+  --text-on-inverse-muted: var(--kr-slate-400);
+  --text-link: var(--kr-green-300);
+
+  --border: var(--kr-slate-700);
+  --border-strong: var(--kr-slate-600);
+  --border-control: var(--kr-slate-400);
+
+  --brand: var(--kr-green-600);
+  --brand-hover: var(--kr-green-500);
+  --brand-active: var(--kr-green-700);
+  --brand-soft: #23361c;
+  --brand-soft-active: #2d4823;
+  --brand-accent: var(--kr-green-400);
+
+  --neutral-btn: var(--kr-slate-200);
+  --neutral-btn-hover: var(--kr-grey-000);
+
+  --disabled-bg: var(--kr-slate-700);
+
+  --info: var(--kr-info-500);
+  --info-soft: #12303d;
+  --success: var(--kr-green-400);
+  --success-soft: #23361c;
+  --warning: #f4b27e;
+  --warning-soft: #3a2a1d;
+  --danger: #f38d8c;
+  --danger-hover: #f8bcbb;
+  --danger-soft: #3d1f22;
+
+  --chart: var(--kr-green-500);
+  --chart-track: #2b3a26;
+  --chart-grid: var(--kr-slate-700);
+
+  --kr-shadow-s: 0 1px 4px 0 rgb(0 0 0 / 0.4);
+  --kr-shadow-m: 0 2px 8px 0 rgb(0 0 0 / 0.45);
+  --kr-shadow-l: 0 12px 32px 0 rgb(0 0 0 / 0.55);
+
+  color-scheme: dark;
+}

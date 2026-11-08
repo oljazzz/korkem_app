@@ -11,13 +11,13 @@ export function Horns({ width = 64, className, strokeWidth = 2.6 }: { width?: nu
   )
 }
 
-/** Бренд белгісі: көк шаршы ішінде шафран мүйіз. */
+/** Бренд белгісі: жасыл шаршы ішінде ақ мүйіз. */
 export function Logo({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" className="logo">
-      <rect width="48" height="48" rx="13" fill="var(--brand)" />
+      <rect width="48" height="48" rx="8" fill="var(--kr-green-600)" />
       <g transform="translate(6 12) scale(0.5625)">
-        <path d={HORNS} fill="none" stroke="var(--saffron)" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={HORNS} fill="none" stroke="#ffffff" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
       </g>
     </svg>
   )
