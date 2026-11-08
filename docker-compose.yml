@@ -1,0 +1,36 @@
+# Толық жүйені бір командамен қосу: docker compose up --build
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: korkem_invoice
+      POSTGRES_USER: korkem
+      POSTGRES_PASSWORD: korkem
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/korkem_invoice
+      DB_USER: korkem
+      DB_PASSWORD: korkem
+      JWT_SECRET: change-this-secret-to-something-long-and-random
+      ADMIN_PASSWORD: admin
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - db
+    ports:
+      - "8090:8090"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  db-data:

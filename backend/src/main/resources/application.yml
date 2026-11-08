@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: korkem-invoice
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/korkem_invoice}
+    username: ${DB_USER:${USER:postgres}}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8090}
+
+app:
+  jwt:
+    # Production-да міндетті түрде JWT_SECRET орнатыңыз (кемінде 32 символ)
+    secret: ${JWT_SECRET:dev-secret-change-me-dev-secret-change-me-1234}
+    ttl-hours: 12
+  cors:
+    origins: ${CORS_ORIGINS:http://localhost:5173}
+  admin:
+    # Бірінші іске қосқанда пайдаланушы жоқ болса, осы admin жасалады
+    username: admin
+    password: ${ADMIN_PASSWORD:admin}
+  company:
+    # Басып шығарылатын құжаттарда (З-2 нысаны) көрсетіледі
+    name: ${COMPANY_NAME:ТОО Körkem}
+    chief-accountant: ${COMPANY_CHIEF_ACCOUNTANT:не предусмотрен}
+    release-allowed-by: ${COMPANY_RELEASE_ALLOWED_BY:Палымбетов Н.М.}

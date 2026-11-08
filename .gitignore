@@ -1,0 +1,10 @@
+.DS_Store
+.idea/
+.vscode/
+backend/target/
+frontend/node_modules/
+frontend/dist/
+.env
+
+# Ескі базаның dump файлы (жеке деректер)
+old-db/

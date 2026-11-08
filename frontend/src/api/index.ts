@@ -1,0 +1,66 @@
+import { http } from './http'
+import type { Category, Client, Company, Dashboard, Invoice, InvoiceListItem, Page, Product, SalesReport, Unit, User } from './types'
+
+export interface ListParams {
+  q?: string
+  page?: number
+  size?: number
+  [key: string]: string | number | null | undefined
+}
+
+function crud<T, R>(base: string) {
+  return {
+    list: (p: ListParams = {}) => http.get<Page<T>>(base, p),
+    get: (id: number) => http.get<T>(`${base}/${id}`),
+    create: (body: R) => http.post<T>(base, body),
+    update: (id: number, body: R) => http.put<T>(`${base}/${id}`, body),
+    remove: (id: number) => http.delete(`${base}/${id}`),
+  }
+}
+
+export type ClientRequest = { name: string; address: string | null }
+export type CategoryRequest = { name: string; sortOrder: number | null }
+export type ProductRequest = { categoryId: number | null; name: string; price: number; sortOrder: number | null }
+export type InvoiceRequest = {
+  clientId: number | null
+  lines: {
+    categoryId: number | null
+    productId: number | null
+    productName: string
+    unit: string
+    price: number
+    quantity: number
+    discount: number | null
+    sortOrder: number | null
+  }[]
+}
+export type UserRequest = Omit<User, 'id'> & { password: string | null }
+
+export const api = {
+  clients: crud<Client, ClientRequest>('/api/clients'),
+  categories: {
+    ...crud<Category, CategoryRequest>('/api/categories'),
+    all: () => http.get<Category[]>('/api/categories/all'),
+  },
+  products: crud<Product, ProductRequest>('/api/products'),
+  invoices: {
+    list: (p: ListParams = {}) => http.get<Page<InvoiceListItem>>('/api/invoices', p),
+    get: (id: number) => http.get<Invoice>(`/api/invoices/${id}`),
+    create: (body: InvoiceRequest) => http.post<Invoice>('/api/invoices', body),
+    update: (id: number, body: InvoiceRequest) => http.put<Invoice>(`/api/invoices/${id}`, body),
+    remove: (id: number) => http.delete(`/api/invoices/${id}`),
+    units: () => http.get<Unit[]>('/api/invoices/units'),
+  },
+  reports: {
+    company: () => http.get<Company>('/api/reports/company'),
+    dashboard: (from: string, to: string) => http.get<Dashboard>('/api/reports/dashboard', { from, to }),
+    sales: (p: { from?: string; to?: string; clientId?: number | null; invoiceIds?: string }) =>
+      http.get<SalesReport>('/api/reports/sales', p),
+  },
+  users: {
+    list: () => http.get<User[]>('/api/users'),
+    create: (body: UserRequest) => http.post<User>('/api/users', body),
+    update: (id: number, body: UserRequest) => http.put<User>(`/api/users/${id}`, body),
+    remove: (id: number) => http.delete(`/api/users/${id}`),
+  },
+}
