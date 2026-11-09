@@ -33,6 +33,8 @@ public class InvoiceService {
     private final CategoryRepository categories;
     private final InvoiceCalculator calculator;
 
+    private static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
+
     @Transactional(readOnly = true)
     /**
      * Invoice list. A purely numeric query searches by invoice number; [from, to] are calendar days
@@ -40,9 +42,8 @@ public class InvoiceService {
      */
     public PageResponse<InvoiceListItem> list(String q, Long clientId, LocalDate from,
                                               LocalDate to, int page, int size) {
-        ZoneId zone = ZoneId.of("Asia/Almaty");
-        Instant fromTs = from == null ? null : from.atStartOfDay(zone).toInstant();
-        Instant toTs = to == null ? null : to.plusDays(1).atStartOfDay(zone).toInstant();
+        Instant fromTs = from == null ? null : from.atStartOfDay(ZONE).toInstant();
+        Instant toTs = to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant();
         String query = q == null ? "" : q.trim();
         Long number = null;
         String digits = query.replaceAll("\\s", "");
@@ -72,7 +73,7 @@ public class InvoiceService {
     public InvoiceDto create(InvoiceRequest req, String username) {
         Invoice inv = new Invoice();
         inv.setNumber(invoices.nextNumber());
-        inv.setCreatedAt(Instant.now());
+        inv.setCreatedAt(documentTime(req.date()));
         inv.setCreatedBy(username);
         apply(inv, req);
         return toDto(invoices.save(inv));
@@ -81,6 +82,9 @@ public class InvoiceService {
     @Transactional
     public InvoiceDto update(Long id, InvoiceRequest req) {
         Invoice inv = find(id);
+        if (req.date() != null && !req.date().equals(LocalDate.ofInstant(inv.getCreatedAt(), ZONE))) {
+            inv.setCreatedAt(documentTime(req.date()));
+        }
         apply(inv, req);
         invoices.flush();
         return toDto(inv);
@@ -89,6 +93,18 @@ public class InvoiceService {
     @Transactional
     public void delete(Long id) {
         invoices.delete(find(id));
+    }
+
+    /** Today (or no date) → now; a past day → noon of that day in Almaty, so it never shifts across midnight. */
+    private static Instant documentTime(LocalDate date) {
+        LocalDate today = LocalDate.now(ZONE);
+        if (date == null || date.equals(today)) {
+            return Instant.now();
+        }
+        if (date.isAfter(today)) {
+            throw new BadRequestException("Жүкқұжат күні болашақта болмауы керек");
+        }
+        return date.atTime(12, 0).atZone(ZONE).toInstant();
     }
 
     private void apply(Invoice inv, InvoiceRequest req) {

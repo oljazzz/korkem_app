@@ -77,12 +77,13 @@ export function DashboardPage() {
 
   const series = useMemo(
     () =>
-      (data?.series ?? []).map((p) => ({
+      (data?.series ?? []).map((p, i, all) => ({
         label: data?.granularity === 'month' ? monthLabel(p.start) : p.label,
         value: p.revenue,
         hint: `${p.invoices} жүкқұжат`,
+        partial: data ? isPartial(p.start, i, all.length, data.granularity, range[0], range[1]) : false,
       })),
-    [data],
+    [data, range],
   )
 
   const choose = (key: PresetKey) => {
@@ -98,14 +99,13 @@ export function DashboardPage() {
           <h1 className="page-title">
             {greeting()}, {user?.firstName || user?.username}
           </h1>
-          {data?.lastInvoiceAt && (
-            <p className="muted">
-              Соңғы жүкқұжат — {fmtDate(data.lastInvoiceAt)} ·{' '}
-              <Link to="/invoices/new" className="text-link">жаңасын рәсімдеу</Link>
-            </p>
-          )}
+          {data?.lastInvoiceAt && <p className="muted">Соңғы жүкқұжат — {fmtDate(data.lastInvoiceAt)}</p>}
         </div>
         <Horns width={120} className="dash__horns" strokeWidth={2} />
+        <Link to="/invoices/new" className="btn btn--primary btn--lg dash__create">
+          <Icon name="plus" />
+          Жаңа жүкқұжат
+        </Link>
       </header>
 
       <div className="filters" role="group" aria-label="Кезең">
@@ -148,6 +148,11 @@ export function DashboardPage() {
 
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
+      {data && (
+        <p className="kpis__note">
+          Өзгерістер алдыңғы осындай кезеңмен салыстырылған: {previousRange(data.from, data.to)}
+        </p>
+      )}
       <div className={`kpis ${loading ? 'is-loading' : ''}`}>
         <Stat label="Түсім" value={data?.current.revenue} prev={data?.previous.revenue} money />
         <Stat label="Жүкқұжаттар" value={data?.current.invoices} prev={data?.previous.invoices} />
@@ -224,6 +229,24 @@ function foldCategories(d: Dashboard | null) {
   return items
 }
 
+/** First/last bucket that the selected range cuts short (e.g. the current, unfinished month). */
+function isPartial(start: string, index: number, count: number, granularity: string, from: string, to: string) {
+  if (granularity !== 'month') return index === count - 1 && to >= isoDay(new Date())
+  const [y, m] = start.split('-').map(Number)
+  const monthEnd = isoDay(new Date(Date.UTC(y, m, 0)))
+  return (index === 0 && from > start) || (index === count - 1 && to < monthEnd)
+}
+
+/** The equally long period right before [from, to], as the server compares against it. */
+function previousRange(from: string, to: string) {
+  const day = 86400000
+  const f = Date.parse(from)
+  const days = Math.round((Date.parse(to) - f) / day) + 1
+  const prevFrom = new Date(f - days * day).toISOString().slice(0, 10)
+  const prevTo = new Date(f - day).toISOString().slice(0, 10)
+  return `${fmtDate(prevFrom)} — ${fmtDate(prevTo)}`
+}
+
 function monthLabel(iso: string) {
   const [y, m] = iso.split('-').map(Number)
   return m === 1 ? `${MONTHS_SHORT[0]} ${String(y).slice(2)}` : MONTHS_SHORT[m - 1]
@@ -242,7 +265,7 @@ function Stat({ label, value, prev, money }: { label: string; value?: number; pr
       {delta !== null ? (
         <div className={`stat__delta ${up ? 'is-up' : 'is-down'}`}>
           <Icon name={up ? 'arrowUp' : 'arrowDown'} size={14} />
-          {Math.abs(delta).toFixed(1)}%<span>өткен кезеңмен салыстырғанда</span>
+          {Math.abs(delta).toFixed(1)}%
         </div>
       ) : (
         <div className="stat__delta">&nbsp;</div>

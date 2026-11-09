@@ -4,12 +4,13 @@ import { api, type InvoiceRequest } from '../api'
 import { ApiError } from '../api/http'
 import type { Category, InvoiceLine, Product, Unit, UnitCode } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
+import { DateInput } from '../components/DateInput'
 import { Field } from '../components/Field'
 import { Icon } from '../components/Icon'
 import { Alert } from '../components/Alert'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { useToast } from '../components/Toast'
-import { calcLine, fmt, fmt2, fmtMoney, parseNum } from '../lib/format'
+import { calcLine, fmt, fmt2, fmtMoney, isoDay, parseNum } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
@@ -37,6 +38,8 @@ export function InvoiceEditPage() {
 
   const [number, setNumber] = useState<number | null>(null)
   const [client, setClient] = useState<Option | null>(null)
+  const [today] = useState(() => isoDay(new Date()))
+  const [date, setDate] = useState(today)
   const [lines, setLines] = useState<Line[]>([])
   const [editingLine, setEditingLine] = useState<Line | null>(null)
   const [deleting, setDeleting] = useState<Line | null>(null)
@@ -60,6 +63,7 @@ export function InvoiceEditPage() {
       .get(Number(id))
       .then((inv) => {
         setNumber(inv.number)
+        setDate(isoDay(new Date(inv.createdAt)))
         setClient(inv.clientId ? { id: inv.clientId, label: inv.clientName ?? '' } : null)
         setLines(inv.lines.map((l) => ({ ...l, key: keySeq++ })))
       })
@@ -71,6 +75,7 @@ export function InvoiceEditPage() {
     () => lines.reduce((acc, l) => ({ total: acc.total + l.total, vat: acc.vat + l.vat }), { total: 0, vat: 0 }),
     [lines],
   )
+  const unpriced = lines.filter((l) => l.price === 0).length
   const nextSort = lines.reduce((m, l) => Math.max(m, l.sortOrder ?? 0), 0) + 1
   const unitLabel = (u: UnitCode) => units.find((x) => x.value === u)?.label ?? u
 
@@ -83,6 +88,7 @@ export function InvoiceEditPage() {
     setError(null)
     const body: InvoiceRequest = {
       clientId: client.id,
+      date,
       lines: lines.map((l) => ({
         categoryId: l.categoryId,
         productId: l.productId,
@@ -105,7 +111,7 @@ export function InvoiceEditPage() {
     } finally {
       setBusy(false)
     }
-  }, [client, lines, isNew, id])
+  }, [client, date, lines, isNew, id])
 
   const ok = useCallback(async () => {
     if ((await save()) !== null) {
@@ -151,8 +157,18 @@ export function InvoiceEditPage() {
       <h1 className="page-title">{isNew ? 'Жаңа жүкқұжат' : `Жүкқұжат № ${number ?? ''}`}</h1>
 
       <div className="form-grid">
-        <Field label="Жүкқұжат нөмірі">
-          <input className="input" disabled value={number !== null ? fmt(number) : 'сақтағанда беріледі'} />
+        <Field label="Күні">
+          <DateInput
+            value={date}
+            max={today}
+            clearable={false}
+            ariaLabel="Жүкқұжат күні"
+            onChange={(v) => {
+              if (!v) return
+              setDate(v)
+              setDirty(true)
+            }}
+          />
         </Field>
         <Field label="Клиент" required>
           <div className="inline">
@@ -178,7 +194,13 @@ export function InvoiceEditPage() {
       <div className="panel">
         <div className="panel__head">
           <h2 className="card__title">Тауарлар</h2>
-          <span className="card__sub">{lines.length} позиция · {fmt2(totals.total)} ₸</span>
+          <span className="card__sub">{lines.length} позиция</span>
+          {unpriced > 0 && (
+            <span className="badge badge--warning">
+              <Icon name="warning" size={14} />
+              {unpriced} жолда бағасы көрсетілмеген
+            </span>
+          )}
         </div>
 
         <div className="table-wrap">
@@ -201,10 +223,16 @@ export function InvoiceEditPage() {
                 <tr><td colSpan={9} className="table__msg">Төмендегі жолақтан тауар қосыңыз: атауын жазып, санын енгізіп, Enter басыңыз</td></tr>
               )}
               {lines.map((l, i) => (
-                <tr key={l.key} onDoubleClick={() => setEditingLine(l)}>
+                <tr key={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
                   <td className="num muted-cell">{i + 1}</td>
                   <td className="strong">{l.productName}</td>
-                  <td className="num">{fmtMoney(l.price)}</td>
+                  <td className="num">
+                    {l.price === 0 ? (
+                      <span className="price-missing" title="Бағасы көрсетілмеген">
+                        <Icon name="warning" size={14} />0
+                      </span>
+                    ) : fmtMoney(l.price)}
+                  </td>
                   <td className="num">{fmt(l.quantity)}</td>
                   <td>{unitLabel(l.unit)}</td>
                   <td className="num">{l.discount ? `${fmt(l.discount)}%` : ''}</td>
@@ -225,7 +253,7 @@ export function InvoiceEditPage() {
               <tfoot>
                 <tr>
                   <td colSpan={6}>Барлығы</td>
-                  <td className="num">{fmt2(totals.total)}</td>
+                  <td className="num">{fmtMoney(totals.total)}</td>
                   <td className="num">{fmt2(totals.vat)}</td>
                   <td />
                 </tr>
@@ -250,12 +278,18 @@ export function InvoiceEditPage() {
       <div className="editor-actions">
         <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>
         <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>Жабу</button>
-        <button className="btn btn--outline" onClick={report} disabled={!canSave && (dirty || isNew)}>
-          <Icon name="print" />Қ-2 басып шығару
+        <button className="btn btn--outline editor-actions__print" onClick={report} disabled={!canSave && (dirty || isNew)}
+          title="Қ-2 басып шығару" aria-label="Қ-2 басып шығару">
+          <Icon name="print" /><span className="btn__label">Қ-2 басып шығару</span>
         </button>
-        <span className="muted" role="status">
+        <span className="muted editor-actions__status" role="status">
           {missing.length > 0 ? `Сақтау үшін ${missing.join(' және ')}` : dirty ? 'Сақталмаған өзгерістер бар' : ''}
         </span>
+        <div className="editor-total" aria-live="polite">
+          <span className="editor-total__label">Барлығы</span>
+          <span className="editor-total__value">{fmtMoney(totals.total)} ₸</span>
+          <span className="editor-total__vat">оның ішінде ҚҚС {fmt2(totals.vat)} ₸</span>
+        </div>
       </div>
 
       {editingLine && (

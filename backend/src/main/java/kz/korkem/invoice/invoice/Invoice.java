@@ -28,7 +28,8 @@ public class Invoice {
     @JoinColumn(name = "client_id")
     private Client client;
 
-    @Column(nullable = false, updatable = false)
+    /** Document date and time; editable so an invoice can be dated to the day the goods left. */
+    @Column(nullable = false)
     private Instant createdAt;
 
     @Column(updatable = false)

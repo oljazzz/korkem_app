@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 public final class InvoiceDtos {
@@ -29,7 +30,9 @@ public final class InvoiceDtos {
             @DecimalMin(value = "0", message = "Жеңілдік 0..100") @DecimalMax(value = "100", message = "Жеңілдік 0..100") BigDecimal discount,
             Integer sortOrder) {}
 
+    /** {@code date} is the document date (Almaty calendar day); null keeps the current one, or today for a new invoice. */
     public record InvoiceRequest(
             @NotNull(message = "Клиентті таңдаңыз") Long clientId,
+            LocalDate date,
             @NotEmpty(message = "Кемінде бір тауар қосыңыз") List<@Valid LineRequest> lines) {}
 }

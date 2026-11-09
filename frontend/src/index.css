@@ -680,3 +680,96 @@ input[type='checkbox']:checked {
   .daterange { min-width: 0; }
   .daterange .date-input { flex: 1 1 0; width: auto; min-width: 0; }
 }
+
+
+/* =====================================================================
+   Quick wins: dashboard CTA, partial periods, invoice total, unpriced lines, phone tab bar
+   ===================================================================== */
+.dash__create { flex: none; align-self: center; }
+.dash__hero .dash__horns { margin-left: auto; }
+.kpis__note { margin: 0 0 var(--kr-mu075); font-size: var(--kr-font-03); color: var(--text-muted); }
+
+/* Partial period: same hue, hatched, so it never reads as a real drop */
+.chart__bar.is-partial { fill: url(#chart-hatch); stroke: var(--chart); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.chart__hatch-bg { fill: var(--surface); }
+.chart__hatch-line { stroke: var(--chart); stroke-width: 3; }
+.chart__legend { display: flex; align-items: center; gap: var(--kr-mu050); margin-top: var(--kr-mu050); font-size: var(--kr-font-02); color: var(--text-muted); }
+.chart__legend-swatch {
+  width: 14px; height: 10px; border: 1.5px solid var(--chart); border-radius: 2px;
+  background: repeating-linear-gradient(45deg, var(--chart) 0 2px, transparent 2px 5px);
+}
+
+/* Unpriced lines */
+.badge { display: inline-flex; align-items: center; gap: var(--kr-mu025); padding: 2px var(--kr-mu050); border-radius: var(--kr-radius-pill); font-size: var(--kr-font-03); font-weight: var(--kr-weight-semibold); }
+.badge--warning { background: var(--warning-soft); color: var(--text); }
+.badge--warning svg { color: var(--warning); }
+.price-missing { display: inline-flex; align-items: center; gap: 4px; color: var(--warning); font-weight: var(--kr-weight-bold); }
+.table tbody tr.is-unpriced td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+
+/* Invoice total in the sticky action bar */
+.editor-actions__status { flex: 1; min-width: 0; }
+.editor-total { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: var(--kr-mu075); margin-left: auto; text-align: right; }
+.editor-total__label { font-size: var(--kr-font-04); color: var(--text-secondary); }
+.editor-total__value { font-size: var(--kr-font-08); font-weight: var(--kr-weight-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.editor-total__vat { grid-column: 1 / -1; font-size: var(--kr-font-02); color: var(--text-muted); }
+
+/* Phone tab bar (hidden on wider screens) */
+.tabbar, .tabbar__sheet { display: none; }
+@media (max-width: 1100px) { .dash__hero .dash__horns { display: none; } }
+@media (max-width: 760px) {
+  :root { --tabbar-h: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  .rail { display: none; }
+  .toolbar--sticky { top: 0; }
+  .page { padding-bottom: calc(var(--tabbar-h) + 88px); }
+  .tabbar {
+    position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; height: var(--tabbar-h);
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--surface-inverse); box-shadow: 0 -1px 0 rgb(255 255 255 / 0.06);
+  }
+  .tabbar__link {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0;
+    border: 0; background: none; color: var(--text-on-inverse-muted); text-decoration: none; cursor: pointer;
+    font: inherit; font-size: 11px; font-weight: var(--kr-weight-semibold);
+  }
+  .tabbar__link span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+  .tabbar__link.is-active { color: var(--text-on-inverse); }
+  .tabbar__link.is-active svg { color: var(--brand-accent); }
+  .tabbar__link:focus-visible { box-shadow: inset var(--focus-ring); }
+  .tabbar__sheet {
+    position: fixed; z-index: 41; right: 8px; bottom: calc(var(--tabbar-h) + 8px); min-width: 230px;
+    display: flex; flex-direction: column; padding: var(--kr-mu050);
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--kr-radius-l); box-shadow: var(--kr-shadow-l);
+  }
+  .tabbar__sheet-link {
+    display: flex; align-items: center; gap: var(--kr-mu075); min-height: 48px; padding: 0 var(--kr-mu075);
+    border: 0; border-radius: var(--kr-radius-m); background: none; color: var(--text); text-decoration: none;
+    font: inherit; font-size: var(--kr-font-05); text-align: left; cursor: pointer;
+  }
+  .tabbar__sheet-link:hover, .tabbar__sheet-link.is-active { background: var(--surface-sunken); }
+  .tabbar__sheet-link.is-active { font-weight: var(--kr-weight-bold); }
+  .tabbar__sheet-link.is-active svg { color: var(--brand); }
+  /* Keep floating and sticky elements above the tab bar */
+  .toolbar__create { bottom: calc(var(--tabbar-h) + 16px); }
+  .notice { bottom: calc(var(--tabbar-h) + 12px); }
+  .editor-actions { bottom: var(--tabbar-h); }
+  .editor-total { order: -1; width: 100%; grid-template-columns: auto 1fr; text-align: left; margin-left: 0; }
+  .editor-total__value { text-align: right; font-size: var(--kr-font-07); }
+  .editor-total__vat { text-align: right; }
+  .editor-actions__status:empty { display: none; }
+  .dash__hero { flex-wrap: wrap; align-items: flex-start; }
+  .dash__create { width: 100%; }
+}
+@media print { .tabbar, .tabbar__sheet { display: none !important; } }
+@media (max-width: 760px) {
+  .editor-actions { gap: var(--kr-mu050); padding: var(--kr-mu075) 0; }
+  .editor-actions .btn--primary { flex: 1; }
+  .editor-actions__print { width: var(--kr-control-m); padding: 0; }
+  .editor-actions__print .btn__label { display: none; }
+}
+@media (max-width: 760px) {
+  /* Period presets stay on one row and scroll sideways instead of wrapping */
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; white-space: nowrap; }
+}

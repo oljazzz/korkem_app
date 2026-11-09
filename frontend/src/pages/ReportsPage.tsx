@@ -97,9 +97,10 @@ export function ReportsPage() {
   return (
     <section className="page report">
       <PageHeader eyebrow="Есептер" title="Тауарлар бойынша сатылым">
-        <button className="btn btn--ghost" onClick={downloadCsv} disabled={!report || rows.length === 0}>
+        <button className="btn btn--ghost" onClick={downloadCsv} disabled={!report || rows.length === 0}
+          title="Excel-де ашылатын CSV файлы">
           <Icon name="download" />
-          Excel
+          CSV жүктеу
         </button>
         <button className="btn btn--primary" onClick={() => window.print()} disabled={!report}>
           <Icon name="print" />

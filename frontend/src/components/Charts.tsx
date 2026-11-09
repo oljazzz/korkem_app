@@ -7,6 +7,8 @@ interface ColumnPoint {
   label: string
   value: number
   hint?: string
+  /** The bucket covers only part of its day/month (e.g. the current month); drawn hatched. */
+  partial?: boolean
 }
 
 /** Round step: 1, 2, 5 × 10ⁿ. */
@@ -35,6 +37,8 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
   const labelEvery = Math.ceil(data.length / 12)
   const y = (v: number) => pad.t + innerH - (v / max) * innerH
 
+  const hasPartial = data.some((d) => d.partial)
+
   const bar = (x: number, v: number) => {
     const h = Math.max(0, (v / max) * innerH)
     if (h === 0) return ''
@@ -50,6 +54,12 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
   return (
     <div className="chart" ref={boxRef} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Кезеңдер бойынша түсім" preserveAspectRatio="none">
+        <defs>
+          <pattern id="chart-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" className="chart__hatch-bg" />
+            <line x1="0" y1="0" x2="0" y2="6" className="chart__hatch-line" />
+          </pattern>
+        </defs>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={width - pad.r} y1={y(t)} y2={y(t)} className="chart__grid" />
@@ -60,7 +70,10 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
           const x = pad.l + i * slot + (slot - barW) / 2
           return (
             <g key={i}>
-              <path d={bar(x, d.value)} className={`chart__bar ${hover === i ? 'is-hover' : ''} ${hover !== null && hover !== i ? 'is-dim' : ''}`} />
+              <path
+                d={bar(x, d.value)}
+                className={`chart__bar ${d.partial ? 'is-partial' : ''} ${hover === i ? 'is-hover' : ''} ${hover !== null && hover !== i ? 'is-dim' : ''}`}
+              />
               {i % labelEvery === 0 && (
                 <text x={pad.l + i * slot + slot / 2} y={height - 8} className="chart__tick" textAnchor="middle">{d.label}</text>
               )}
@@ -91,6 +104,13 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
           <div className="chart__tip-label">{h.label}</div>
           <div className="chart__tip-value">{fmtMoney(h.value)} {unit}</div>
           {h.hint && <div className="chart__tip-hint">{h.hint}</div>}
+          {h.partial && <div className="chart__tip-hint">Толық емес кезең</div>}
+        </div>
+      )}
+      {hasPartial && (
+        <div className="chart__legend">
+          <span className="chart__legend-swatch" aria-hidden="true" />
+          Штрихталған баған — толық емес кезең
         </div>
       )}
     </div>

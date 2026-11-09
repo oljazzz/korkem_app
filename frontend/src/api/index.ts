@@ -23,6 +23,8 @@ export type CategoryRequest = { name: string; sortOrder: number | null }
 export type ProductRequest = { categoryId: number | null; name: string; price: number; sortOrder: number | null }
 export type InvoiceRequest = {
   clientId: number | null
+  /** Document date, YYYY-MM-DD (Almaty); omitted keeps the current date. */
+  date?: string | null
   lines: {
     categoryId: number | null
     productId: number | null

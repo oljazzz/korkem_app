@@ -5,6 +5,8 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -162,6 +164,39 @@ class ApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields.name").exists())
                 .andExpect(jsonPath("$.fields.price").exists());
+    }
+
+    @Test
+    void invoiceDateCanBeBackdatedButNotFuture() throws Exception {
+        String auth = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Күн клиенті\"}"))
+                .andReturn().getResponse().getContentAsString(), "id");
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Almaty"));
+        String lines = ",\"lines\":[{\"productName\":\"Бояу\",\"price\":100,\"quantity\":1}]}";
+
+        // Backdated on create: noon of that day in Almaty (07:00 UTC)
+        String inv = mvc.perform(post("/api/invoices").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"date\":\"" + today.minusDays(3) + "\"" + lines))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdAt").value(startsWith(today.minusDays(3) + "T07:00")))
+                .andReturn().getResponse().getContentAsString();
+        String invId = extract(inv, "id");
+
+        // Changed on update
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"date\":\"" + today.minusDays(10) + "\"" + lines))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value(startsWith(today.minusDays(10).toString())));
+
+        // Future dates are rejected
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"date\":\"" + today.plusDays(1) + "\"" + lines))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Жүкқұжат күні болашақта болмауы керек"));
     }
 
     @Test
