@@ -15,6 +15,35 @@ export const fmt2 = (v: number | null | undefined) => (v === null || v === undef
 export const fmtMoney = (v: number | null | undefined) =>
   v === null || v === undefined ? '' : Number.isInteger(v) ? money.format(v) : money2.format(v)
 
+const amount3 = makeFormat(0, 3)
+
+export type PackUnit = 'KG' | 'L'
+
+/** Pack size for display: 20 кг, 2,7 кг, 800 г, 5 л, 500 мл (small packs in grams/millilitres). */
+export function fmtPack(amount: number | null | undefined, unit: PackUnit | null | undefined) {
+  if (amount === null || amount === undefined || !unit) return ''
+  if (amount < 1) return `${Math.round(amount * 1000)} ${unit === 'KG' ? 'г' : 'мл'}`
+  return `${amount3.format(amount)} ${unit === 'KG' ? 'кг' : 'л'}`
+}
+
+/** Price of one kilogram or litre: "900 ₸/кг". */
+export function fmtPricePerBase(price: number, amount: number | null | undefined, unit: PackUnit | null | undefined) {
+  if (!amount || !unit || price <= 0) return ''
+  return `${fmtMoney(Math.round((price / amount) * 100) / 100)} ₸/${unit === 'KG' ? 'кг' : 'л'}`
+}
+
+/** The single size written in a product name ("20кг", "800гр", "5Л", "500мл"), in a base unit. */
+export function packFromName(name: string): { amount: number; unit: PackUnit } | null {
+  const found = [...name.matchAll(/(\d+(?:[.,]\d+)?)\s*(кг|kg|гр|г|g|мл|ml|л|l)(?![\p{L}])/giu)].map((m) => {
+    const v = Number(m[1].replace(',', '.'))
+    const u = m[2].toLowerCase()
+    const small = /^(г|g|м|ml)/.test(u)
+    const volume = /^(л|l|м|ml)/.test(u)
+    return { amount: small ? v / 1000 : v, unit: (volume ? 'L' : 'KG') as PackUnit }
+  })
+  return found.length === 1 && found[0].amount > 0 ? found[0] : null
+}
+
 /** Compact number with Kazakh unit words: 145,4 мың · 19,3 млн · 1,2 млрд. */
 export function fmtCompact(v: number) {
   const a = Math.abs(v)

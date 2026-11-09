@@ -29,7 +29,14 @@ export type ClientRequest = {
 export type PaymentRequest = { amount: number; paidOn: string; method: PaymentMethod; note: string | null }
 export type CompanyRequest = Omit<Company, never>
 export type CategoryRequest = { name: string; sortOrder: number | null }
-export type ProductRequest = { categoryId: number | null; name: string; price: number; sortOrder: number | null }
+export type ProductRequest = {
+  categoryId: number | null
+  name: string
+  price: number
+  sortOrder: number | null
+  packAmount: number | null
+  packUnit: 'KG' | 'L' | null
+}
 export type InvoiceRequest = {
   clientId: number | null
   /** Document date, YYYY-MM-DD (Almaty); omitted keeps the current date. */

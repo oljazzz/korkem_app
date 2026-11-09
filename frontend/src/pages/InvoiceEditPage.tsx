@@ -11,7 +11,7 @@ import { Alert } from '../components/Alert'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { PaymentsPanel, type PaymentState } from '../components/PaymentsPanel'
 import { useToast } from '../components/Toast'
-import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, parseNum } from '../lib/format'
+import { calcLine, fmt, fmt2, fmtDate, fmtMoney, fmtPack, isoDay, parseNum } from '../lib/format'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
 
@@ -24,7 +24,7 @@ const loadProducts = (text: string, categoryId: number | null = null): Promise<P
     pg.items.map((pr) => ({
       id: pr.id,
       label: pr.name,
-      hint: `${fmtMoney(pr.price)} ₸${pr.categoryName ? ` · ${pr.categoryName}` : ''}`,
+      hint: [`${fmtMoney(pr.price)} ₸`, fmtPack(pr.packAmount, pr.packUnit) || null, pr.categoryName].filter(Boolean).join(' · '),
       product: pr,
     })),
   )

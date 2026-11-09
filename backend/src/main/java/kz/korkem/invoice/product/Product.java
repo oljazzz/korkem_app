@@ -29,4 +29,10 @@ public class Product {
     private BigDecimal price;
 
     private Integer sortOrder;
+
+    /** How much one unit holds, in {@link #packUnit}; null when unknown. */
+    private BigDecimal packAmount;
+
+    @Enumerated(EnumType.STRING)
+    private PackUnit packUnit;
 }

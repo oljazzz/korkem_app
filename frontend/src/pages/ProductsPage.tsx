@@ -14,7 +14,7 @@ import { Pagination } from '../components/Pagination'
 import { RowActions, rowProps } from '../components/RowActions'
 import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
-import { fmt, parseNum } from '../lib/format'
+import { fmt, fmtPack, fmtPricePerBase, packFromName, parseNum, type PackUnit } from '../lib/format'
 import { useList } from '../lib/useList'
 
 export function ProductsPage() {
@@ -109,12 +109,13 @@ export function ProductsPage() {
           <thead>
             <tr>
               <th>Атауы</th>
+              <th className="num" style={{ width: 130 }}>Қаптама</th>
               <th className="num" style={{ width: 160 }}>Бағасы</th>
               <th aria-label="Әрекеттер" style={{ width: 96 }} />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={3} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={4} />
             {groups.map(([key, items]) => (
               <GroupRows
                 key={key}
@@ -198,7 +199,7 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
   return (
     <>
       <tr className="group-row">
-        <td colSpan={2}>
+        <td colSpan={3}>
           <button className="group-row__toggle" aria-expanded={!collapsed} onClick={onToggle}>
             <span className="group-row__icon" aria-hidden="true">{collapsed ? '▸' : '▾'}</span> {title} ({items.length})
           </button>
@@ -215,7 +216,11 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
         items.map((p) => (
           <tr key={p.id} {...rowProps(() => onOpen(p), onDelete ? () => onDelete(p) : undefined, selectedId === p.id)}>
             <td className="indent strong" data-title>{p.name}</td>
-            <td className="num cell-amount">{fmt(p.price)} ₸</td>
+            <td className={`num ${p.packAmount ? '' : 'muted-cell'}`} data-label="Қаптама">{p.packAmount ? fmtPack(p.packAmount, p.packUnit) : '—'}</td>
+            <td className="num cell-amount">
+              {fmt(p.price)} ₸
+              {p.packAmount && p.price > 0 && <span className="cell-sub">{fmtPricePerBase(p.price, p.packAmount, p.packUnit)}</span>}
+            </td>
             <RowActions name={p.name} onEdit={() => onOpen(p)} onDelete={onDelete ? () => onDelete(p) : undefined} />
           </tr>
         ))}
@@ -234,12 +239,30 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
   const [name, setName] = useState(product?.name ?? '')
   const [price, setPrice] = useState(product?.price?.toString() ?? '')
   const [sortOrder, setSortOrder] = useState(product?.sortOrder?.toString() ?? '')
+  // Pack size is edited in the unit people think in (800 г, 500 мл) and stored as kg / l
+  const initialPack = toInput(product?.packAmount ?? null, product?.packUnit ?? null)
+  const [packValue, setPackValue] = useState(initialPack.value)
+  const [packInputUnit, setPackInputUnit] = useState<InputUnit>(initialPack.unit)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const suggested = !packValue.trim() ? packFromName(name) : null
 
   const save = async () => {
     const priceNum = parseNum(price)
+    const packNum = parseNum(packValue)
+    if (packValue.trim() && (packNum === null || packNum <= 0)) {
+      setErrors({ packAmount: '0-ден үлкен сан енгізіңіз' })
+      return
+    }
+    const pack = packNum === null ? null : fromInput(packNum, packInputUnit)
     try {
-      const body = { categoryId, name, price: priceNum as number, sortOrder: parseNum(sortOrder) }
+      const body = {
+        categoryId,
+        name,
+        price: priceNum as number,
+        sortOrder: parseNum(sortOrder),
+        packAmount: pack?.amount ?? null,
+        packUnit: pack?.unit ?? null,
+      }
       onSaved(product ? await api.products.update(product.id, body) : await api.products.create(body))
     } catch (e) {
       const err = e as ApiError
@@ -274,8 +297,30 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
         <Field label="Атауы" required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Бағасы" required error={errors.price}>
+        <Field label="Бағасы, ₸" required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+        </Field>
+        <Field label="Қаптама" error={errors.packAmount}>
+          <div className="inline pack-input">
+            <input className="input num-input" inputMode="decimal" value={packValue} placeholder="мысалы, 20"
+              aria-label="Қаптама мөлшері" onChange={(e) => setPackValue(e.target.value)} />
+            <select className="input" aria-label="Қаптама бірлігі" value={packInputUnit}
+              onChange={(e) => setPackInputUnit(e.target.value as InputUnit)}>
+              {INPUT_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+          </div>
+          {suggested ? (
+            <span className="field__hint">
+              Атауында {fmtPack(suggested.amount, suggested.unit)} деп жазылған —{' '}
+              <button type="button" className="link-btn" onClick={() => {
+                const v = toInput(suggested.amount, suggested.unit)
+                setPackValue(v.value)
+                setPackInputUnit(v.unit)
+              }}>қолдану</button>
+            </span>
+          ) : (
+            <span className="field__hint">Бір дананың ішіндегі мөлшері: массасы (кг, г) немесе көлемі (л, мл).</span>
+          )}
         </Field>
         <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
@@ -285,4 +330,27 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
       </form>
     </Modal>
   )
+}
+
+type InputUnit = 'KG' | 'G' | 'L' | 'ML'
+
+const INPUT_UNITS: { value: InputUnit; label: string }[] = [
+  { value: 'KG', label: 'кг' },
+  { value: 'G', label: 'г' },
+  { value: 'L', label: 'л' },
+  { value: 'ML', label: 'мл' },
+]
+
+/** Stored pack (kg / l) → form value in a friendly unit: 0.8 kg shows as 800 г. */
+function toInput(amount: number | null, unit: PackUnit | null): { value: string; unit: InputUnit } {
+  if (amount === null || !unit) return { value: '', unit: 'KG' }
+  const small = amount < 1
+  const value = small ? Math.round(amount * 1000) : amount
+  return { value: String(value).replace('.', ','), unit: unit === 'KG' ? (small ? 'G' : 'KG') : small ? 'ML' : 'L' }
+}
+
+/** Form value → stored pack in kg or l. */
+function fromInput(value: number, unit: InputUnit): { amount: number; unit: PackUnit } {
+  const small = unit === 'G' || unit === 'ML'
+  return { amount: small ? value / 1000 : value, unit: unit === 'KG' || unit === 'G' ? 'KG' : 'L' }
 }

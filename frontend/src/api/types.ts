@@ -101,6 +101,9 @@ export interface Product {
   name: string
   price: number
   sortOrder: number | null
+  /** How much one unit holds, in packUnit (kg or l). */
+  packAmount: number | null
+  packUnit: 'KG' | 'L' | null
 }
 
 export type UnitCode = 'SHT' | 'KG' | 'M' | 'L' | 'PACK'

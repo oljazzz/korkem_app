@@ -4,7 +4,7 @@ import { api } from '../api'
 import type { Category, Product } from '../api/types'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
-import { fmtDayLong, fmtMoney, isoDay } from '../lib/format'
+import { fmtDayLong, fmtMoney, fmtPack, fmtPricePerBase, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
 
 /** Customer-facing price list, grouped by category; printed or saved as PDF from the browser (A4 portrait). */
@@ -87,16 +87,20 @@ export function PriceListPrintPage() {
         {!products ? <p className="muted">Жүктелуде…</p> : (
           <table className="pricelist__table">
             <thead>
-              <tr><th className="c">№</th><th>Атауы</th><th className="n">Бағасы, ₸</th></tr>
+              <tr><th className="c">№</th><th>Атауы</th><th className="p">Қаптама</th><th className="n">Бағасы, ₸</th></tr>
             </thead>
             {groups.map(([name, items]) => (
               <tbody key={name}>
-                <tr className="pricelist__group"><td colSpan={3}>{name}</td></tr>
+                <tr className="pricelist__group"><td colSpan={4}>{name}</td></tr>
                 {items.map((p, i) => (
                   <tr key={p.id}>
                     <td className="c">{i + 1}</td>
                     <td>{p.name}</td>
-                    <td className="n">{fmtMoney(p.price)}</td>
+                    <td className="p">{fmtPack(p.packAmount, p.packUnit)}</td>
+                    <td className="n">
+                      {fmtMoney(p.price)}
+                      {p.packAmount && p.price > 0 && <span className="pricelist__per">{fmtPricePerBase(p.price, p.packAmount, p.packUnit)}</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

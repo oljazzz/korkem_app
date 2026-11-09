@@ -499,4 +499,29 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/reports/dashboard").param("from", today).param("to", today).header("Authorization", auth))
                 .andExpect(jsonPath("$.topClients[?(@.name == 'ип.Сауле 8 701 222 33 44')].id").value(contains(Integer.parseInt(clientId))));
     }
+
+    @Test
+    void productStoresPackSize() throws Exception {
+        String auth = login();
+        mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Шпаклёвка 2,5кг\",\"price\":1200,\"packAmount\":2.5,\"packUnit\":\"KG\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.packAmount").value(2.5))
+                .andExpect(jsonPath("$.packUnit").value("KG"));
+        mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Сабын 5л\",\"price\":900,\"packAmount\":5,\"packUnit\":\"L\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.packUnit").value("L"));
+        mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Бір нәрсе\",\"price\":100,\"packAmount\":0,\"packUnit\":\"KG\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.packAmount").exists());
+        mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Бірліксіз\",\"price\":100,\"packAmount\":3}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + "А".repeat(256) + "\",\"price\":100}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.name").exists());
+    }
 }
