@@ -32,6 +32,11 @@ public class InvoiceLine {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    /** Colour of the product, when it has variants. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private kz.korkem.invoice.product.ProductVariant variant;
+
     /** Snapshot of the product name, so price-list edits never change past invoices. */
     @Column(nullable = false)
     private String productName;

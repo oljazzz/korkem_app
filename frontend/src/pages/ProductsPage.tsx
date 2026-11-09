@@ -74,6 +74,11 @@ export function ProductsPage() {
   return (
     <section className="page">
       <PageHeader eyebrow="Анықтамалық" title="Баға тізімі">
+        {isAdmin && (
+          <Link className="btn btn--ghost" to="/products/grouping">
+            <Icon name="merge" />Түстерге топтастыру
+          </Link>
+        )}
         <Link className="btn btn--outline" to={`/products/print${categoryId ? `?category=${categoryId}` : ''}`}>
           <Icon name="print" />Басып шығару / PDF
         </Link>
@@ -215,7 +220,10 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
       {!collapsed &&
         items.map((p) => (
           <tr key={p.id} {...rowProps(() => onOpen(p), onDelete ? () => onDelete(p) : undefined, selectedId === p.id)}>
-            <td className="indent strong" data-title>{p.name}</td>
+            <td className="indent" data-title>
+              <span className="strong">{p.name}</span>
+              {p.variants.length > 0 && <VariantPills product={p} />}
+            </td>
             <td className={`num ${p.packAmount ? '' : 'muted-cell'}`} data-label="Қаптама">{p.packAmount ? fmtPack(p.packAmount, p.packUnit) : '—'}</td>
             <td className="num cell-amount">
               {fmt(p.price)} ₸
@@ -227,6 +235,28 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
     </>
   )
 }
+
+/** Colour names under a product row; long lists collapse to the first few. */
+function VariantPills({ product }: { product: Product }) {
+  const [open, setOpen] = useState(false)
+  const shown = open ? product.variants : product.variants.slice(0, 8)
+  const hidden = product.variants.length - shown.length
+  return (
+    <span className="variant-pills" onClick={(e) => e.stopPropagation()}>
+      <span className="variant-pills__count">{product.variants.length} түс:</span>
+      {shown.map((v) => (
+        <span key={v.id} className={`variant-pill ${v.active ? '' : 'is-off'}`}
+          title={v.price !== null ? `${fmt(v.price)} ₸` : undefined}>
+          {v.name}{v.price !== null && <b> · {fmt(v.price)} ₸</b>}
+        </span>
+      ))}
+      {hidden > 0 && <button type="button" className="link-btn variant-pills__more" onClick={() => setOpen(true)}>тағы {hidden}</button>}
+    </span>
+  )
+}
+
+type VariantDraft = { key: number; id: number | null; name: string; price: string; active: boolean }
+let variantKey = 1
 
 function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved }: {
   product: Product | null
@@ -243,8 +273,28 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
   const initialPack = toInput(product?.packAmount ?? null, product?.packUnit ?? null)
   const [packValue, setPackValue] = useState(initialPack.value)
   const [packInputUnit, setPackInputUnit] = useState<InputUnit>(initialPack.unit)
+  const [variants, setVariants] = useState<VariantDraft[]>(() =>
+    (product?.variants ?? []).map((v) => ({
+      key: variantKey++, id: v.id, name: v.name, price: v.price === null ? '' : String(v.price), active: v.active,
+    })),
+  )
+  const [newVariant, setNewVariant] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const suggested = !packValue.trim() ? packFromName(name) : null
+
+  const addVariants = () => {
+    // Several colours can be pasted at once, separated by commas or new lines
+    const names = newVariant.split(/[,\n]/).map((n) => n.trim()).filter(Boolean)
+    if (names.length === 0) return
+    const taken = new Set(variants.map((v) => v.name.toLowerCase()))
+    setVariants((vs) => [
+      ...vs,
+      ...names.filter((n) => !taken.has(n.toLowerCase())).map((n) => ({ key: variantKey++, id: null, name: n, price: '', active: true })),
+    ])
+    setNewVariant('')
+  }
+  const updateVariant = (key: number, patch: Partial<VariantDraft>) =>
+    setVariants((vs) => vs.map((v) => (v.key === key ? { ...v, ...patch } : v)))
 
   const save = async () => {
     const priceNum = parseNum(price)
@@ -262,6 +312,12 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
         sortOrder: parseNum(sortOrder),
         packAmount: pack?.amount ?? null,
         packUnit: pack?.unit ?? null,
+        variants: variants.map((v) => ({
+          id: v.id,
+          name: v.name,
+          price: v.price.trim() ? parseNum(v.price) : null,
+          active: v.active,
+        })),
       }
       onSaved(product ? await api.products.update(product.id, body) : await api.products.create(body))
     } catch (e) {
@@ -272,7 +328,8 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
 
   return (
     <Modal
-      title="Тауар"
+      title={product ? 'Тауарды өзгерту' : 'Жаңа тауар'}
+      width={600}
       onClose={onClose}
       footer={
         <>
@@ -282,6 +339,9 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
+        <Field label="Атауы" required error={errors.name}>
+          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
         <Field label="Санат">
           <select
             className="input"
@@ -293,9 +353,6 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-        </Field>
-        <Field label="Атауы" required error={errors.name}>
-          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="Бағасы, ₸" required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -321,6 +378,48 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
           ) : (
             <span className="field__hint">Бір дананың ішіндегі мөлшері: массасы (кг, г) немесе көлемі (л, мл).</span>
           )}
+        </Field>
+        <Field label="Түстер">
+          <div className="variants-edit">
+            {variants.length > 0 && (
+              <ul className="variants-edit__list">
+                {variants.map((v) => (
+                  <li key={v.key} className={v.active ? '' : 'is-off'}>
+                    <input className="input" value={v.name} aria-label="Түстің атауы"
+                      onChange={(e) => updateVariant(v.key, { name: e.target.value })} />
+                    <input className="input num-input variants-edit__price" inputMode="decimal" value={v.price}
+                      placeholder={price || 'баға'} aria-label={`«${v.name}» бағасы`} title="Бос болса — тауардың бағасы"
+                      onChange={(e) => updateVariant(v.key, { price: e.target.value })} />
+                    <label className="checkbox" title="Жүкқұжатта таңдауға болады">
+                      <input type="checkbox" checked={v.active} onChange={(e) => updateVariant(v.key, { active: e.target.checked })} />
+                      бар
+                    </label>
+                    <button type="button" className="icon-btn icon-btn--danger" aria-label={`«${v.name}» түсін алып тастау`}
+                      onClick={() => setVariants((vs) => vs.filter((x) => x.key !== v.key))}>
+                      <Icon name="close" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="inline">
+              <input className="input" value={newVariant} placeholder="Ақ, Қара, Қызыл…"
+                aria-label="Жаңа түстер"
+                onChange={(e) => setNewVariant(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addVariants()
+                  }
+                }} />
+              <button type="button" className="btn btn--outline" onClick={addVariants}><Icon name="plus" />Қосу</button>
+            </div>
+            <span className="field__hint">
+              {variants.length === 0
+                ? 'Түсі жоқ тауар болса, бос қалдырыңыз. Бірнеше түсті үтір арқылы жазуға болады.'
+                : 'Түстің бағасы бос болса, тауардың бағасы алынады. «бар» белгісі алынған түс жүкқұжатта шықпайды.'}
+            </span>
+          </div>
         </Field>
         <Field label="Реті">
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />

@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, CityCount, Client, ClientSummary, InvoiceSummary, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
+import type { Category, CityCount, Client, ClientSummary, GroupSuggestion, InvoiceSummary, ProductOption, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -36,6 +36,7 @@ export type ProductRequest = {
   sortOrder: number | null
   packAmount: number | null
   packUnit: 'KG' | 'L' | null
+  variants: { id: number | null; name: string; price: number | null; active: boolean }[]
 }
 export type InvoiceRequest = {
   clientId: number | null
@@ -44,6 +45,7 @@ export type InvoiceRequest = {
   lines: {
     categoryId: number | null
     productId: number | null
+    variantId: number | null
     productName: string
     unit: string
     price: number
@@ -77,7 +79,14 @@ export const api = {
     ...crud<Category, CategoryRequest>('/api/categories'),
     all: () => http.get<Category[]>('/api/categories/all'),
   },
-  products: crud<Product, ProductRequest>('/api/products'),
+  products: {
+    ...crud<Product, ProductRequest>('/api/products'),
+    options: (q: string, categoryId: number | null = null, limit = 30) =>
+      http.get<ProductOption[]>('/api/products/options', { q, categoryId, limit }),
+    grouping: () => http.get<GroupSuggestion[]>('/api/products/grouping'),
+    group: (name: string, members: { productId: number; variantName: string }[]) =>
+      http.post<{ product: Product; variants: number; removedProducts: number; movedLines: number }>('/api/products/group', { name, members }),
+  },
   invoices: {
     list: (p: ListParams = {}) => http.get<Page<InvoiceListItem>>('/api/invoices', p),
     summary: (p: ListParams = {}) => http.get<InvoiceSummary>('/api/invoices/summary', p),

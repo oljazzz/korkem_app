@@ -95,7 +95,14 @@ export function PriceListPrintPage() {
                 {items.map((p, i) => (
                   <tr key={p.id}>
                     <td className="c">{i + 1}</td>
-                    <td>{p.name}</td>
+                    <td>
+                      {p.name}
+                      {p.variants.some((v) => v.active) && (
+                        <span className="pricelist__colours">
+                          Түстері: {p.variants.filter((v) => v.active).map((v) => v.name + (v.price !== null ? ` (${fmtMoney(v.price)} ₸)` : '')).join(', ')}
+                        </span>
+                      )}
+                    </td>
                     <td className="p">{fmtPack(p.packAmount, p.packUnit)}</td>
                     <td className="n">
                       {fmtMoney(p.price)}

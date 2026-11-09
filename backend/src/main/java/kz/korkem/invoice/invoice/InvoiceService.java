@@ -17,7 +17,9 @@ import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
 import kz.korkem.invoice.payment.PaymentRepository;
 import kz.korkem.invoice.product.Product;
+import kz.korkem.invoice.product.ProductController;
 import kz.korkem.invoice.product.ProductRepository;
+import kz.korkem.invoice.product.ProductVariant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -158,17 +160,26 @@ public class InvoiceService {
             InvoiceLine line = new InvoiceLine();
             Product product = lr.productId() == null ? null : products.findById(lr.productId())
                     .orElseThrow(() -> new NotFoundException("Тауар табылмады"));
+            final int lineNo = index;
+            ProductVariant variant = null;
+            if (product != null && lr.variantId() != null) {
+                variant = product.getVariants().stream().filter(v -> v.getId().equals(lr.variantId())).findFirst()
+                        .orElseThrow(() -> new BadRequestException(lineNo + "-жолдағы түс бұл тауарға жатпайды"));
+            } else if (product != null && product.hasVariants()) {
+                throw new BadRequestException(index + "-жолда «" + product.getName() + "» тауарының түсін таңдаңыз");
+            }
             Category category = lr.categoryId() != null
                     ? categories.findById(lr.categoryId()).orElse(null)
                     : product != null ? product.getCategory() : null;
 
-            String name = product != null ? product.getName()
+            String name = product != null ? ProductController.lineName(product, variant)
                     : lr.productName() == null ? "" : lr.productName().trim();
             if (name.isEmpty()) {
                 throw new BadRequestException(index + "-жолда тауар таңдалмаған");
             }
 
             line.setProduct(product);
+            line.setVariant(variant);
             line.setCategory(category);
             line.setProductName(name);
             line.setUnit(lr.unit() == null ? Unit.SHT : lr.unit());
@@ -193,6 +204,7 @@ public class InvoiceService {
                 l.getCategory() == null ? null : l.getCategory().getId(),
                 l.getCategory() == null ? null : l.getCategory().getName(),
                 l.getProduct() == null ? null : l.getProduct().getId(),
+                l.getVariant() == null ? null : l.getVariant().getId(),
                 l.getProductName(), l.getUnit(), l.getUnit().getLabel(), l.getPrice(), l.getQuantity(),
                 l.getDiscount(), l.getTotal(), l.getVat(), l.getSortOrder())).toList();
         BigDecimal total = lines.stream().map(LineDto::total).reduce(BigDecimal.ZERO, BigDecimal::add);

@@ -104,6 +104,51 @@ export interface Product {
   /** How much one unit holds, in packUnit (kg or l). */
   packAmount: number | null
   packUnit: 'KG' | 'L' | null
+  /** Colours; empty when the product is sold without them. */
+  variants: ProductVariant[]
+}
+
+export interface ProductVariant {
+  id: number
+  name: string
+  /** Own price; null = the product price. */
+  price: number | null
+  active: boolean
+  sortOrder: number | null
+}
+
+/** One thing that can go on an invoice line: a product, or one colour of it. */
+export interface ProductOption {
+  productId: number
+  variantId: number | null
+  label: string
+  productName: string
+  variantName: string | null
+  price: number
+  packAmount: number | null
+  packUnit: 'KG' | 'L' | null
+  categoryId: number | null
+  categoryName: string | null
+}
+
+export interface GroupMember {
+  productId: number
+  name: string
+  variantName: string
+  price: number
+  invoiceLines: number
+}
+
+export interface GroupSuggestion {
+  name: string
+  categoryId: number | null
+  categoryName: string | null
+  price: number
+  packAmount: number | null
+  packUnit: 'KG' | 'L' | null
+  /** Same product spelled differently: merge without colours. */
+  duplicates: boolean
+  members: GroupMember[]
 }
 
 export type UnitCode = 'SHT' | 'KG' | 'M' | 'L' | 'PACK'
@@ -132,6 +177,7 @@ export interface InvoiceLine {
   categoryId: number | null
   categoryName: string | null
   productId: number | null
+  variantId?: number | null
   productName: string
   unit: UnitCode
   unitLabel?: string
@@ -191,6 +237,8 @@ export interface Settings {
 
 export interface SalesRow {
   productName: string
+  /** Product a colour belongs to; equals productName for products without colours. */
+  groupName: string
   categoryName: string | null
   quantity: number
   avgPrice: number

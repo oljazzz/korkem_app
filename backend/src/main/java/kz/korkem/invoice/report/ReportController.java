@@ -23,8 +23,9 @@ public class ReportController {
 
     public static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
 
-    public record SalesRow(String productName, String categoryName, BigDecimal quantity, BigDecimal avgPrice,
-                           BigDecimal total, BigDecimal vat, long invoices) {}
+    /** {@code groupName} is the product a colour belongs to (equals productName for products without colours). */
+    public record SalesRow(String productName, String groupName, String categoryName, BigDecimal quantity,
+                           BigDecimal avgPrice, BigDecimal total, BigDecimal vat, long invoices) {}
 
     public record SalesReport(LocalDate from, LocalDate to, int invoiceCount, List<SalesRow> rows,
                               BigDecimal totalQuantity, BigDecimal total, BigDecimal vat) {}
@@ -63,18 +64,22 @@ public class ReportController {
         MapSqlParameterSource p = new MapSqlParameterSource();
         String where = filter(from, to, clientId, city, invoiceIds, p);
         List<SalesRow> rows = jdbc.query("""
-                select l.product_name, max(c.name) as category, sum(l.quantity) as qty, sum(l.total) as total,
+                select l.product_name, max(case when l.variant_id is not null then pr.name end) as group_name,
+                       max(c.name) as category, sum(l.quantity) as qty, sum(l.total) as total,
                        sum(l.vat) as vat, count(distinct l.invoice_id) as invoices
                 from invoice_line l
                 join invoice i on i.id = l.invoice_id
                 left join category c on c.id = l.category_id
+                left join product pr on pr.id = l.product_id
                 """ + where + """
                  group by l.product_name
                  order by sum(l.total) desc, l.product_name
                 """, p, (rs, n) -> {
             BigDecimal qty = rs.getBigDecimal("qty");
             BigDecimal total = rs.getBigDecimal("total");
-            return new SalesRow(rs.getString("product_name"), rs.getString("category"), qty,
+            String group = rs.getString("group_name");
+            return new SalesRow(rs.getString("product_name"), group == null ? rs.getString("product_name") : group,
+                    rs.getString("category"), qty,
                     qty.signum() == 0 ? BigDecimal.ZERO : total.divide(qty, 2, RoundingMode.HALF_UP),
                     total, rs.getBigDecimal("vat"), rs.getLong("invoices"));
         });

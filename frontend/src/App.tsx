@@ -10,6 +10,7 @@ import { InvoicePrintPage } from './pages/InvoicePrintPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
 import { PriceListPrintPage } from './pages/PriceListPrintPage'
+import { ProductGroupingPage } from './pages/ProductGroupingPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { UsersPage } from './pages/UsersPage'
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/clients/:id" element={<ClientPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/print" element={<PriceListPrintPage />} />
+        <Route path="/products/grouping" element={user?.role === 'ADMIN' ? <ProductGroupingPage /> : <Navigate to="/products" replace />} />
         {/* Categories are managed on the price list page now */}
         <Route path="/categories" element={<Navigate to="/products?categories=1" replace />} />
         <Route path="/users" element={user?.role === 'ADMIN' ? <UsersPage /> : <Navigate to="/" replace />} />

@@ -524,4 +524,79 @@ class ApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields.name").exists());
     }
+
+    @Test
+    void colourFamiliesBecomeOneProductWithVariants() throws Exception {
+        String admin = login();
+        String cat = extract(mvc.perform(post("/api/categories").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Эмаль-тест\"}")).andReturn().getResponse().getContentAsString(), "id");
+        String[] names = {"СТАТУС ПФ - 115 БЕЛЫЙ 2.6кг", "* СТАТУС * ПФ - 115 КРАСНЫЙ 2.6кг", "СТАТУС ПФ-115 СИНИЙ 2,6кг"};
+        String[] ids = new String[3];
+        for (int i = 0; i < 3; i++) {
+            ids[i] = extract(mvc.perform(post("/api/products").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"categoryId\":" + cat + ",\"name\":\"" + names[i] + "\",\"price\":2700,\"packAmount\":2.6,\"packUnit\":\"KG\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+        }
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Түс клиенті\"}")).andReturn().getResponse().getContentAsString(), "id");
+        String inv = extract(mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productId\":" + ids[1] + ",\"price\":2700,\"quantity\":2}]}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+
+        // Suggested as one family with the colours split off
+        mvc.perform(get("/api/products/grouping").header("Authorization", admin))
+                .andExpect(jsonPath("$[?(@.name == 'СТАТУС ПФ-115 2,6 кг')].members.length()").value(contains(3)));
+
+        String body = "{\"name\":\"СТАТУС ПФ-115 эмаль 2,6 кг\",\"members\":[{\"productId\":" + ids[0] + ",\"variantName\":\"Ақ\"},"
+                + "{\"productId\":" + ids[1] + ",\"variantName\":\"Қызыл\"},{\"productId\":" + ids[2] + ",\"variantName\":\"Көк\"}]}";
+        createUser(admin, "grouper1", "MANAGER");
+        mvc.perform(post("/api/products/group").header("Authorization", login("grouper1", "secret-123"))
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/products/group").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.product.id").value(Integer.parseInt(ids[0])))
+                .andExpect(jsonPath("$.product.variants.length()").value(3))
+                .andExpect(jsonPath("$.removedProducts").value(2))
+                .andExpect(jsonPath("$.movedLines").value(1));
+        mvc.perform(get("/api/products/" + ids[1]).header("Authorization", admin)).andExpect(status().isNotFound());
+
+        // The old invoice line now points to the red colour; its saved name is unchanged
+        String red = extract(mvc.perform(get("/api/invoices/" + inv).header("Authorization", admin))
+                .andExpect(jsonPath("$.lines[0].productId").value(Integer.parseInt(ids[0])))
+                .andExpect(jsonPath("$.lines[0].productName").value("* СТАТУС * ПФ - 115 КРАСНЫЙ 2.6кг"))
+                .andReturn().getResponse().getContentAsString(), "variantId");
+
+        // Picker: word by word across product and colour
+        mvc.perform(get("/api/products/options").param("q", "статус қыз").header("Authorization", admin))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].label").value("СТАТУС ПФ-115 эмаль 2,6 кг — Қызыл"))
+                .andExpect(jsonPath("$[0].variantId").value(Integer.parseInt(red)));
+
+        // A product with colours needs one on new lines
+        mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productId\":" + ids[0] + ",\"price\":2700,\"quantity\":1}]}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productId\":" + ids[0] + ",\"variantId\":" + red
+                                + ",\"price\":2700,\"quantity\":1}]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.lines[0].productName").value("СТАТУС ПФ-115 эмаль 2,6 кг — Қызыл"));
+
+        // Spelling duplicates merge into one product without colours
+        String d1 = extract(mvc.perform(post("/api/products").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"categoryId\":" + cat + ",\"name\":\"* СНЕЖОК * ФАСАДНАЯ 14кг\",\"price\":9000}")).andReturn().getResponse().getContentAsString(), "id");
+        String d2 = extract(mvc.perform(post("/api/products").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"categoryId\":" + cat + ",\"name\":\"СНЕЖОК ФАСАДНАЯ 14кг\",\"price\":9000}")).andReturn().getResponse().getContentAsString(), "id");
+        mvc.perform(get("/api/products/grouping").header("Authorization", admin))
+                .andExpect(jsonPath("$[?(@.name == 'СНЕЖОК ФАСАДНАЯ')].duplicates").value(contains(true)));
+        mvc.perform(post("/api/products/group").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"СНЕЖОК фасадная 14 кг\",\"members\":[{\"productId\":" + d1 + ",\"variantName\":\"\"},{\"productId\":" + d2 + ",\"variantName\":\"\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.product.variants.length()").value(0))
+                .andExpect(jsonPath("$.removedProducts").value(1));
+
+        // Sales report groups colours under their product
+        mvc.perform(get("/api/reports/sales").param("clientId", clientId).header("Authorization", admin))
+                .andExpect(jsonPath("$.rows[*].groupName").value(everyItem(is("СТАТУС ПФ-115 эмаль 2,6 кг"))));
+    }
 }

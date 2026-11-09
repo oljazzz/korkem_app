@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/clients/merge").hasRole(ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/products/group").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole(ADMIN)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())

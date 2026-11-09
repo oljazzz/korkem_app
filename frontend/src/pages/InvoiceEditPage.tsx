@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, type InvoiceRequest } from '../api'
 import { ApiError } from '../api/http'
-import type { Category, Invoice, InvoiceLine, Product, Unit, UnitCode } from '../api/types'
+import type { Category, Invoice, InvoiceLine, Product, ProductOption as ProductPick, ProductVariant, Unit, UnitCode } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
 import { DateInput } from '../components/DateInput'
 import { Field } from '../components/Field'
@@ -16,18 +16,63 @@ import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
 
 type Line = InvoiceLine & { key: number }
-type ProductOption = Option & { product: Product }
+type PickOption = Option & { opt: ProductPick }
 let keySeq = 1
 
-const loadProducts = (text: string, categoryId: number | null = null): Promise<ProductOption[]> =>
-  api.products.list({ q: text, categoryId, size: 30 }).then((pg) =>
-    pg.items.map((pr) => ({
-      id: pr.id,
-      label: pr.name,
-      hint: [`${fmtMoney(pr.price)} ₸`, fmtPack(pr.packAmount, pr.packUnit) || null, pr.categoryName].filter(Boolean).join(' · '),
-      product: pr,
+/** Products without colours and each colour of the rest; colours get negative ids so they never clash. */
+const loadProducts = (text: string, categoryId: number | null = null): Promise<PickOption[]> =>
+  api.products.options(text, categoryId).then((items) =>
+    items.map((o) => ({
+      id: o.variantId ? -o.variantId : o.productId,
+      label: o.label,
+      hint: [`${fmtMoney(o.price)} ₸`, fmtPack(o.packAmount, o.packUnit) || null, o.categoryName].filter(Boolean).join(' · '),
+      opt: o,
     })),
   )
+
+/** Option built from a product and one of its colours (used when switching colour with the chips). */
+function pickFor(product: Product, variant: ProductVariant | null): PickOption {
+  const label = variant ? `${product.name} — ${variant.name}` : product.name
+  const price = variant?.price ?? product.price
+  return {
+    id: variant ? -variant.id : product.id,
+    label,
+    opt: {
+      productId: product.id, variantId: variant?.id ?? null, label, productName: product.name,
+      variantName: variant?.name ?? null, price, packAmount: product.packAmount, packUnit: product.packUnit,
+      categoryId: product.categoryId, categoryName: product.categoryName,
+    },
+  }
+}
+
+/** Colour chips for the selected product: switch colour without searching again. */
+function ColourChips({ productId, selectedVariantId, onPick }: {
+  productId: number
+  selectedVariantId: number | null
+  onPick: (o: PickOption) => void
+}) {
+  const [product, setProduct] = useState<Product | null>(null)
+  useEffect(() => {
+    let alive = true
+    api.products.get(productId).then((p) => alive && setProduct(p)).catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [productId])
+  const colours = product?.variants.filter((v) => v.active) ?? []
+  if (!product || colours.length < 2) return null
+  return (
+    <div className="colour-chips" role="radiogroup" aria-label="Түсі">
+      <span className="colour-chips__label">Түсі:</span>
+      {colours.map((v) => (
+        <button key={v.id} type="button" role="radio" aria-checked={v.id === selectedVariantId}
+          className={`chip ${v.id === selectedVariantId ? 'is-active' : ''}`} onClick={() => onPick(pickFor(product, v))}>
+          {v.name}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function InvoiceEditPage() {
   const { id } = useParams()
@@ -102,7 +147,13 @@ export function InvoiceEditPage() {
     if (!lastInvoice) return
     setConfirmRepeat(false)
     const prices = await Promise.all(
-      lastInvoice.lines.map((l) => (l.productId ? api.products.get(l.productId).then((p) => p.price).catch(() => l.price) : Promise.resolve(l.price))),
+      lastInvoice.lines.map((l) =>
+        l.productId
+          ? api.products.get(l.productId)
+            .then((p) => p.variants.find((v) => v.id === l.variantId)?.price ?? p.price)
+            .catch(() => l.price)
+          : Promise.resolve(l.price),
+      ),
     )
     let changed = 0
     const copied = lastInvoice.lines.map((l, i) => {
@@ -148,6 +199,7 @@ export function InvoiceEditPage() {
       lines: lines.map((l) => ({
         categoryId: l.categoryId,
         productId: l.productId,
+        variantId: l.variantId ?? null,
         productName: l.productName,
         unit: l.unit,
         price: l.price,
@@ -442,7 +494,7 @@ function QuickAdd({ units, nextSort, onAdd }: {
   nextSort: number
   onAdd: (line: Line) => void
 }) {
-  const [product, setProduct] = useState<ProductOption | null>(null)
+  const [product, setProduct] = useState<PickOption | null>(null)
   const [price, setPrice] = useState('')
   const [quantity, setQuantity] = useState('')
   const [discount, setDiscount] = useState('')
@@ -472,9 +524,10 @@ function QuickAdd({ units, nextSort, onAdd }: {
     onAdd({
       key: keySeq++,
       id: null,
-      categoryId: product.product.categoryId,
-      categoryName: product.product.categoryName,
-      productId: product.product.id,
+      categoryId: product.opt.categoryId,
+      categoryName: product.opt.categoryName,
+      productId: product.opt.productId,
+      variantId: product.opt.variantId,
       productName: product.label,
       unit,
       price: p!,
@@ -502,22 +555,33 @@ function QuickAdd({ units, nextSort, onAdd }: {
     <div className="quick-add" role="group" aria-label="Тауар қосу">
       <label className="quick-add__product stack">
         <span className="stack__label">Тауар</span>
-        <AsyncSelect<ProductOption>
+        <AsyncSelect<PickOption>
           value={product}
           inputRef={productRef}
           invalid={errors.product}
-          placeholder="Атауын жаза бастаңыз…"
+          placeholder="Атауы немесе түсі: «статус ақ»"
           ariaLabel="Тауар"
           onChange={(o) => {
             setProduct(o)
             if (o) {
-              setPrice(String(o.product.price))
+              setPrice(String(o.opt.price))
               setErrors((x) => ({ ...x, product: false }))
               requestAnimationFrame(() => qtyRef.current?.focus())
             }
           }}
           load={(text) => loadProducts(text)}
         />
+        {product?.opt.variantId && (
+          <ColourChips
+            productId={product.opt.productId}
+            selectedVariantId={product.opt.variantId}
+            onPick={(o) => {
+              setProduct(o)
+              setPrice(String(o.opt.price))
+              requestAnimationFrame(() => qtyRef.current?.focus())
+            }}
+          />
+        )}
       </label>
       <label className="stack">
         <span className="stack__label">Бағасы</span>
@@ -564,8 +628,9 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   onSave: (l: Line) => void
 }) {
   const [categoryId, setCategoryId] = useState<number | null>(line.categoryId ?? null)
-  const [product, setProduct] = useState<Option | null>({ id: line.productId ?? -1, label: line.productName })
+  const [product, setProduct] = useState<Option | null>({ id: line.variantId ? -line.variantId : line.productId ?? -1, label: line.productName })
   const [productId, setProductId] = useState<number | null>(line.productId ?? null)
+  const [variantId, setVariantId] = useState<number | null>(line.variantId ?? null)
   const [unit, setUnit] = useState<UnitCode>(line.unit ?? 'SHT')
   const [price, setPrice] = useState(line.price?.toString() ?? '')
   const [quantity, setQuantity] = useState(line.quantity?.toString() ?? '')
@@ -592,6 +657,7 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
       categoryId,
       categoryName: categories.find((c) => c.id === categoryId)?.name ?? null,
       productId,
+      variantId,
       productName: product.label,
       unit,
       price: p!,
@@ -616,21 +682,33 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
     >
       <form onSubmit={(e) => { e.preventDefault(); submit() }}>
         <Field label="Тауар" required error={errors.product}>
-          <AsyncSelect<ProductOption>
+          <AsyncSelect<PickOption>
             value={product}
             invalid={!!errors.product}
-            placeholder="Атауын жаза бастаңыз"
+            placeholder="Атауы немесе түсі"
             onChange={(o) => {
               setProduct(o)
-              setProductId(o?.product.id ?? null)
+              setProductId(o?.opt.productId ?? null)
+              setVariantId(o?.opt.variantId ?? null)
               if (o) {
-                setPrice(o.product.price.toString())
-                setCategoryId(o.product.categoryId)
+                setPrice(o.opt.price.toString())
+                setCategoryId(o.opt.categoryId)
                 requestAnimationFrame(() => qtyRef.current?.focus())
               }
             }}
             load={(text) => loadProducts(text, categoryId)}
           />
+          {productId && variantId && (
+            <ColourChips
+              productId={productId}
+              selectedVariantId={variantId}
+              onPick={(o) => {
+                setProduct(o)
+                setVariantId(o.opt.variantId)
+                setPrice(o.opt.price.toString())
+              }}
+            />
+          )}
         </Field>
         <Field label="Саны" required error={errors.quantity}>
           <input ref={qtyRef} className="input" inputMode="decimal" autoFocus value={quantity}

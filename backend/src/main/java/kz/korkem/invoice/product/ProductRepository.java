@@ -12,7 +12,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = "category")
     @Query("""
             select p from Product p left join p.category c
-            where lower(p.name) like lower(concat('%', :q, '%'))
+            where (lower(p.name) like lower(concat('%', :q, '%'))
+                   or exists (select v from ProductVariant v where v.product = p
+                              and lower(v.name) like lower(concat('%', :q, '%'))))
               and (:categoryId is null or c.id = :categoryId)
             """)
     Page<Product> search(@Param("q") String q, @Param("categoryId") Long categoryId, Pageable pageable);

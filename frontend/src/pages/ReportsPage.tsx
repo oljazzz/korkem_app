@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { CityCount, SalesReport } from '../api/types'
+import type { CityCount, SalesReport, SalesRow } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
 import { PeriodPicker } from '../components/PeriodPicker'
 import { Alert } from '../components/Alert'
@@ -57,11 +57,41 @@ export function ReportsPage() {
   }, [from, to, client, city, invoiceIds])
 
   const rows = useMemo(() => {
-    const list = (report?.rows ?? []).filter((r) => !q || r.productName.toLowerCase().includes(q.toLowerCase()))
+    const needle = q.toLowerCase()
+    const list = (report?.rows ?? []).filter((r) => !q || r.productName.toLowerCase().includes(needle) || r.groupName.toLowerCase().includes(needle))
     return [...list].sort((a, b) =>
       sort === 'productName' ? a.productName.localeCompare(b.productName, 'kk') : b[sort] - a[sort],
     )
   }, [report, sort, q])
+
+  // Colours of one product fold into a single row with the per-colour rows under it
+  const items = useMemo(() => {
+    const groups = new Map<string, SalesRow[]>()
+    rows.forEach((r) => groups.set(r.groupName, [...(groups.get(r.groupName) ?? []), r]))
+    const list = [...groups.entries()].map(([name, rs]) => {
+      const quantity = rs.reduce((s, r) => s + r.quantity, 0)
+      const total = rs.reduce((s, r) => s + r.total, 0)
+      return {
+        name,
+        rows: rs,
+        colours: rs.length > 1 || rs[0].productName !== name,
+        categoryName: rs[0].categoryName,
+        quantity,
+        total,
+        avgPrice: quantity ? total / quantity : 0,
+        invoices: Math.max(...rs.map((r) => r.invoices)),
+      }
+    })
+    return list.sort((a, b) => (sort === 'productName' ? a.name.localeCompare(b.name, 'kk') : b[sort] - a[sort]))
+  }, [rows, sort])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggle = (name: string) =>
+    setExpanded((s) => {
+      const n = new Set(s)
+      if (n.has(name)) n.delete(name)
+      else n.add(name)
+      return n
+    })
 
   const subtitle = invoiceIds
     ? `Белгіленген жүкқұжаттар бойынша: ${report?.invoiceCount ?? '…'}`
@@ -191,16 +221,37 @@ export function ReportsPage() {
             {!loading && rows.length === 0 && (
               <tr><td colSpan={7} className="table__msg">Таңдалған кезеңде сатылым жоқ</td></tr>
             )}
-            {rows.map((r, i) => (
-              <tr key={r.productName}>
-                <td className="muted-cell mono">{i + 1}</td>
-                <td className="strong">{r.productName}</td>
-                <td className="muted-cell">{r.categoryName}</td>
-                <td className="num">{fmtMoney(r.avgPrice)}</td>
-                <td className="num">{fmtMoney(r.quantity)}</td>
-                <td className="num strong">{fmtMoney(r.total)}</td>
-                <td className="num muted-cell">{r.invoices}</td>
-              </tr>
+            {items.map((it, i) => (
+              <Fragment key={it.name}>
+                <tr className={it.colours ? 'report-group' : undefined}>
+                  <td className="muted-cell mono">{i + 1}</td>
+                  <td className="strong">
+                    {it.colours ? (
+                      <button className="group-row__toggle" aria-expanded={expanded.has(it.name)} onClick={() => toggle(it.name)}>
+                        <span className="group-row__icon" aria-hidden="true">{expanded.has(it.name) ? '▾' : '▸'}</span>
+                        {it.name}
+                        <span className="report-group__count">{it.rows.length} түс</span>
+                      </button>
+                    ) : it.name}
+                  </td>
+                  <td className="muted-cell">{it.categoryName}</td>
+                  <td className="num">{fmtMoney(Math.round(it.avgPrice * 100) / 100)}</td>
+                  <td className="num">{fmtMoney(it.quantity)}</td>
+                  <td className="num strong">{fmtMoney(it.total)}</td>
+                  <td className="num muted-cell">{it.colours ? '' : it.invoices}</td>
+                </tr>
+                {it.colours && it.rows.map((r) => (
+                  <tr key={r.productName} className={`report-colour ${expanded.has(it.name) ? '' : 'is-collapsed'}`}>
+                    <td />
+                    <td className="report-colour__name">{r.productName.startsWith(`${it.name} — `) ? r.productName.slice(it.name.length + 3) : r.productName}</td>
+                    <td />
+                    <td className="num">{fmtMoney(r.avgPrice)}</td>
+                    <td className="num">{fmtMoney(r.quantity)}</td>
+                    <td className="num">{fmtMoney(r.total)}</td>
+                    <td className="num muted-cell">{r.invoices}</td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
           {report && rows.length > 0 && (

@@ -18,7 +18,7 @@ public final class InvoiceDtos {
     /** Totals over every invoice that matches the list filters, not just the current page. */
     public record InvoiceSummary(long count, BigDecimal total, BigDecimal due) {}
 
-    public record LineDto(Long id, Long categoryId, String categoryName, Long productId, String productName,
+    public record LineDto(Long id, Long categoryId, String categoryName, Long productId, Long variantId, String productName,
                           Unit unit, String unitLabel, BigDecimal price, BigDecimal quantity,
                           BigDecimal discount, BigDecimal total, BigDecimal vat, Integer sortOrder) {}
 
@@ -30,6 +30,8 @@ public final class InvoiceDtos {
     public record LineRequest(
             Long categoryId,
             Long productId,
+            /** Colour of the product; required when the product has colours. */
+            Long variantId,
             String productName,
             Unit unit,
             @NotNull(message = "Бағасын енгізіңіз") @DecimalMin(value = "0", message = "Баға теріс болмауы керек") BigDecimal price,
