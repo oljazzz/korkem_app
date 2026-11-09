@@ -53,7 +53,7 @@ export function UsersPage() {
       <PageHeader eyebrow="Баптаулар" title="Пайдаланушылар" />
       <Toolbar onCreate={() => setEditing('new')} />
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
-      <div className="table-wrap">
+      <div className={`table-wrap ${loading ? 'is-loading' : ''}`} aria-busy={loading}>
         <table className="table table--cards">
           <thead>
             <tr>

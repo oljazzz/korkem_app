@@ -44,7 +44,7 @@ export function ClientsPage() {
         searchPlaceholder="Аты немесе мекенжайы бойынша іздеу"
       />
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
-      <div className="table-wrap">
+      <div className={`table-wrap ${list.loading ? 'is-loading' : ''}`} aria-busy={list.loading}>
         <table className="table table--cards">
           <thead>
             <tr>

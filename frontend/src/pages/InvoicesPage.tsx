@@ -4,6 +4,7 @@ import { api } from '../api'
 import type { InvoiceListItem } from '../api/types'
 import { useIsAdmin } from '../auth/AuthContext'
 import { Alert } from '../components/Alert'
+import { DateInput } from '../components/DateInput'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { ConfirmModal } from '../components/Modal'
@@ -90,11 +91,9 @@ export function InvoicesPage() {
         searchPlaceholder="Нөмір немесе клиент"
       >
         <div className="daterange" role="group" aria-label="Кезең">
-          <input type="date" className="input" value={from} max={to || undefined} aria-label="Басталу күні"
-            onChange={(e) => setPeriod(e.target.value, to)} />
+          <DateInput value={from} max={to || undefined} ariaLabel="Басталу күні" onChange={(v) => setPeriod(v, to)} />
           <span aria-hidden="true">—</span>
-          <input type="date" className="input" value={to} min={from || undefined} aria-label="Аяқталу күні"
-            onChange={(e) => setPeriod(from, e.target.value)} />
+          <DateInput value={to} min={from || undefined} ariaLabel="Аяқталу күні" onChange={(v) => setPeriod(from, v)} />
           {(from || to) && (
             <button className="btn btn--ghost btn--s" onClick={() => setPeriod('', '')}>Тазалау</button>
           )}
@@ -113,7 +112,7 @@ export function InvoicesPage() {
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
-      <div className="table-wrap">
+      <div className={`table-wrap ${list.loading ? 'is-loading' : ''}`} aria-busy={list.loading}>
         <table className="table table--cards">
           <thead>
             <tr>

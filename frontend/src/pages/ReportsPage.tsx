@@ -3,9 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import type { SalesReport } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
+import { DateInput } from '../components/DateInput'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
+import { SkeletonRows } from '../components/Skeleton'
 import { fmtDate, fmtMoney, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
 
@@ -120,9 +122,9 @@ export function ReportsPage() {
               <button className="chip" onClick={() => quick('year')}>Осы жыл</button>
             </div>
             <div className="daterange">
-              <input type="date" className="input" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} aria-label="Басталу күні" />
-              <span>—</span>
-              <input type="date" className="input" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} aria-label="Аяқталу күні" />
+              <DateInput value={from} max={to} clearable={false} ariaLabel="Басталу күні" onChange={(v) => v && setFrom(v)} />
+              <span aria-hidden="true">—</span>
+              <DateInput value={to} min={from} clearable={false} ariaLabel="Аяқталу күні" onChange={(v) => v && setTo(v)} />
             </div>
             <div className="filters__client">
               <AsyncSelect
@@ -174,7 +176,7 @@ export function ReportsPage() {
         <span className="muted">{subtitle}</span>
       </div>
 
-      <div className="table-wrap">
+      <div className={`table-wrap ${loading ? 'is-loading' : ''}`} aria-busy={loading}>
         <table className="table table--report">
           <thead>
             <tr>
@@ -189,9 +191,7 @@ export function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {loading && rows.length === 0 && (
-              <tr><td colSpan={8} className="table__msg">Есептелуде…</td></tr>
-            )}
+            {loading && rows.length === 0 && <SkeletonRows cols={8} />}
             {!loading && rows.length === 0 && (
               <tr><td colSpan={8} className="table__msg">Таңдалған кезеңде сатылым жоқ</td></tr>
             )}

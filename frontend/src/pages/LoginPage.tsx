@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
+import { Icon } from '../components/Icon'
 import { Horns, Logo } from '../components/Ornament'
 
 export function LoginPage() {
@@ -11,6 +12,9 @@ export function LoginPage() {
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
+  const detectCaps = (e: KeyboardEvent<HTMLInputElement>) => setCapsLock(e.getModifierState('CapsLock'))
 
   if (user) return <Navigate to="/" replace />
 
@@ -50,7 +54,34 @@ export function LoginPage() {
         </label>
         <label className="stack">
           <span className="stack__label">Құпиясөз</span>
-          <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <span className="password">
+            <input
+              className="input"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              aria-describedby={capsLock ? 'caps-warning' : undefined}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={detectCaps}
+              onKeyUp={detectCaps}
+              onBlur={() => setCapsLock(false)}
+            />
+            <button
+              type="button"
+              className="password__toggle"
+              aria-label={showPassword ? 'Құпиясөзді жасыру' : 'Құпиясөзді көрсету'}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+            </button>
+          </span>
+          {capsLock && (
+            <span className="caps-warning" id="caps-warning" role="status">
+              <Icon name="warning" size={16} />
+              Caps Lock қосулы
+            </span>
+          )}
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />

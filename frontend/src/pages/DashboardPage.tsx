@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext'
 import { BarList, ColumnChart } from '../components/Charts'
 import { Icon } from '../components/Icon'
 import { Horns } from '../components/Ornament'
+import { SkeletonList } from '../components/Skeleton'
+import { DateInput } from '../components/DateInput'
 import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay, MONTHS_SHORT } from '../lib/format'
 
 type PresetKey = '30d' | 'month' | 'year' | '12m' | 'all'
@@ -120,28 +122,26 @@ export function DashboardPage() {
           ))}
         </div>
         <div className="daterange">
-          <input
-            type="date"
-            className="input"
+          <DateInput
             value={range[0]}
             max={range[1]}
-            onChange={(e) => {
+            clearable={false}
+            ariaLabel="Басталу күні"
+            onChange={(v) => {
               setPreset(null)
-              if (e.target.value) setRange([e.target.value, range[1]])
+              if (v) setRange([v, range[1]])
             }}
-            aria-label="Басталу күні"
           />
-          <span>—</span>
-          <input
-            type="date"
-            className="input"
+          <span aria-hidden="true">—</span>
+          <DateInput
             value={range[1]}
             min={range[0]}
-            onChange={(e) => {
+            clearable={false}
+            ariaLabel="Аяқталу күні"
+            onChange={(v) => {
               setPreset(null)
-              if (e.target.value) setRange([range[0], e.target.value])
+              if (v) setRange([range[0], v])
             }}
-            aria-label="Аяқталу күні"
           />
         </div>
       </div>
@@ -168,7 +168,7 @@ export function DashboardPage() {
             Кезең есебі
           </Link>
         </div>
-        {data && <ColumnChart data={series} />}
+        {data ? <ColumnChart data={series} /> : <div className="skeleton skeleton--chart" aria-hidden="true" />}
       </div>
 
       <div className="grid-2">
@@ -177,26 +177,26 @@ export function DashboardPage() {
             <h2 className="card__title">Көп сатылатын тауарлар</h2>
             <span className="card__sub">түсім бойынша, ₸</span>
           </div>
-          <BarList
+          {!data ? <SkeletonList /> : <BarList
             items={(data?.topProducts ?? []).map((p) => ({
               name: p.name,
               value: p.revenue,
               hint: `${fmtMoney(p.quantity)} дана · ${p.invoices} жүкқұжат`,
             }))}
-          />
+          />}
         </div>
         <div className="card">
           <div className="card__head">
             <h2 className="card__title">Үздік сатып алушылар</h2>
             <span className="card__sub">түсім бойынша, ₸</span>
           </div>
-          <BarList
+          {!data ? <SkeletonList /> : <BarList
             items={(data?.topClients ?? []).map((c) => ({
               name: c.name,
               value: c.revenue,
               hint: `${c.invoices} жүкқұжат`,
             }))}
-          />
+          />}
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export function DashboardPage() {
           <h2 className="card__title">Санаттар</h2>
           <span className="card__sub">кезеңдегі түсім үлесі</span>
         </div>
-        <BarList items={foldCategories(data)} />
+        {!data ? <SkeletonList rows={8} /> : <BarList items={foldCategories(data)} />}
       </div>
     </section>
   )

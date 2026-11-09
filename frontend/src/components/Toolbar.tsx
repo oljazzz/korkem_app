@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { SkeletonRows } from './Skeleton'
 
 interface Props {
   onCreate: () => void
@@ -64,7 +65,7 @@ export function TableState({ loading, error, empty, colSpan }: {
   colSpan: number
 }) {
   if (error) return <tr><td colSpan={colSpan} className="table__msg table__msg--error">{error}</td></tr>
-  if (loading && empty) return <tr><td colSpan={colSpan} className="table__msg">Жүктелуде…</td></tr>
+  if (loading && empty) return <SkeletonRows cols={colSpan} />
   if (empty) return <tr><td colSpan={colSpan} className="table__msg">Деректер жоқ</td></tr>
   return null
 }
