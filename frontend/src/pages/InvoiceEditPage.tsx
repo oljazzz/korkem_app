@@ -251,7 +251,7 @@ export function InvoiceEditPage() {
         <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>
         <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>Жабу</button>
         <button className="btn btn--outline" onClick={report} disabled={!canSave && (dirty || isNew)}>
-          <Icon name="print" />З-2 басып шығару
+          <Icon name="print" />Қ-2 басып шығару
         </button>
         <span className="muted" role="status">
           {missing.length > 0 ? `Сақтау үшін ${missing.join(' және ')}` : dirty ? 'Сақталмаған өзгерістер бар' : ''}

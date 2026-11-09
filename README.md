@@ -59,7 +59,7 @@ cd frontend && npm install && npm run dev
 | `COOKIE_SECURE` | `false` — prod-та `true` (тек HTTPS) |
 | `ADMIN_PASSWORD` | `admin` — prod-та міндетті, кемінде 8 таңба |
 | `VAT_RATE` | `12` — ҚҚС мөлшерлемесі, %, бағаның ішінде (тек жаңа және өзгертілген жолдарға әсер етеді) |
-| `COMPANY_NAME`, `COMPANY_CHIEF_ACCOUNTANT`, `COMPANY_RELEASE_ALLOWED_BY` | З-2 нысанындағы ұйым деректері |
+| `COMPANY_NAME`, `COMPANY_BIN`, `COMPANY_CHIEF_ACCOUNTANT`, `COMPANY_RELEASE_ALLOWED_BY` | Қ-2 нысанындағы ұйым деректері (атауы, БСН, қол қоюшылар) |
 | `CORS_ORIGINS` | `http://localhost:5173` |
 | `PORT` | `8090` |
 

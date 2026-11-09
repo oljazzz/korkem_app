@@ -86,6 +86,7 @@ export interface User {
 
 export interface Company {
   name: string
+  bin: string
   chiefAccountant: string
   releaseAllowedBy: string
 }

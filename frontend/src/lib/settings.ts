@@ -3,7 +3,7 @@ import { api } from '../api'
 import type { Settings } from '../api/types'
 
 const DEFAULTS: Settings = {
-  company: { name: '', chiefAccountant: '', releaseAllowedBy: '' },
+  company: { name: '', bin: '', chiefAccountant: '', releaseAllowedBy: '' },
   vatRate: 12,
 }
 

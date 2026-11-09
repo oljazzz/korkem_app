@@ -42,6 +42,8 @@ app:
   company:
     # Printed on documents (form Z-2)
     name: ${COMPANY_NAME:Körkem ЖШС}
+    # IIN/BIN (12 digits); leave empty to print blank boxes
+    bin: ${COMPANY_BIN:}
     chief-accountant: ${COMPANY_CHIEF_ACCOUNTANT:қарастырылмаған}
     release-allowed-by: ${COMPANY_RELEASE_ALLOWED_BY:Палымбетов Н.М.}
   vat:

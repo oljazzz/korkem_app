@@ -146,7 +146,7 @@ export function InvoicesPage() {
                   onEdit={() => open(i)}
                   onDelete={isAdmin ? () => setDeleting(i) : undefined}
                 >
-                  <button className="icon-btn" title="З-2 басып шығару" aria-label={`№ ${i.number} — З-2 басып шығару`}
+                  <button className="icon-btn" title="Қ-2 басып шығару" aria-label={`№ ${i.number} — Қ-2 басып шығару`}
                     onClick={() => navigate(`/invoices/${i.id}/print`)}>
                     <Icon name="print" />
                   </button>
