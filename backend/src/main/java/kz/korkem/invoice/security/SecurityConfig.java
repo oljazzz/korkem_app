@@ -45,6 +45,10 @@ public class SecurityConfig {
 
     private static final String ADMIN = Role.ADMIN.name();
 
+    private static final String CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            + "font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; "
+            + "form-action 'self'; frame-ancestors 'none'";
+
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps) throws Exception {
         http
@@ -63,6 +67,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/products/group").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole(ADMIN)
                         .requestMatchers("/api/**").authenticated()
+                        // The packaged frontend (index.html, /assets, client-side routes) is public
+                        .requestMatchers(HttpMethod.GET, "/**").permitAll()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(o -> o
                         .bearerTokenResolver(new CookieOrHeaderTokenResolver(authProps.cookie().name()))
@@ -74,6 +80,10 @@ public class SecurityConfig {
                     res.getWriter().write("{\"message\":\"Бұл әрекетке рұқсатыңыз жоқ\"}");
                 }))
                 .headers(h -> h
+                        // Same policy as frontend/security-headers.conf, for when Spring serves the frontend itself
+                        .contentSecurityPolicy(c -> c.policyDirectives(CSP))
+                        .permissionsPolicyHeader(pp -> pp.policy("camera=(), microphone=(), geolocation=(), payment=(), usb=()"))
+                        .crossOriginOpenerPolicy(Customizer.withDefaults())
                         .contentTypeOptions(Customizer.withDefaults())
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
                         .referrerPolicy(r -> r.policy(

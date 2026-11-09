@@ -1,0 +1,13 @@
+# Keep the build context small and free of local data and secrets
+.git
+.idea
+.vscode
+**/.DS_Store
+**/node_modules
+frontend/dist
+backend/target
+old-db
+migration
+.env
+.env.*
+!.env.example
