@@ -34,7 +34,18 @@ public class Client {
     @Column(nullable = false)
     private BigDecimal openingDebt = BigDecimal.ZERO;
 
-    /** Name shown in lists: "Name - Address". */
+    /** Short name for lists: the name without phone numbers typed into it. */
+    public String getLabel() {
+        String label = ClientText.withoutPhones(name);
+        return label == null ? name : label;
+    }
+
+    /** Where the client is: town/market if set, otherwise the address without phone numbers. */
+    public String getPlace() {
+        return city != null && !city.isBlank() ? city : ClientText.withoutPhones(address);
+    }
+
+    /** Full name shown on documents: "Name - Address". */
     public String getDisplayName() {
         return address == null || address.isBlank() ? name : name + " - " + address;
     }

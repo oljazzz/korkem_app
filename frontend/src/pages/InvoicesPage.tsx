@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { InvoiceListItem } from '../api/types'
+import type { InvoiceListItem, InvoiceSummary } from '../api/types'
 import { useIsAdmin } from '../auth/AuthContext'
 import { Alert } from '../components/Alert'
 import { DateInput } from '../components/DateInput'
@@ -13,7 +13,7 @@ import { PaymentBadge } from '../components/PaymentBadge'
 import { RowActions, rowProps } from '../components/RowActions'
 import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
-import { fmtDate, fmtMoney } from '../lib/format'
+import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { useList } from '../lib/useList'
 
 export function InvoicesPage() {
@@ -26,9 +26,13 @@ export function InvoicesPage() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [dueOnly, setDueOnly] = useState(false)
-  const list = useList<InvoiceListItem>((p) =>
-    api.invoices.list({ ...p, from: from || null, to: to || null, clientId, dueOnly: dueOnly ? 'true' : null }),
-  )
+  const [summary, setSummary] = useState<InvoiceSummary | null>(null)
+  const list = useList<InvoiceListItem>((p) => {
+    const filters = { q: p.q, from: from || null, to: to || null, clientId, dueOnly: dueOnly ? 'true' : null }
+    // Totals for the whole filtered list, not just this page
+    if (p.page === 0) api.invoices.summary(filters).then(setSummary).catch(() => setSummary(null))
+    return api.invoices.list({ ...p, ...filters })
+  })
 
   // Opened from a client card: show whose invoices these are
   useEffect(() => {
@@ -95,17 +99,7 @@ export function InvoicesPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Сатылым" title="Жүкқұжаттар">
-        <button
-          className="btn btn--outline"
-          disabled={checked.size === 0}
-          title="Белгіленген жүкқұжаттар бойынша сатылған тауарлар есебі"
-          onClick={() => navigate(`/reports?invoiceIds=${[...checked.keys()].join(',')}`)}
-        >
-          <Icon name="report" />
-          Тауарлар есебі{checked.size > 0 ? ` · ${checked.size}` : ''}
-        </button>
-      </PageHeader>
+      <PageHeader eyebrow="Сатылым" title="Жүкқұжаттар" />
 
       <Toolbar
         onCreate={() => navigate('/invoices/new')}
@@ -153,6 +147,21 @@ export function InvoicesPage() {
             {checked.size > 12 ? '…' : ''}
           </span>
           <button className="link-btn" onClick={() => setChecked(new Map())}>Белгілерді алу</button>
+          <button
+            className="btn btn--outline btn--s"
+            title="Белгіленген жүкқұжаттар бойынша сатылған тауарлар есебі"
+            onClick={() => navigate(`/reports?invoiceIds=${[...checked.keys()].join(',')}`)}
+          >
+            <Icon name="report" />
+            Тауарлар есебі
+          </button>
+        </div>
+      )}
+      {summary && (
+        <div className="list-summary" aria-live="polite">
+          <span><b>{fmt(summary.count)}</b> жүкқұжат</span>
+          <span>сомасы <b>{fmtMoney(summary.total)} ₸</b></span>
+          {summary.due > 0 && <span className="list-summary__due">төленбегені <b>{fmtMoney(summary.due)} ₸</b></span>}
         </div>
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
@@ -185,7 +194,10 @@ export function InvoicesPage() {
                 </td>
                 <td className="mono strong" data-title>№ {i.number}</td>
                 <td className="muted-cell" data-label="Күні">{fmtDate(i.createdAt)}</td>
-                <td data-label="Клиент">{i.clientName}</td>
+                <td data-label="Клиент">
+                  <span className="strong">{i.clientName}</span>
+                  {i.clientPlace && <span className="cell-sub">{i.clientPlace}</span>}
+                </td>
                 <td className="cell-status">
                   <PaymentBadge status={i.status} />
                   {i.status === 'PARTIAL' && <span className="cell-sub">қалды {fmtMoney(i.due)} ₸</span>}

@@ -34,6 +34,7 @@ public class InvoiceService {
     private final CategoryRepository categories;
     private final InvoiceCalculator calculator;
     private final PaymentRepository payments;
+    private final InvoiceStats stats;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
 
@@ -65,11 +66,26 @@ public class InvoiceService {
         return PageResponse.of(result, i -> {
             BigDecimal total = totals.getOrDefault(i.getId(), BigDecimal.ZERO);
             BigDecimal p = paid.getOrDefault(i.getId(), BigDecimal.ZERO);
-            return new InvoiceListItem(i.getId(), i.getNumber(),
-                    i.getClient() == null ? null : i.getClient().getId(),
-                    i.getClient() == null ? null : i.getClient().getDisplayName(), i.getCreatedAt(), total,
+            var c = i.getClient();
+            return new InvoiceListItem(i.getId(), i.getNumber(), c == null ? null : c.getId(),
+                    c == null ? null : c.getLabel(), c == null ? null : c.getPlace(), i.getCreatedAt(), total,
                     p, PaymentStatus.due(total, p, i.isLegacyPaid()), PaymentStatus.of(total, p, i.isLegacyPaid()));
         });
+    }
+
+    /** Count, amount and amount still owed over all invoices matching the list filters. */
+    @Transactional(readOnly = true)
+    public InvoiceSummary summary(String q, Long clientId, LocalDate from, LocalDate to, boolean dueOnly) {
+        String query = q == null ? "" : q.trim();
+        Long number = null;
+        String digits = query.replaceAll("\\s", "");
+        if (!digits.isEmpty() && digits.chars().allMatch(Character::isDigit) && digits.length() < 18) {
+            number = Long.parseLong(digits);
+            query = "";
+        }
+        return stats.summary(number, query, clientId,
+                from == null ? null : from.atStartOfDay(ZONE).toInstant(),
+                to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant(), dueOnly);
     }
 
     /** The client's most recent invoice, used to repeat an order. */
@@ -185,7 +201,7 @@ public class InvoiceService {
         BigDecimal paid = inv.getId() == null ? BigDecimal.ZERO : payments.paidFor(inv.getId());
         boolean legacy = inv.isLegacyPaid();
         return new InvoiceDto(inv.getId(), inv.getNumber(), c == null ? null : c.getId(),
-                c == null ? null : c.getDisplayName(), inv.getCreatedAt(), inv.getCreatedBy(), lines, total, vat,
+                c == null ? null : c.getDisplayName(), c == null ? null : c.getLabel(), inv.getCreatedAt(), inv.getCreatedBy(), lines, total, vat,
                 paid, PaymentStatus.due(total, paid, legacy), PaymentStatus.of(total, paid, legacy), legacy);
     }
 }

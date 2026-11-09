@@ -5,7 +5,7 @@ import { useIsAdmin } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
-import type { Client, Debts, MergeSide } from '../api/types'
+import type { CityCount, Client, Debts, MergeSide } from '../api/types'
 import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
 import { MergeClientsModal } from '../components/MergeClientsModal'
@@ -29,11 +29,17 @@ export function ClientsPage() {
   const [duplicates, setDuplicates] = useState<MergeSide[][] | null>(null)
   const [dupVersion, setDupVersion] = useState(0)
   const [mergePair, setMergePair] = useState<[number, number] | null>(null)
-  const list = useList<Client>((p) => api.clients.list(p))
+  const [city, setCity] = useState('')
+  const [cities, setCities] = useState<CityCount[]>([])
+  const list = useList<Client>((p) => api.clients.list({ ...p, city: city || null }))
   const [debts, setDebts] = useState<Debts | null>(null)
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Client | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.clients.cities().then(setCities).catch(() => setCities([]))
+  }, [])
 
   useEffect(() => {
     if (view !== 'debtors') return
@@ -94,6 +100,21 @@ export function ClientsPage() {
             Қайталанатындар
           </button>
         </div>
+        {view === 'all' && cities.length > 0 && (
+          <select
+            className="input toolbar__select"
+            aria-label="Елді мекен / базар бойынша сүзу"
+            value={city}
+            onChange={(e) => {
+              setCity(e.target.value)
+              list.setPage(0)
+              list.reload()
+            }}
+          >
+            <option value="">Барлық елді мекендер</option>
+            {cities.map((c) => <option key={c.city} value={c.city}>{c.city} ({c.clients})</option>)}
+          </select>
+        )}
       </Toolbar>
       {view === 'debtors' && debts && (
         <div className="selection-bar">
@@ -132,8 +153,9 @@ export function ClientsPage() {
             {rows.map((c) => (
               <tr key={c.id} {...rowProps(() => open(c), isAdmin ? () => setDeleting(c) : undefined, list.selected?.id === c.id)}>
                 <td data-title>
-                  <span className="strong">{c.name}</span>
-                  {c.address && <span className="cell-sub">{c.address}</span>}
+                  <span className="strong">{c.label}</span>
+                  {c.city && c.address && <span className="cell-sub">{c.address}</span>}
+                  {!c.city && c.place && <span className="cell-sub">{c.place}</span>}
                 </td>
                 <td data-label="Телефон" className="nowrap">{c.phone}</td>
                 <td data-label="Елді мекен">{c.city}</td>

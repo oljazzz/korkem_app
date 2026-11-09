@@ -1,45 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import type { Dashboard, Debts } from '../api/types'
+import type { Dashboard, Debts, InvoiceListItem } from '../api/types'
 import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
 import { BarList, ColumnChart } from '../components/Charts'
 import { Icon } from '../components/Icon'
 import { Horns } from '../components/Ornament'
 import { SkeletonList } from '../components/Skeleton'
-import { DateInput } from '../components/DateInput'
+import { PaymentBadge } from '../components/PaymentBadge'
+import { PeriodPicker } from '../components/PeriodPicker'
+import { rowProps } from '../components/RowActions'
+import { periodRange } from '../lib/periods'
 import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay, MONTHS_SHORT } from '../lib/format'
-
-type PresetKey = '30d' | 'month' | 'year' | '12m' | 'all'
-
-function presetRange(key: PresetKey): [string, string] {
-  const now = new Date()
-  const today = isoDay(now)
-  const [y, m] = today.split('-').map(Number)
-  switch (key) {
-    case '30d':
-      return [isoDay(new Date(now.getTime() - 29 * 86400000)), today]
-    case 'month':
-      return [`${y}-${String(m).padStart(2, '0')}-01`, today]
-    case 'year':
-      return [`${y}-01-01`, today]
-    case '12m': {
-      const d = new Date(Date.UTC(y, m - 12, 1))
-      return [isoDay(d), today]
-    }
-    case 'all':
-      return ['2022-01-01', today]
-  }
-}
-
-const PRESETS: { key: PresetKey; label: string }[] = [
-  { key: '30d', label: '30 күн' },
-  { key: 'month', label: 'Осы ай' },
-  { key: 'year', label: 'Осы жыл' },
-  { key: '12m', label: '12 ай' },
-  { key: 'all', label: 'Барлық уақыт' },
-]
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Almaty', hour: 'numeric', hour12: false }).format(new Date()))
@@ -51,8 +24,9 @@ function greeting() {
 
 export function DashboardPage() {
   const { user } = useAuth()
-  const [preset, setPreset] = useState<PresetKey | null>('12m')
-  const [range, setRange] = useState<[string, string]>(() => presetRange('12m'))
+  const navigate = useNavigate()
+  const [range, setRange] = useState<[string, string]>(() => periodRange('12m'))
+  const [recent, setRecent] = useState<InvoiceListItem[] | null>(null)
   const [data, setData] = useState<Dashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,6 +35,7 @@ export function DashboardPage() {
   // Receivables do not depend on the selected period
   useEffect(() => {
     api.clients.debtors(5).then(setDebts).catch(() => setDebts(null))
+    api.invoices.list({ size: 5 }).then((p) => setRecent(p.items)).catch(() => setRecent([]))
   }, [])
 
   useEffect(() => {
@@ -92,11 +67,6 @@ export function DashboardPage() {
     [data, range],
   )
 
-  const choose = (key: PresetKey) => {
-    setPreset(key)
-    setRange(presetRange(key))
-  }
-
   return (
     <section className="page dash">
       <header className="dash__hero">
@@ -114,42 +84,62 @@ export function DashboardPage() {
         </Link>
       </header>
 
-      <div className="filters" role="group" aria-label="Кезең">
-        <div className="chips">
-          {PRESETS.map((p) => (
-            <button
-              key={p.key}
-              className={`chip ${preset === p.key ? 'is-active' : ''}`}
-              aria-pressed={preset === p.key}
-              onClick={() => choose(p.key)}
-            >
-              {p.label}
-            </button>
-          ))}
+      <div className="grid-2 dash__today">
+        <div className="card">
+          <div className="card__head">
+            <h2 className="card__title">Соңғы жүкқұжаттар</h2>
+            <Link className="text-link" to="/invoices">Барлығы</Link>
+          </div>
+          {!recent ? <SkeletonList rows={5} /> : recent.length === 0 ? <p className="muted">Жүкқұжаттар әлі жоқ</p> : (
+            <table className="table table--compact">
+              <tbody>
+                {recent.map((i) => (
+                  <tr key={i.id} {...rowProps(() => navigate(`/invoices/${i.id}`))}>
+                    <td>
+                      <span className="strong nowrap">№ {i.number}</span>
+                      <span className="cell-sub">{fmtDate(i.createdAt)}</span>
+                    </td>
+                    <td className="dash__client">
+                      <span className="strong">{i.clientName}</span>
+                      {i.clientPlace && <span className="cell-sub">{i.clientPlace}</span>}
+                    </td>
+                    <td className="hide-phone"><PaymentBadge status={i.status} /></td>
+                    <td className="num strong">{fmtMoney(i.total)} ₸</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-        <div className="daterange">
-          <DateInput
-            value={range[0]}
-            max={range[1]}
-            clearable={false}
-            ariaLabel="Басталу күні"
-            onChange={(v) => {
-              setPreset(null)
-              if (v) setRange([v, range[1]])
-            }}
-          />
-          <span aria-hidden="true">—</span>
-          <DateInput
-            value={range[1]}
-            min={range[0]}
-            clearable={false}
-            ariaLabel="Аяқталу күні"
-            onChange={(v) => {
-              setPreset(null)
-              if (v) setRange([range[0], v])
-            }}
-          />
+        <div className="card debts">
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">Алынатын қарыз</h2>
+              <p className="card__sub">клиенттердің төленбеген сомасы, қазіргі күйі</p>
+            </div>
+            {debts && debts.total > 0 && <Link className="text-link" to="/clients?view=debtors">Барлығы</Link>}
+          </div>
+          {!debts ? <SkeletonList rows={4} /> : debts.total === 0 ? <p className="muted">Қарыз жоқ — барлық жүкқұжат төленген.</p> : (
+            <>
+              <div className="debts__total">
+                {fmtMoney(debts.total)}<span className="stat__unit">₸</span>
+              </div>
+              <ol className="debts__list">
+                {debts.debtors.map((d) => (
+                  <li key={d.client.id}>
+                    <Link to={`/clients/${d.client.id}`} className="debts__name">{d.client.label}</Link>
+                    <span className="debts__sum">{fmtMoney(d.debt)} ₸</span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
         </div>
+      </div>
+
+      <h2 className="section-title">Сатылым талдауы</h2>
+      <div className="filters">
+        <PeriodPicker from={range[0]} to={range[1]} onChange={(f, t) => setRange([f, t])} />
       </div>
 
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
@@ -182,31 +172,6 @@ export function DashboardPage() {
         {data ? <ColumnChart data={series} /> : <div className="skeleton skeleton--chart" aria-hidden="true" />}
       </div>
 
-      {debts && debts.total > 0 && (
-        <div className="card debts">
-          <div className="card__head">
-            <div>
-              <h2 className="card__title">Алынатын қарыз</h2>
-              <p className="card__sub">клиенттердің төленбеген сомасы, қазіргі күйі</p>
-            </div>
-            <Link className="btn btn--ghost" to="/clients?view=debtors">Барлық қарыздар</Link>
-          </div>
-          <div className="debts__body">
-            <div className="debts__total">
-              {fmtMoney(debts.total)}<span className="stat__unit">₸</span>
-            </div>
-            <ol className="debts__list">
-              {debts.debtors.map((d) => (
-                <li key={d.client.id}>
-                  <Link to={`/clients/${d.client.id}`} className="debts__name">{d.client.name}</Link>
-                  <span className="debts__sum">{fmtMoney(d.debt)} ₸</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      )}
-
       <div className="grid-2">
         <div className="card">
           <div className="card__head">
@@ -231,6 +196,7 @@ export function DashboardPage() {
               name: c.name,
               value: c.revenue,
               hint: `${c.invoices} жүкқұжат`,
+              to: c.id ? `/clients/${c.id}` : undefined,
             }))}
           />}
         </div>
@@ -241,23 +207,29 @@ export function DashboardPage() {
           <h2 className="card__title">Санаттар</h2>
           <span className="card__sub">кезеңдегі түсім үлесі</span>
         </div>
-        {!data ? <SkeletonList rows={8} /> : <BarList items={foldCategories(data)} />}
+        {!data ? <SkeletonList rows={8} /> : <CategoryShares data={data} />}
       </div>
     </section>
   )
 }
 
-function foldCategories(d: Dashboard | null) {
-  if (!d) return []
-  const total = d.categories.reduce((s, c) => s + c.revenue, 0) || 1
-  const top = d.categories.slice(0, 9)
-  const rest = d.categories.slice(9)
-  const items = top.map((c) => ({ name: c.name, value: c.revenue, hint: `${((c.revenue / total) * 100).toFixed(1)}%` }))
-  if (rest.length) {
-    const v = rest.reduce((s, c) => s + c.revenue, 0)
-    items.push({ name: `Басқалары (${rest.length})`, value: v, hint: `${((v / total) * 100).toFixed(1)}%` })
-  }
-  return items
+/** Top categories scaled to the largest one; the long tail is summarised in one line, not drawn as a bar. */
+function CategoryShares({ data }: { data: Dashboard }) {
+  const total = data.categories.reduce((s, c) => s + c.revenue, 0) || 1
+  const top = data.categories.slice(0, 8)
+  const rest = data.categories.slice(8)
+  const restSum = rest.reduce((s, c) => s + c.revenue, 0)
+  const pct = (v: number) => `${((v / total) * 100).toFixed(1)}%`
+  return (
+    <>
+      <BarList items={top.map((c) => ({ name: c.name, value: c.revenue, hint: `жалпы түсімнің ${pct(c.revenue)}` }))} />
+      {rest.length > 0 && (
+        <p className="barlist__rest">
+          Басқа {rest.length} санат: {fmtMoney(Math.round(restSum))} ₸ · {pct(restSum)}
+        </p>
+      )}
+    </>
+  )
 }
 
 /** First/last bucket that the selected range cuts short (e.g. the current, unfinished month). */

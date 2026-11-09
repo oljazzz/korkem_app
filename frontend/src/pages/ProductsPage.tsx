@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CategoriesManager, CategoryForm } from '../components/CategoriesManager'
 import { Icon } from '../components/Icon'
 import { api } from '../api'
 import { useIsAdmin } from '../auth/AuthContext'
@@ -25,11 +26,20 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Product | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [managing, setManaging] = useState(searchParams.get('categories') === '1')
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [catVersion, setCatVersion] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     api.categories.all().then(setCategories).catch(() => setCategories([]))
-  }, [])
+  }, [catVersion])
+
+  const categoriesChanged = () => {
+    setCatVersion((v) => v + 1)
+    list.reload()
+  }
 
   const groups = useMemo(() => {
     const map = new Map<string, Product[]>()
@@ -74,6 +84,9 @@ export function ProductsPage() {
         onSearch={list.search}
         searchPlaceholder="Атауы бойынша іздеу"
       >
+        <button className="btn btn--ghost" onClick={() => setManaging(true)}>
+          <Icon name="folder" />Санаттар
+        </button>
         <select
           className="input toolbar__select"
           aria-label="Санат бойынша сүзу"
@@ -97,12 +110,11 @@ export function ProductsPage() {
             <tr>
               <th>Атауы</th>
               <th className="num" style={{ width: 160 }}>Бағасы</th>
-              <th className="num" style={{ width: 120 }}>Реті</th>
               <th aria-label="Әрекеттер" style={{ width: 96 }} />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={4} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={3} />
             {groups.map(([key, items]) => (
               <GroupRows
                 key={key}
@@ -110,6 +122,10 @@ export function ProductsPage() {
                 items={items}
                 collapsed={collapsed.has(key)}
                 onToggle={() => toggle(key)}
+                onEditGroup={(() => {
+                  const cat = categories.find((c) => c.name === key)
+                  return cat ? () => setEditingCategory(cat) : undefined
+                })()}
                 selectedId={list.selected?.id ?? null}
                 onOpen={setEditing}
                 onDelete={isAdmin ? setDeleting : undefined}
@@ -120,6 +136,26 @@ export function ProductsPage() {
       </div>
       <div className="table-foot"><Pagination page={list.page} size={list.data.size} total={list.data.total} onChange={list.setPage} /></div>
 
+      {managing && (
+        <CategoriesManager
+          onClose={() => {
+            setManaging(false)
+            if (searchParams.get('categories')) setSearchParams({})
+          }}
+          onChanged={categoriesChanged}
+        />
+      )}
+      {editingCategory && (
+        <CategoryForm
+          category={editingCategory}
+          onClose={() => setEditingCategory(null)}
+          onSaved={() => {
+            setEditingCategory(null)
+            categoriesChanged()
+            toast.show('Санат сақталды')
+          }}
+        />
+      )}
       {editing && (
         <ProductForm
           product={editing === 'new' ? null : editing}
@@ -149,11 +185,12 @@ export function ProductsPage() {
   )
 }
 
-function GroupRows({ title, items, collapsed, onToggle, selectedId, onOpen, onDelete }: {
+function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId, onOpen, onDelete }: {
   title: string
   items: Product[]
   collapsed: boolean
   onToggle: () => void
+  onEditGroup?: () => void
   selectedId: number | null
   onOpen: (p: Product) => void
   onDelete?: (p: Product) => void
@@ -161,10 +198,17 @@ function GroupRows({ title, items, collapsed, onToggle, selectedId, onOpen, onDe
   return (
     <>
       <tr className="group-row">
-        <td colSpan={4}>
+        <td colSpan={2}>
           <button className="group-row__toggle" aria-expanded={!collapsed} onClick={onToggle}>
             <span className="group-row__icon" aria-hidden="true">{collapsed ? '▸' : '▾'}</span> {title} ({items.length})
           </button>
+        </td>
+        <td className="row-actions">
+          {onEditGroup && (
+            <button className="icon-btn" title="Санатты өзгерту" aria-label={`«${title}» санатын өзгерту`} onClick={onEditGroup}>
+              <Icon name="edit" />
+            </button>
+          )}
         </td>
       </tr>
       {!collapsed &&
@@ -172,7 +216,6 @@ function GroupRows({ title, items, collapsed, onToggle, selectedId, onOpen, onDe
           <tr key={p.id} {...rowProps(() => onOpen(p), onDelete ? () => onDelete(p) : undefined, selectedId === p.id)}>
             <td className="indent strong" data-title>{p.name}</td>
             <td className="num cell-amount">{fmt(p.price)} ₸</td>
-            <td className="num" data-label="Реті">{p.sortOrder}</td>
             <RowActions name={p.name} onEdit={() => onOpen(p)} onDelete={onDelete ? () => onDelete(p) : undefined} />
           </tr>
         ))}

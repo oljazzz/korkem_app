@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, Client, ClientSummary, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
+import type { Category, CityCount, Client, ClientSummary, InvoiceSummary, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -55,6 +55,7 @@ export const api = {
     summary: (id: number) => http.get<ClientSummary>(`/api/clients/${id}/summary`),
     lastInvoice: (id: number) => http.get<Invoice>(`/api/clients/${id}/last-invoice`),
     debtors: (limit = 50) => http.get<Debts>('/api/clients/debtors', { limit }),
+    cities: () => http.get<CityCount[]>('/api/clients/cities'),
     duplicates: () => http.get<MergeSide[][]>('/api/clients/duplicates'),
     mergePlan: (clientId: number, otherId: number) => http.get<MergePlan>('/api/clients/merge-plan', { clientId, otherId }),
     merge: (clientId: number, otherId: number) => http.post<MergeResult>('/api/clients/merge', { clientId, otherId }),
@@ -72,6 +73,7 @@ export const api = {
   products: crud<Product, ProductRequest>('/api/products'),
   invoices: {
     list: (p: ListParams = {}) => http.get<Page<InvoiceListItem>>('/api/invoices', p),
+    summary: (p: ListParams = {}) => http.get<InvoiceSummary>('/api/invoices/summary', p),
     get: (id: number) => http.get<Invoice>(`/api/invoices/${id}`),
     create: (body: InvoiceRequest) => http.post<Invoice>('/api/invoices', body),
     update: (id: number, body: InvoiceRequest) => http.put<Invoice>(`/api/invoices/${id}`, body),
@@ -80,7 +82,7 @@ export const api = {
   },
   reports: {
     dashboard: (from: string, to: string) => http.get<Dashboard>('/api/reports/dashboard', { from, to }),
-    sales: (p: { from?: string; to?: string; clientId?: number | null; invoiceIds?: string }) =>
+    sales: (p: { from?: string; to?: string; clientId?: number | null; city?: string | null; invoiceIds?: string }) =>
       http.get<SalesReport>('/api/reports/sales', p),
   },
   users: {

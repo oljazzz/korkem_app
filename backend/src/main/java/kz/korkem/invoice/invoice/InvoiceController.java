@@ -32,6 +32,16 @@ public class InvoiceController {
         return service.list(q, clientId, from, to, dueOnly, page, size);
     }
 
+    /** Totals for the same filters as the list: count, amount, amount still owed. */
+    @GetMapping("/summary")
+    public InvoiceSummary summary(@RequestParam(defaultValue = "") String q,
+                                  @RequestParam(required = false) Long clientId,
+                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                  @RequestParam(defaultValue = "false") boolean dueOnly) {
+        return service.summary(q, clientId, from, to, dueOnly);
+    }
+
     @GetMapping("/units")
     public List<UnitDto> units() {
         return Arrays.stream(Unit.values()).map(u -> new UnitDto(u, u.getLabel())).toList();

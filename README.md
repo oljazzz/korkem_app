@@ -15,8 +15,8 @@ frontend/  React 19 + TypeScript + Vite
 | Төлемдер | Әр жүкқұжатқа бөлек, бірнеше бөлікпен; тәсілі (қолма-қол, карта, аударым); артық төлемге тыйым |
 | Клиенттер | Аты, телефон, елді мекен/базар, мекенжай, ескертпе, бастапқы қарыз; клиент картасы (тарих, қарыз, жиі алатын тауарлар, «соңғыны қайталау»); қарызы барлар тізімі; телефоны бірдей клиенттер тізімі және біріктіру (соңғы жүкқұжаты жаңасы қалады, тек әкімші) |
 | Баға тізімі | Санат бойынша топтау, сүзгі, іздеу; клиентке жіберетін баспа/PDF нұсқасы |
-| Санаттар | Атауы, реті |
-| Есептер | Басты бет (түсім, алынатын қарыз), тауарлар бойынша сатылым, CSV |
+| Санаттар | Атауы, реті — «Баға тізімі» бетіндегі «Санаттар» батырмасы арқылы басқарылады |
+| Есептер | Басты бет (соңғы жүкқұжаттар, алынатын қарыз, сатылым талдауы), тауарлар бойынша сатылым (кезең, клиент, елді мекен), CSV |
 | Баптаулар | Ұйым деректері (атауы, БСН, мекенжай, телефон, қол қоюшылар) — тек әкімші |
 | Пайдаланушылар | Логин, құпиясөз, аты-жөні, рөлі, белсенділігі |
 
@@ -109,12 +109,12 @@ cd backend && ./mvnw test
 ```
 POST   /api/auth/login            {username, password} → {token, user}
 GET    /api/auth/me
-GET    /api/clients?q=&page=&size=      POST / PUT /{id} / DELETE /{id}
+GET    /api/clients?q=&city=&page=&size=   /cities   POST / PUT /{id} / DELETE /{id}
 GET    /api/clients/{id}/summary  /{id}/last-invoice  /debtors?limit=  /duplicates
 GET    /api/clients/merge-plan?clientId=&otherId=   POST /api/clients/merge (ADMIN)
 GET    /api/categories?q=  /all         POST / PUT /{id} / DELETE /{id}
 GET    /api/products?q=&categoryId=     POST / PUT /{id} / DELETE /{id}
-GET    /api/invoices?q=&clientId=&from=&to=&dueOnly=   GET /{id}  POST / PUT /{id} / DELETE /{id}
+GET    /api/invoices?q=&clientId=&from=&to=&dueOnly=   /summary (сол сүзгілермен)   GET /{id}  POST / PUT /{id} / DELETE /{id}
 GET    /api/invoices/{id}/payments      POST          DELETE /api/payments/{id}
 GET    /api/settings                    PUT /api/settings/company (ADMIN)
 GET    /api/invoices/units

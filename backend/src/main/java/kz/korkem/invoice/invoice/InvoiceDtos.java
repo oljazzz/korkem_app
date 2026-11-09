@@ -10,14 +10,20 @@ import java.util.List;
 public final class InvoiceDtos {
     private InvoiceDtos() {}
 
-    public record InvoiceListItem(Long id, Long number, Long clientId, String clientName, Instant createdAt,
-                                  BigDecimal total, BigDecimal paid, BigDecimal due, PaymentStatus status) {}
+    /** {@code clientName} is the short label (no phone numbers); {@code clientPlace} the town or address. */
+    public record InvoiceListItem(Long id, Long number, Long clientId, String clientName, String clientPlace,
+                                  Instant createdAt, BigDecimal total, BigDecimal paid, BigDecimal due,
+                                  PaymentStatus status) {}
+
+    /** Totals over every invoice that matches the list filters, not just the current page. */
+    public record InvoiceSummary(long count, BigDecimal total, BigDecimal due) {}
 
     public record LineDto(Long id, Long categoryId, String categoryName, Long productId, String productName,
                           Unit unit, String unitLabel, BigDecimal price, BigDecimal quantity,
                           BigDecimal discount, BigDecimal total, BigDecimal vat, Integer sortOrder) {}
 
-    public record InvoiceDto(Long id, Long number, Long clientId, String clientName, Instant createdAt,
+    /** {@code clientName} is the full "name - address" printed on documents; {@code clientLabel} the short one. */
+    public record InvoiceDto(Long id, Long number, Long clientId, String clientName, String clientLabel, Instant createdAt,
                              String createdBy, List<LineDto> lines, BigDecimal total, BigDecimal vat,
                              BigDecimal paid, BigDecimal due, PaymentStatus status, boolean legacyPaid) {}
 

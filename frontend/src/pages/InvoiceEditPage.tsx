@@ -70,7 +70,7 @@ export function InvoiceEditPage() {
       .then((inv) => {
         setNumber(inv.number)
         setDate(isoDay(new Date(inv.createdAt)))
-        setClient(inv.clientId ? { id: inv.clientId, label: inv.clientName ?? '' } : null)
+        setClient(inv.clientId ? { id: inv.clientId, label: inv.clientLabel ?? inv.clientName ?? '' } : null)
         setLines(inv.lines.map((l) => ({ ...l, key: keySeq++ })))
         setPayment(paymentState(inv))
       })
@@ -82,7 +82,7 @@ export function InvoiceEditPage() {
   useEffect(() => {
     const clientId = Number(searchParams.get('client'))
     if (!isNew || !clientId) return
-    api.clients.get(clientId).then((c) => setClient({ id: c.id, label: c.displayName })).catch(() => undefined)
+    api.clients.get(clientId).then((c) => setClient({ id: c.id, label: c.label })).catch(() => undefined)
   }, [isNew, searchParams])
 
   // The selected client's latest invoice, offered for repeating on a new invoice
@@ -240,7 +240,8 @@ export function InvoiceEditPage() {
                 setDirty(true)
               }}
               load={(q) =>
-                api.clients.list({ q, size: 30 }).then((p) => p.items.map((c) => ({ id: c.id, label: c.displayName })))
+                api.clients.list({ q, size: 30 }).then((p) =>
+                  p.items.map((c) => ({ id: c.id, label: c.label, hint: [c.place, c.phone].filter(Boolean).join(' · ') || undefined })))
               }
             />
             <button className="btn btn--outline btn--icon" title="Жаңа клиент" aria-label="Жаңа клиент" onClick={() => setNewClient(true)}>
@@ -295,20 +296,25 @@ export function InvoiceEditPage() {
               )}
               {lines.map((l, i) => (
                 <tr key={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
-                  <td className="num muted-cell">{i + 1}</td>
-                  <td className="strong">{l.productName}</td>
-                  <td className="num">
+                  <td className="num muted-cell line-no">{i + 1}</td>
+                  <td className="strong line-name">{l.productName}</td>
+                  {/* Phones: one compact "qty × price" line instead of four columns */}
+                  <td className="line-calc">
+                    {fmt(l.quantity)} {unitLabel(l.unit)} × {l.price === 0 ? <span className="price-missing"><Icon name="warning" size={14} />0</span> : fmtMoney(l.price)} ₸
+                    {l.discount ? ` · −${fmt(l.discount)}%` : ''}
+                  </td>
+                  <td className="num line-col">
                     {l.price === 0 ? (
                       <span className="price-missing" title="Бағасы көрсетілмеген">
                         <Icon name="warning" size={14} />0
                       </span>
                     ) : fmtMoney(l.price)}
                   </td>
-                  <td className="num">{fmt(l.quantity)}</td>
-                  <td>{unitLabel(l.unit)}</td>
-                  <td className="num">{l.discount ? `${fmt(l.discount)}%` : ''}</td>
-                  <td className="num strong">{fmtMoney(l.total)}</td>
-                  <td className="num muted-cell">{fmt2(l.vat)}</td>
+                  <td className="num line-col">{fmt(l.quantity)}</td>
+                  <td className="line-col">{unitLabel(l.unit)}</td>
+                  <td className="num line-col">{l.discount ? `${fmt(l.discount)}%` : ''}</td>
+                  <td className="num strong line-total">{fmtMoney(l.total)}</td>
+                  <td className="num muted-cell line-col">{fmt2(l.vat)}</td>
                   <td className="row-actions">
                     <button className="icon-btn" title="Өзгерту" aria-label={`«${l.productName}» өзгерту`} onClick={() => setEditingLine(l)}>
                       <Icon name="edit" />
@@ -323,10 +329,10 @@ export function InvoiceEditPage() {
             {lines.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={6}>Барлығы</td>
-                  <td className="num">{fmtMoney(totals.total)}</td>
-                  <td className="num">{fmt2(totals.vat)}</td>
-                  <td />
+                  <td colSpan={6} className="line-foot-label">Барлығы</td>
+                  <td className="num line-foot-total">{fmtMoney(totals.total)}</td>
+                  <td className="num line-col">{fmt2(totals.vat)}</td>
+                  <td className="line-col" />
                 </tr>
               </tfoot>
             )}
@@ -412,7 +418,7 @@ export function InvoiceEditPage() {
           client={null}
           onClose={() => setNewClient(false)}
           onSaved={(c) => {
-            setClient({ id: c.id, label: c.displayName })
+            setClient({ id: c.id, label: c.label })
             setNewClient(false)
             setDirty(true)
           }}

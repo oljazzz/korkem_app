@@ -463,4 +463,40 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/clients/" + older + "/summary").header("Authorization", admin))
                 .andExpect(jsonPath("$.invoiceCount").value(3));
     }
+
+    @Test
+    void listSummaryCityFilterAndShortLabels() throws Exception {
+        String auth = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"ип.Сауле 8 701 222 33 44\",\"address\":\"Талгар рынок 87012223344\",\"phone\":\"+7 701 222 33 44\",\"city\":\"Талгар-тест\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.label").value("ип.Сауле"))
+                .andExpect(jsonPath("$.place").value("Талгар-тест"))
+                .andReturn().getResponse().getContentAsString(), "id");
+        String inv = extract(createInvoice(auth, clientId, 1000, 3), "id");
+        createInvoice(auth, clientId, 500, 2);
+        mvc.perform(post("/api/invoices/" + inv + "/payments").header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":1000}")).andExpect(status().isCreated());
+
+        mvc.perform(get("/api/invoices").param("clientId", clientId).header("Authorization", auth))
+                .andExpect(jsonPath("$.items[0].clientName").value("ип.Сауле"))
+                .andExpect(jsonPath("$.items[0].clientPlace").value("Талгар-тест"));
+        mvc.perform(get("/api/invoices/summary").param("clientId", clientId).header("Authorization", auth))
+                .andExpect(jsonPath("$.count").value(2))
+                .andExpect(jsonPath("$.total").value(4000))
+                .andExpect(jsonPath("$.due").value(3000));
+        mvc.perform(get("/api/invoices/summary").param("clientId", clientId).param("dueOnly", "true").header("Authorization", auth))
+                .andExpect(jsonPath("$.count").value(2));
+
+        mvc.perform(get("/api/clients/cities").header("Authorization", auth))
+                .andExpect(jsonPath("$[?(@.city == 'Талгар-тест')].clients").value(contains(1)));
+        mvc.perform(get("/api/clients").param("city", "талгар-тест").header("Authorization", auth))
+                .andExpect(jsonPath("$.total").value(1));
+        mvc.perform(get("/api/reports/sales").param("city", "Талгар-тест").header("Authorization", auth))
+                .andExpect(jsonPath("$.invoiceCount").value(2))
+                .andExpect(jsonPath("$.total").value(4000));
+        String today = LocalDate.now(ZoneId.of("Asia/Almaty")).toString();
+        mvc.perform(get("/api/reports/dashboard").param("from", today).param("to", today).header("Authorization", auth))
+                .andExpect(jsonPath("$.topClients[?(@.name == 'ип.Сауле 8 701 222 33 44')].id").value(contains(Integer.parseInt(clientId))));
+    }
 }

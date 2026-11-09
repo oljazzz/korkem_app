@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { SalesReport } from '../api/types'
+import type { CityCount, SalesReport } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
-import { DateInput } from '../components/DateInput'
+import { PeriodPicker } from '../components/PeriodPicker'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { SkeletonRows } from '../components/Skeleton'
-import { fmtDate, fmtMoney, isoDay } from '../lib/format'
+import { fmt, fmtDate, fmtMoney, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
 
 type SortKey = 'total' | 'quantity' | 'productName'
@@ -24,6 +24,8 @@ export function ReportsPage() {
   const [from, setFrom] = useState(params.get('from') ?? `${today.slice(0, 8)}01`)
   const [to, setTo] = useState(params.get('to') ?? today)
   const [client, setClient] = useState<Option | null>(null)
+  const [city, setCity] = useState('')
+  const [cities, setCities] = useState<CityCount[]>([])
   const [report, setReport] = useState<SalesReport | null>(null)
   const { company, vatRate } = useSettings()
   const [loading, setLoading] = useState(true)
@@ -32,9 +34,13 @@ export function ReportsPage() {
   const [q, setQ] = useState('')
 
   useEffect(() => {
+    api.clients.cities().then(setCities).catch(() => setCities([]))
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     setLoading(true)
-    const req = invoiceIds ? { invoiceIds } : { from, to, clientId: client?.id ?? null }
+    const req = invoiceIds ? { invoiceIds } : { from, to, clientId: client?.id ?? null, city: city || null }
     api.reports
       .sales(req)
       .then((r) => {
@@ -48,7 +54,7 @@ export function ReportsPage() {
     return () => {
       cancelled = true
     }
-  }, [from, to, client, invoiceIds])
+  }, [from, to, client, city, invoiceIds])
 
   const rows = useMemo(() => {
     const list = (report?.rows ?? []).filter((r) => !q || r.productName.toLowerCase().includes(q.toLowerCase()))
@@ -59,14 +65,7 @@ export function ReportsPage() {
 
   const subtitle = invoiceIds
     ? `Белгіленген жүкқұжаттар бойынша: ${report?.invoiceCount ?? '…'}`
-    : `Кезең: ${fmtDate(from)} — ${fmtDate(to)}${client ? ` · ${client.label}` : ''}`
-
-  const quick = (days: number | 'month' | 'year') => {
-    if (days === 'month') setFrom(`${today.slice(0, 8)}01`)
-    else if (days === 'year') setFrom(`${today.slice(0, 5)}01-01`)
-    else setFrom(isoDay(new Date(Date.now() - (days - 1) * 86400000)))
-    setTo(today)
-  }
+    : `Кезең: ${fmtDate(from)} — ${fmtDate(to)}${client ? ` · ${client.label}` : ''}${city ? ` · ${city}` : ''}`
 
   const downloadCsv = () => {
     if (!report) return
@@ -116,25 +115,27 @@ export function ReportsPage() {
           </div>
         ) : (
           <>
-            <div className="chips">
-              <button className="chip" onClick={() => quick(1)}>Бүгін</button>
-              <button className="chip" onClick={() => quick(7)}>7 күн</button>
-              <button className="chip" onClick={() => quick('month')}>Осы ай</button>
-              <button className="chip" onClick={() => quick('year')}>Осы жыл</button>
-            </div>
-            <div className="daterange">
-              <DateInput value={from} max={to} clearable={false} ariaLabel="Басталу күні" onChange={(v) => v && setFrom(v)} />
-              <span aria-hidden="true">—</span>
-              <DateInput value={to} min={from} clearable={false} ariaLabel="Аяқталу күні" onChange={(v) => v && setTo(v)} />
-            </div>
+            <PeriodPicker from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
             <div className="filters__client">
               <AsyncSelect
                 value={client}
                 placeholder="Барлық клиенттер"
                 onChange={setClient}
-                load={(text) => api.clients.list({ q: text, size: 30 }).then((p) => p.items.map((c) => ({ id: c.id, label: c.displayName })))}
+                load={(text) => api.clients.list({ q: text, size: 30 }).then((p) =>
+                  p.items.map((c) => ({ id: c.id, label: c.label, hint: c.place ?? c.phone ?? undefined })))}
               />
             </div>
+            <select
+              className="input toolbar__select"
+              aria-label="Елді мекен / базар"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={cities.length === 0}
+              title={cities.length === 0 ? 'Клиенттерге елді мекен енгізілгенде қолжетімді болады' : undefined}
+            >
+              <option value="">{cities.length === 0 ? 'Елді мекен енгізілмеген' : 'Барлық елді мекендер'}</option>
+              {cities.map((c) => <option key={c.city} value={c.city}>{c.city} ({c.clients})</option>)}
+            </select>
           </>
         )}
       </div>
@@ -162,10 +163,9 @@ export function ReportsPage() {
           <b>{fmtMoney(report?.totalQuantity)} дана</b>
         </div>
         <div className="summary__item">
-          <span>Жүкқұжат · позиция</span>
-          <b>
-            {report?.invoiceCount ?? 0} · {report?.rows.length ?? 0}
-          </b>
+          <span>Жүкқұжаттар</span>
+          <b>{fmt(report?.invoiceCount ?? 0)}</b>
+          <small className="summary__sub">{fmt(report?.rows.length ?? 0)} түрлі тауар</small>
         </div>
       </div>
 
@@ -224,8 +224,7 @@ export function ReportsPage() {
         </table>
       </div>
       <p className="muted report__note no-print">
-        «Бірлік бағасы» — жеңілдікті ескергендегі орташа нақты сату бағасы (барлығы ÷ саны).{' '}
-        {report && `${report.rows.length} позиция.`}
+        «Бірлік бағасы» — жеңілдікті ескергендегі орташа нақты сату бағасы (барлығы ÷ саны).
       </p>
     </section>
   )

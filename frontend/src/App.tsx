@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
-import { CategoriesPage } from './pages/CategoriesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ClientPage } from './pages/ClientPage'
@@ -34,7 +33,8 @@ export default function App() {
         <Route path="/clients/:id" element={<ClientPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/print" element={<PriceListPrintPage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
+        {/* Categories are managed on the price list page now */}
+        <Route path="/categories" element={<Navigate to="/products?categories=1" replace />} />
         <Route path="/users" element={user?.role === 'ADMIN' ? <UsersPage /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={user?.role === 'ADMIN' ? <SettingsPage /> : <Navigate to="/" replace />} />
       </Route>

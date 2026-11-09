@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fmtCompact, fmtMoney } from '../lib/format'
 
 // Single-series charts: one color (--chart), thin marks, hairline grid, hover tooltip.
@@ -121,6 +122,8 @@ interface BarItem {
   name: string
   value: number
   hint?: string
+  /** Makes the name a link (e.g. to the client card). */
+  to?: string
 }
 
 /** Horizontal ranking: name, thin bar, value. */
@@ -134,7 +137,11 @@ export function BarList({ items, emptyText = 'Деректер жоқ' }: { item
           <span className="barlist__rank">{i + 1}</span>
           <span className="barlist__body">
             <span className="barlist__top">
-              <span className="barlist__name">{it.name}</span>
+              {it.to ? (
+                <Link className="barlist__name barlist__link" to={it.to}>{it.name}</Link>
+              ) : (
+                <span className="barlist__name">{it.name}</span>
+              )}
               <span className="barlist__value">{fmtMoney(Math.round(it.value))}</span>
             </span>
             <span className="barlist__track">

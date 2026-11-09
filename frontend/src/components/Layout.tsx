@@ -22,7 +22,6 @@ const NAV: NavItem[] = [
   { to: '/invoices', label: 'Жүкқұжаттар', short: 'Жүкқұжат', icon: 'invoice', tab: true },
   { to: '/reports', label: 'Есептер', icon: 'report', tab: true },
   { to: '/products', label: 'Баға тізімі', icon: 'tag' },
-  { to: '/categories', label: 'Санаттар', icon: 'folder' },
   { to: '/clients', label: 'Клиенттер', icon: 'client', tab: true },
   { to: '/users', label: 'Пайдаланушылар', icon: 'users', adminOnly: true },
   { to: '/settings', label: 'Баптаулар', icon: 'settings', adminOnly: true },

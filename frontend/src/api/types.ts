@@ -13,7 +13,12 @@ export interface Client {
   city: string | null
   note: string | null
   openingDebt: number
+  /** Full "name - address", as printed on documents. */
   displayName: string
+  /** Name without phone numbers, for lists. */
+  label: string
+  /** Town/market, or the address without phone numbers. */
+  place: string | null
   /** Opening debt plus what is still owed on invoices. */
   debt: number
 }
@@ -57,6 +62,17 @@ export interface Debts {
   debtors: { client: Client; debt: number }[]
 }
 
+export interface InvoiceSummary {
+  count: number
+  total: number
+  due: number
+}
+
+export interface CityCount {
+  city: string
+  clients: number
+}
+
 export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID'
 export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER'
 
@@ -98,7 +114,9 @@ export interface InvoiceListItem {
   id: number
   number: number
   clientId: number | null
+  /** Short client name (no phone numbers). */
   clientName: string | null
+  clientPlace: string | null
   createdAt: string
   total: number
   paid: number
@@ -126,7 +144,9 @@ export interface Invoice {
   id: number
   number: number
   clientId: number | null
+  /** Full "name - address", printed on form Q-2. */
   clientName: string | null
+  clientLabel: string | null
   createdAt: string
   createdBy: string | null
   lines: InvoiceLine[]
@@ -195,6 +215,8 @@ export interface Kpi {
 }
 
 export interface Ranked {
+  /** Client id in the top-clients list. */
+  id: number | null
   name: string
   revenue: number
   quantity: number

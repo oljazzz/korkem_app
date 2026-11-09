@@ -33,7 +33,8 @@ public class ReportController {
 
     public record Point(String label, LocalDate start, BigDecimal revenue, long invoices) {}
 
-    public record Ranked(String name, BigDecimal revenue, BigDecimal quantity, long invoices) {}
+    /** {@code id} is the client id in the top-clients list, null elsewhere. */
+    public record Ranked(Long id, String name, BigDecimal revenue, BigDecimal quantity, long invoices) {}
 
     public record Dashboard(LocalDate from, LocalDate to, String granularity, Kpi current, Kpi previous,
                             List<Point> series, List<Ranked> topProducts, List<Ranked> topClients,
@@ -54,12 +55,13 @@ public class ReportController {
     public SalesReport sales(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                              @RequestParam(required = false) Long clientId,
+                             @RequestParam(required = false) String city,
                              @RequestParam(required = false) List<Long> invoiceIds) {
         if (invoiceIds != null && invoiceIds.size() > MAX_INVOICE_IDS) {
             throw new BadRequestException("Бір есепке " + MAX_INVOICE_IDS + "-нан артық жүкқұжат таңдауға болмайды");
         }
         MapSqlParameterSource p = new MapSqlParameterSource();
-        String where = filter(from, to, clientId, invoiceIds, p);
+        String where = filter(from, to, clientId, city, invoiceIds, p);
         List<SalesRow> rows = jdbc.query("""
                 select l.product_name, max(c.name) as category, sum(l.quantity) as qty, sum(l.total) as total,
                        sum(l.vat) as vat, count(distinct l.invoice_id) as invoices
@@ -131,13 +133,14 @@ public class ReportController {
                 group by l.product_name order by sum(l.total) desc limit 8
                 """, range, this::ranked);
         List<Ranked> topClients = jdbc.query("""
-                select c.name as name, sum(l.total) as revenue, sum(l.quantity) as qty,
+                select c.id as id, c.name as name, sum(l.total) as revenue, sum(l.quantity) as qty,
                        count(distinct i.id) as invoices
                 from invoice i join client c on c.id = i.client_id
                 join invoice_line l on l.invoice_id = i.id
                 where i.created_at >= :from and i.created_at < :to
                 group by c.id, c.name order by sum(l.total) desc limit 8
-                """, range, this::ranked);
+                """, range, (rs, n) -> new Ranked(rs.getLong("id"), rs.getString("name"), rs.getBigDecimal("revenue"),
+                        rs.getBigDecimal("qty"), rs.getLong("invoices")));
         List<Ranked> categories = jdbc.query("""
                 select coalesce(c.name, 'Санатсыз') as name, sum(l.total) as revenue, sum(l.quantity) as qty,
                        count(distinct l.invoice_id) as invoices
@@ -153,7 +156,7 @@ public class ReportController {
     }
 
     private Ranked ranked(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
-        return new Ranked(rs.getString("name"), rs.getBigDecimal("revenue"), rs.getBigDecimal("qty"), rs.getLong("invoices"));
+        return new Ranked(null, rs.getString("name"), rs.getBigDecimal("revenue"), rs.getBigDecimal("qty"), rs.getLong("invoices"));
     }
 
     private static Kpi kpi(List<Inv> invs) {
@@ -174,7 +177,8 @@ public class ReportController {
         return Timestamp.from(d.atStartOfDay(ZONE).toInstant());
     }
 
-    private static String filter(LocalDate from, LocalDate to, Long clientId, List<Long> ids, MapSqlParameterSource p) {
+    private static String filter(LocalDate from, LocalDate to, Long clientId, String city, List<Long> ids,
+                                 MapSqlParameterSource p) {
         List<String> cond = new ArrayList<>();
         if (from != null) {
             cond.add("i.created_at >= :from");
@@ -187,6 +191,10 @@ public class ReportController {
         if (clientId != null) {
             cond.add("i.client_id = :clientId");
             p.addValue("clientId", clientId);
+        }
+        if (city != null && !city.isBlank()) {
+            cond.add("i.client_id in (select cl.id from client cl where lower(cl.city) = lower(:city))");
+            p.addValue("city", city.trim());
         }
         if (ids != null && !ids.isEmpty()) {
             cond.add("i.id in (:ids)");

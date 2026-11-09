@@ -28,12 +28,14 @@ import org.springframework.web.bind.annotation.*;
 public class ClientController {
 
     public record ClientDto(Long id, String name, String address, String phone, String city, String note,
-                            BigDecimal openingDebt, String displayName, BigDecimal debt) {
+                            BigDecimal openingDebt, String displayName, String label, String place, BigDecimal debt) {
         static ClientDto of(Client c, BigDecimal debt) {
             return new ClientDto(c.getId(), c.getName(), c.getAddress(), c.getPhone(), c.getCity(), c.getNote(),
-                    c.getOpeningDebt(), c.getDisplayName(), debt);
+                    c.getOpeningDebt(), c.getDisplayName(), c.getLabel(), c.getPlace(), debt);
         }
     }
+
+    public record CityCount(String city, long clients) {}
 
     public record ClientRequest(
             @NotBlank(message = "Атын енгізіңіз") @Size(max = 255, message = "Аты тым ұзын") String name,
@@ -68,12 +70,19 @@ public class ClientController {
 
     @GetMapping
     public PageResponse<ClientDto> list(@RequestParam(defaultValue = "") String q,
+                                        @RequestParam(defaultValue = "") String city,
                                         @RequestParam(defaultValue = "0") int page,
                                         @RequestParam(defaultValue = "50") int size) {
-        var result = repo.search(q.trim(),
+        var result = repo.search(q.trim(), city.trim(),
                 PageRequest.of(page, PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "name")));
         Map<Long, BigDecimal> debts = balances.debts(result.map(Client::getId).getContent());
         return PageResponse.of(result, c -> ClientDto.of(c, debts.getOrDefault(c.getId(), BigDecimal.ZERO)));
+    }
+
+    /** Towns/markets entered for clients, with how many clients each has. */
+    @GetMapping("/cities")
+    public List<CityCount> cities() {
+        return repo.cities().stream().map(r -> new CityCount((String) r[0], (Long) r[1])).toList();
     }
 
     /** Clients that owe money, largest first, with the total owed. */
