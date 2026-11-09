@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, Client, ClientSummary, Company, Dashboard, Debts, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
+import type { Category, Client, ClientSummary, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -55,6 +55,9 @@ export const api = {
     summary: (id: number) => http.get<ClientSummary>(`/api/clients/${id}/summary`),
     lastInvoice: (id: number) => http.get<Invoice>(`/api/clients/${id}/last-invoice`),
     debtors: (limit = 50) => http.get<Debts>('/api/clients/debtors', { limit }),
+    duplicates: () => http.get<MergeSide[][]>('/api/clients/duplicates'),
+    mergePlan: (clientId: number, otherId: number) => http.get<MergePlan>('/api/clients/merge-plan', { clientId, otherId }),
+    merge: (clientId: number, otherId: number) => http.post<MergeResult>('/api/clients/merge', { clientId, otherId }),
   },
   payments: {
     list: (invoiceId: number) => http.get<Payment[]>(`/api/invoices/${invoiceId}/payments`),

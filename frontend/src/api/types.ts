@@ -34,6 +34,24 @@ export interface ClientSummary {
   topProducts: TopProduct[]
 }
 
+/** A client in a merge: the figures that decide which record stays. */
+export interface MergeSide {
+  client: Client
+  invoiceCount: number
+  lastInvoiceAt: string | null
+}
+
+export interface MergePlan {
+  primary: MergeSide
+  secondary: MergeSide
+}
+
+export interface MergeResult {
+  primary: Client
+  movedInvoices: number
+  removedName: string
+}
+
 export interface Debts {
   total: number
   debtors: { client: Client; debt: number }[]

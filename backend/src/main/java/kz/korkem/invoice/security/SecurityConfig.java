@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers("/api/users/**").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole(ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/clients/merge").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole(ADMIN)
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())

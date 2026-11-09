@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import type { ClientSummary } from '../api/types'
+import { useIsAdmin } from '../auth/AuthContext'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
+import { MergeClientsModal } from '../components/MergeClientsModal'
 import { PaymentBadge } from '../components/PaymentBadge'
 import { rowProps } from '../components/RowActions'
 import { SkeletonList } from '../components/Skeleton'
@@ -18,7 +20,9 @@ export function ClientPage() {
   const toast = useToast()
   const [data, setData] = useState<ClientSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const isAdmin = useIsAdmin()
   const [editing, setEditing] = useState(false)
+  const [merging, setMerging] = useState(false)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
@@ -58,6 +62,12 @@ export function ClientPage() {
           <button className="btn btn--ghost" onClick={() => setEditing(true)} disabled={!c}>
             <Icon name="edit" />Өзгерту
           </button>
+          {isAdmin && (
+            <button className="btn btn--ghost" onClick={() => setMerging(true)} disabled={!c}
+              title="Қайталанған клиентті осы клиентпен біріктіру">
+              <Icon name="merge" />Біріктіру
+            </button>
+          )}
           <button
             className="btn btn--outline"
             disabled={!data || data.invoiceCount === 0}
@@ -140,6 +150,18 @@ export function ClientPage() {
         </div>
       </div>
 
+      {merging && c && (
+        <MergeClientsModal
+          clientId={c.id}
+          onClose={() => setMerging(false)}
+          onMerged={(r) => {
+            setMerging(false)
+            toast.show(`«${r.removedName}» біріктірілді: ${r.movedInvoices} жүкқұжат көшірілді`)
+            if (r.primary.id === c.id) setVersion((v) => v + 1)
+            else navigate(`/clients/${r.primary.id}`, { replace: true })
+          }}
+        />
+      )}
       {editing && c && (
         <ClientForm
           client={c}

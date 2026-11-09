@@ -51,9 +51,20 @@ public class ClientController {
 
     public record Debts(BigDecimal total, List<DebtorDto> debtors) {}
 
+    /** A client in a merge or duplicate list, with the figures that decide which record stays. */
+    public record MergeSide(ClientDto client, long invoiceCount, Instant lastInvoiceAt) {}
+
+    public record MergePlan(MergeSide primary, MergeSide secondary) {}
+
+    public record MergeRequest(@jakarta.validation.constraints.NotNull(message = "Клиентті таңдаңыз") Long clientId,
+                               @jakarta.validation.constraints.NotNull(message = "Клиентті таңдаңыз") Long otherId) {}
+
+    public record MergeResult(ClientDto primary, int movedInvoices, String removedName) {}
+
     private final ClientRepository repo;
     private final ClientBalances balances;
     private final InvoiceService invoices;
+    private final ClientMergeService merger;
 
     @GetMapping
     public PageResponse<ClientDto> list(@RequestParam(defaultValue = "") String q,
@@ -75,6 +86,26 @@ public class ClientController {
                 .filter(r -> byId.containsKey(r.clientId()))
                 .map(r -> new DebtorDto(ClientDto.of(byId.get(r.clientId()), r.debt()), r.debt()))
                 .toList());
+    }
+
+    /** Clients sharing a phone number; in each group the first one would stay after a merge. */
+    @GetMapping("/duplicates")
+    public List<List<MergeSide>> duplicates() {
+        return merger.duplicatesByPhone().stream().map(g -> g.stream().map(this::side).toList()).toList();
+    }
+
+    /** Which of the two clients would stay (newer last invoice) and which would be removed. */
+    @GetMapping("/merge-plan")
+    public MergePlan mergePlan(@RequestParam Long clientId, @RequestParam Long otherId) {
+        var plan = merger.plan(clientId, otherId);
+        return new MergePlan(side(plan.primary()), side(plan.secondary()));
+    }
+
+    /** Merges two clients (admin only, see SecurityConfig): invoices move to the primary, the other is deleted. */
+    @PostMapping("/merge")
+    public MergeResult merge(@Valid @RequestBody MergeRequest req) {
+        var r = merger.merge(req.clientId(), req.otherId());
+        return new MergeResult(withDebt(r.primary()), r.movedInvoices(), r.removedName());
     }
 
     @GetMapping("/{id}")
@@ -123,6 +154,10 @@ public class ClientController {
     public void delete(@PathVariable Long id) {
         repo.delete(find(id));
         repo.flush(); // surface the FK violation here so it maps to 409 when the client has invoices
+    }
+
+    private MergeSide side(ClientMergeService.Side s) {
+        return new MergeSide(withDebt(s.client()), s.invoiceCount(), s.lastInvoiceAt());
     }
 
     private ClientDto withDebt(Client c) {

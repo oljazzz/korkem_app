@@ -416,4 +416,51 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.company.bin").value("123456789012"))
                 .andExpect(jsonPath("$.company.releaseAllowedBy").value("Директор Б."));
     }
+
+    @Test
+    void mergeKeepsTheClientWithTheNewestInvoice() throws Exception {
+        String admin = login();
+        String older = extract(mvc.perform(post("/api/clients").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"ип.Берик\",\"phone\":\"+7 705 189 91 49\",\"city\":\"Капчагай\",\"openingDebt\":1000}"))
+                .andReturn().getResponse().getContentAsString(), "id");
+        String newer = extract(mvc.perform(post("/api/clients").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"ип.Берик Алга\",\"phone\":\"87051899149, +7 701 000 11 22\",\"openingDebt\":500}"))
+                .andReturn().getResponse().getContentAsString(), "id");
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Almaty"));
+        String lines = ",\"lines\":[{\"productName\":\"Бояу\",\"price\":100,\"quantity\":1}]}";
+        // The record created first has the newer invoice, so it must win regardless of id order
+        mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientId\":" + newer + ",\"date\":\"" + today.minusDays(30) + "\"" + lines)).andExpect(status().isCreated());
+        mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientId\":" + newer + ",\"date\":\"" + today.minusDays(20) + "\"" + lines)).andExpect(status().isCreated());
+        mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"clientId\":" + older + lines)).andExpect(status().isCreated());
+
+        mvc.perform(get("/api/clients/duplicates").header("Authorization", admin))
+                .andExpect(jsonPath("$[?(@[0].client.id == " + older + " && @[1].client.id == " + newer + ")]").exists());
+        mvc.perform(get("/api/clients/merge-plan").param("clientId", newer).param("otherId", older).header("Authorization", admin))
+                .andExpect(jsonPath("$.primary.client.id").value(Integer.parseInt(older)))
+                .andExpect(jsonPath("$.secondary.invoiceCount").value(2));
+        mvc.perform(get("/api/clients/merge-plan").param("clientId", older).param("otherId", older).header("Authorization", admin))
+                .andExpect(status().isBadRequest());
+
+        createUser(admin, "merger1", "MANAGER");
+        String manager = login("merger1", "secret-123");
+        String body = "{\"clientId\":" + newer + ",\"otherId\":" + older + "}";
+        mvc.perform(post("/api/clients/merge").header("Authorization", manager).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/clients/merge").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.primary.id").value(Integer.parseInt(older)))
+                .andExpect(jsonPath("$.movedInvoices").value(2))
+                .andExpect(jsonPath("$.removedName").value("ип.Берик Алга"))
+                .andExpect(jsonPath("$.primary.name").value("ип.Берик"))
+                .andExpect(jsonPath("$.primary.phone").value("+7 705 189 91 49, +7 701 000 11 22"))
+                .andExpect(jsonPath("$.primary.city").value("Капчагай"))
+                .andExpect(jsonPath("$.primary.openingDebt").value(1500))
+                .andExpect(jsonPath("$.primary.debt").value(1800));
+        mvc.perform(get("/api/clients/" + newer).header("Authorization", admin)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/clients/" + older + "/summary").header("Authorization", admin))
+                .andExpect(jsonPath("$.invoiceCount").value(3));
+    }
 }

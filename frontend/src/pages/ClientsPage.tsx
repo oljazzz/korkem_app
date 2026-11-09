@@ -2,27 +2,33 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useIsAdmin } from '../auth/AuthContext'
+import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { ApiError } from '../api/http'
-import type { Client, Debts } from '../api/types'
+import type { Client, Debts, MergeSide } from '../api/types'
 import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
+import { MergeClientsModal } from '../components/MergeClientsModal'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
 import { RowActions, rowProps } from '../components/RowActions'
 import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
-import { fmtMoney, parseNum } from '../lib/format'
+import { fmt, fmtDate, fmtMoney, parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
 
-type View = 'all' | 'debtors'
+type View = 'all' | 'debtors' | 'duplicates'
 
 export function ClientsPage() {
   const isAdmin = useIsAdmin()
   const toast = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [view, setView] = useState<View>(searchParams.get('view') === 'debtors' ? 'debtors' : 'all')
+  const initialView = searchParams.get('view')
+  const [view, setView] = useState<View>(initialView === 'debtors' || initialView === 'duplicates' ? initialView : 'all')
+  const [duplicates, setDuplicates] = useState<MergeSide[][] | null>(null)
+  const [dupVersion, setDupVersion] = useState(0)
+  const [mergePair, setMergePair] = useState<[number, number] | null>(null)
   const list = useList<Client>((p) => api.clients.list(p))
   const [debts, setDebts] = useState<Debts | null>(null)
   const [editing, setEditing] = useState<Client | 'new' | null>(null)
@@ -37,6 +43,15 @@ export function ClientsPage() {
       alive = false
     }
   }, [view])
+
+  useEffect(() => {
+    if (view !== 'duplicates') return
+    let alive = true
+    api.clients.duplicates().then((d) => alive && setDuplicates(d)).catch((e: Error) => alive && setError(e.message))
+    return () => {
+      alive = false
+    }
+  }, [view, dupVersion])
 
   const open = (c: Client) => navigate(`/clients/${c.id}`)
 
@@ -75,6 +90,9 @@ export function ClientsPage() {
           <button className={`chip ${view === 'debtors' ? 'is-active' : ''}`} aria-pressed={view === 'debtors'} onClick={() => setView('debtors')}>
             Қарызы барлар
           </button>
+          <button className={`chip ${view === 'duplicates' ? 'is-active' : ''}`} aria-pressed={view === 'duplicates'} onClick={() => setView('duplicates')}>
+            Қайталанатындар
+          </button>
         </div>
       </Toolbar>
       {view === 'debtors' && debts && (
@@ -84,6 +102,14 @@ export function ClientsPage() {
         </div>
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
+      {view === 'duplicates' ? (
+        <Duplicates
+          groups={duplicates}
+          canMerge={isAdmin}
+          onOpen={open}
+          onMerge={(primaryId, otherId) => setMergePair([primaryId, otherId])}
+        />
+      ) : (
       <div className={`table-wrap ${loading ? 'is-loading' : ''}`} aria-busy={loading}>
         <table className="table table--cards">
           <thead>
@@ -120,10 +146,24 @@ export function ClientsPage() {
           </tbody>
         </table>
       </div>
+      )}
       {view === 'all' && (
         <div className="table-foot"><Pagination page={list.page} size={list.data.size} total={list.data.total} onChange={list.setPage} /></div>
       )}
 
+      {mergePair && (
+        <MergeClientsModal
+          clientId={mergePair[0]}
+          otherId={mergePair[1]}
+          onClose={() => setMergePair(null)}
+          onMerged={(r) => {
+            setMergePair(null)
+            setDupVersion((v) => v + 1)
+            list.reload()
+            toast.show(`«${r.removedName}» → «${r.primary.name}»: ${r.movedInvoices} жүкқұжат көшірілді`)
+          }}
+        />
+      )}
       {editing && (
         <ClientForm
           client={editing === 'new' ? null : editing}
@@ -148,6 +188,49 @@ export function ClientsPage() {
         />
       )}
     </section>
+  )
+}
+
+/** Groups of clients sharing a phone number. The first in each group would stay after a merge. */
+function Duplicates({ groups, canMerge, onOpen, onMerge }: {
+  groups: MergeSide[][] | null
+  canMerge: boolean
+  onOpen: (c: Client) => void
+  onMerge: (primaryId: number, otherId: number) => void
+}) {
+  if (!groups) return <div className="card"><p className="muted">Жүктелуде…</p></div>
+  if (groups.length === 0) return <div className="card"><p className="muted">Телефоны бірдей клиенттер жоқ</p></div>
+  return (
+    <>
+      <p className="muted dup-intro">
+        Телефоны бірдей {groups.length} топ. Әр топта бірінші тұрған клиенттің соңғы жүкқұжаты жаңа, біріктіргенде сол қалады.
+      </p>
+      <div className="dup-list">
+        {groups.map((g) => (
+          <div key={g.map((s) => s.client.id).join('-')} className="dup">
+            {g.map((s, i) => (
+              <div key={s.client.id} className={`dup__row ${i === 0 ? 'is-primary' : ''}`}>
+                <button className="dup__name link-btn" onClick={() => onOpen(s.client)}>{s.client.name}</button>
+                <span className="dup__meta">
+                  {s.client.phone}
+                  {(s.client.city || s.client.address) && ` · ${s.client.city ?? s.client.address}`}
+                </span>
+                <span className="dup__stats">
+                  {fmt(s.invoiceCount)} жүкқұжат · {s.lastInvoiceAt ? fmtDate(s.lastInvoiceAt) : 'жүкқұжаты жоқ'}
+                </span>
+                {i === 0 ? (
+                  <span className="dup__tag">Басты</span>
+                ) : canMerge ? (
+                  <button className="btn btn--outline btn--s" onClick={() => onMerge(g[0].client.id, s.client.id)}>
+                    <Icon name="merge" />Біріктіру
+                  </button>
+                ) : <span />}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 

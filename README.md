@@ -13,7 +13,7 @@ frontend/  React 19 + TypeScript + Vite
 |---|---|
 | Жүкқұжаттар | Тізім, нөмір/клиент/кезең бойынша іздеу, төлем мәртебесі және «тек төленбегендер» сүзгісі; жасау, өзгерту, күнін таңдау; Қ-2 нысанын басып шығару |
 | Төлемдер | Әр жүкқұжатқа бөлек, бірнеше бөлікпен; тәсілі (қолма-қол, карта, аударым); артық төлемге тыйым |
-| Клиенттер | Аты, телефон, елді мекен/базар, мекенжай, ескертпе, бастапқы қарыз; клиент картасы (тарих, қарыз, жиі алатын тауарлар, «соңғыны қайталау»); қарызы барлар тізімі |
+| Клиенттер | Аты, телефон, елді мекен/базар, мекенжай, ескертпе, бастапқы қарыз; клиент картасы (тарих, қарыз, жиі алатын тауарлар, «соңғыны қайталау»); қарызы барлар тізімі; телефоны бірдей клиенттер тізімі және біріктіру (соңғы жүкқұжаты жаңасы қалады, тек әкімші) |
 | Баға тізімі | Санат бойынша топтау, сүзгі, іздеу; клиентке жіберетін баспа/PDF нұсқасы |
 | Санаттар | Атауы, реті |
 | Есептер | Басты бет (түсім, алынатын қарыз), тауарлар бойынша сатылым, CSV |
@@ -110,7 +110,8 @@ cd backend && ./mvnw test
 POST   /api/auth/login            {username, password} → {token, user}
 GET    /api/auth/me
 GET    /api/clients?q=&page=&size=      POST / PUT /{id} / DELETE /{id}
-GET    /api/clients/{id}/summary  /{id}/last-invoice  /debtors?limit=
+GET    /api/clients/{id}/summary  /{id}/last-invoice  /debtors?limit=  /duplicates
+GET    /api/clients/merge-plan?clientId=&otherId=   POST /api/clients/merge (ADMIN)
 GET    /api/categories?q=  /all         POST / PUT /{id} / DELETE /{id}
 GET    /api/products?q=&categoryId=     POST / PUT /{id} / DELETE /{id}
 GET    /api/invoices?q=&clientId=&from=&to=&dueOnly=   GET /{id}  POST / PUT /{id} / DELETE /{id}
