@@ -258,6 +258,7 @@ input[type='checkbox']:checked {
 .combo__control { display: flex; align-items: center; min-height: var(--kr-control-m); border: 1px solid var(--border-control); border-radius: var(--kr-radius-m); background: var(--surface); }
 .combo__control:hover { border-color: var(--text); }
 .combo__control:focus-within { box-shadow: var(--focus-ring); }
+.combo__input:focus-visible { box-shadow: none; } /* the control draws the ring; one is enough */
 .combo__control.is-invalid { border-color: var(--danger); }
 .combo__input { flex: 1; min-width: 0; height: 100%; min-height: calc(var(--kr-control-m) - 2px); padding: 0 var(--kr-mu075); border: 0; outline: none; background: transparent; }
 .combo__clear, .combo__arrow { border: 0; background: none; padding: 0 var(--kr-mu075); color: var(--text-secondary); cursor: pointer; user-select: none; }
@@ -1074,4 +1075,31 @@ input[type='checkbox']:checked {
   .group-row__toggle { min-height: 44px; }
   .alert__close { width: 40px; height: 40px; margin: -10px -10px -10px 0; }
   .modal__close { width: 44px; height: 44px; }
+}
+
+/* ---------- Android phones (Samsung A-series: 384dp wide, 360 or less with enlarged screen zoom/text) ---------- */
+/* Android paints a blue box over anything tapped; replace it with our own press states */
+html { -webkit-tap-highlight-color: transparent; }
+/* iOS Safari and Android Chrome enlarge text they think is too small (the scaled-down Q-2 sheet); keep our sizes */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (hover: none) {
+  .row-link:active > td, .table--cards .row-link:active { background: var(--surface-sunken); }
+  .btn--ghost:active:not(:disabled), .icon-btn:active, .chip:active, .group-row__toggle:active { background: var(--surface-sunken); }
+  .tabbar__link:active { opacity: 0.7; }
+}
+/* Picker options: on a narrow screen the address/phone hint goes under the name, not on top of it */
+@media (max-width: 760px) {
+  .combo__option { flex-direction: column; align-items: stretch; gap: 2px; }
+  .combo__hint { white-space: normal; overflow-wrap: anywhere; }
+}
+/* A stray pull-down on the invoice editor must not reload the page (Chrome's pull-to-refresh) */
+html:has(.page--editor) { overscroll-behavior-y: contain; }
+@media (max-width: 400px) {
+  /* Price list: fixed column widths do not fit, let them shrink to their content */
+  .pricelist { padding: 16px 10px; }
+  .pricelist__table th, .pricelist__table td { padding-left: 4px; padding-right: 4px; }
+  .pricelist__table .c { width: 22px; }
+  .pricelist__table .n, .pricelist__table .p { width: auto; }
+  .pricelist__table th.n, .pricelist__table th.p { white-space: normal; }
+  .pricelist__table td { overflow-wrap: anywhere; }
 }
