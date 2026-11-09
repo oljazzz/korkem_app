@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers("/api/users/**").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole(ADMIN)
                         .requestMatchers(HttpMethod.POST, "/api/clients/merge").hasRole(ADMIN)

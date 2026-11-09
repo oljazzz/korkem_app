@@ -66,6 +66,11 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void healthIsPublic() throws Exception {
+        mvc.perform(get("/api/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
     void rejectsAnonymousAndWrongPassword() throws Exception {
         mvc.perform(get("/api/clients")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)

@@ -1,0 +1,68 @@
+# DigitalOcean App Platform: the "Deploy to DigitalOcean" button and `doctl apps create --spec` read this.
+# One domain for both parts: "/" is the built frontend, "/api" goes to the backend, so the
+# SameSite=Strict session cookie keeps working. Fill in the two SECRET values when asked.
+spec:
+  name: korkem
+  region: fra
+  databases:
+    - name: db
+      engine: PG
+      version: "16"
+      production: false
+  services:
+    - name: api
+      github:
+        repo: oljazzz/korkem_app
+        branch: main
+        deploy_on_push: true
+      source_dir: backend
+      dockerfile_path: backend/Dockerfile
+      http_port: 8090
+      instance_size_slug: apps-s-1vcpu-1gb
+      instance_count: 1
+      routes:
+        - path: /api
+          preserve_path_prefix: true
+      health_check:
+        http_path: /api/health
+        initial_delay_seconds: 60
+        period_seconds: 15
+      envs:
+        - key: APP_ENV
+          value: prod
+        - key: COOKIE_SECURE
+          value: "true"
+        - key: DB_URL
+          value: jdbc:postgresql://${db.HOSTNAME}:${db.PORT}/${db.DATABASE}?sslmode=require
+        - key: DB_USER
+          value: ${db.USERNAME}
+        - key: DB_PASSWORD
+          value: ${db.PASSWORD}
+          type: SECRET
+        - key: CORS_ORIGINS
+          value: ${APP_URL}
+        - key: JAVA_TOOL_OPTIONS
+          value: -XX:MaxRAMPercentage=75
+        - key: VAT_RATE
+          value: "16"
+        # Random string of 32+ characters: openssl rand -base64 48
+        - key: JWT_SECRET
+          type: SECRET
+          value: ""
+        # Password of the "admin" user created on first start (8+ characters, not "admin")
+        - key: ADMIN_PASSWORD
+          type: SECRET
+          value: ""
+  static_sites:
+    - name: web
+      github:
+        repo: oljazzz/korkem_app
+        branch: main
+        deploy_on_push: true
+      source_dir: frontend
+      environment_slug: node-js
+      build_command: npm ci && npm run build
+      output_dir: dist
+      catchall_document: index.html
+      routes:
+        - path: /

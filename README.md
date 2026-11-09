@@ -86,6 +86,30 @@ docker compose up --build
 
 Сыртқа тек nginx (`WEB_PORT`, әдепкі 3000) ашылады; дерекқор мен API ішкі желіде. Сайттың алдында HTTPS (TLS) болуы керек — сессия cookie-і тек HTTPS арқылы жіберіледі.
 
+## DigitalOcean App Platform-ға шығару (демо)
+
+Баптау `.do/deploy.template.yaml` файлында: `/` — фронтенд (статикалық сайт, тегін), `/api` — бэкенд
+(Docker, 1 GB, ~$12/ай), PostgreSQL 16 dev дерекқоры (~$7/ай). Екеуі бір доменде, HTTPS өздігінен.
+
+1. Кодты GitHub-тағы `main` тармағына жіберу (App Platform сол тармақтан құрастырады).
+2. Мына сілтемені ашып, DigitalOcean аккаунтымен кіру:
+   https://cloud.digitalocean.com/apps/new?repo=https://github.com/oljazzz/korkem_app/tree/main
+   Баптау файлы өздігінен оқылады. Сұралатын екі құпия:
+   - `JWT_SECRET` — кездейсоқ жол: `openssl rand -base64 48`
+   - `ADMIN_PASSWORD` — демодағы `admin` пайдаланушысының құпиясөзі (8+ таңба)
+3. Бірінші құрастыру біткенше күту (5–10 мин): `https://<app>.ondigitalocean.app/api/health` → `{"status":"ok"}`.
+4. Деректерді көшіру. App → `db` компоненті → Connection details → «Connection string» көшіріп:
+   ```
+   TARGET_DATABASE_URL='postgresql://…?sslmode=require' ./deploy/load-demo-data.sh
+   ```
+   Тауарлар, түстер, клиенттер, жүкқұжаттар, төлемдер мен ұйым баптаулары көшеді.
+   Пайдаланушылар көшпейді — демода тек `admin` (ADMIN_PASSWORD) болады, басқаларын «Пайдаланушылар» бетінде қосыңыз.
+5. «Баптаулар» бетінде ұйымның БСН-ін, мекенжайын, телефонын енгізу.
+
+Кейінгі `main`-ге push жасалған сайын App Platform өзі қайта құрастырады (Flyway миграциялары өздігінен орындалады).
+Ескерту: статикалық сайтта nginx-тің CSP тақырыптары жоқ (API тақырыптары Spring-тен келеді); толық тақырыптар керек
+болса, фронтендті `frontend/Dockerfile` бойынша сервис ретінде шығаруға болады.
+
 ## Қауіпсіздік
 
 - Кіргенде JWT **httpOnly, SameSite=Strict** cookie ретінде беріледі: JavaScript оны оқи алмайды, басқа сайттардан келген сұраныстарға қосылмайды (CSRF-тен қорғаныс). Сондықтан фронтенд пен API бір доменде болуы керек (nginx `/api` арқылы).
