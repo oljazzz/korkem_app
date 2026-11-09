@@ -180,27 +180,10 @@ export function InvoicePrintPage() {
           </div>
         </div>
 
+        {/* Only the two signatures the business uses: who handed the goods over and who received them */}
         <div className="z2__signs">
-          <div className="z2__col">
-            <Sign role="Беруге рұқсат еткен" hints={['лауазымы', 'қолы', 'қолды таратып жазу']} values={['', '', company.releaseAllowedBy]} />
-            <Sign role="Бас бухгалтер" hints={['қолы', 'қолды таратып жазу']} values={['', company.chiefAccountant]} />
-            <div className="z2__mp">М.О.</div>
-            <Sign role="Берген" hints={['қолы', 'қолды таратып жазу']} />
-          </div>
-          <div className="z2__col">
-            <div className="z2__row">
-              <span className="z2__line z2__line--grow" />
-              <span>берген</span>
-            </div>
-            <div className="z2__row">
-              <span>20</span><span className="z2__line z2__line--xs" /><span>жылғы «</span>
-              <span className="z2__line z2__line--xs" /><span>»</span>
-              <span className="z2__line z2__line--s" />
-              <span>№</span><span className="z2__line z2__line--grow" />
-              <span>сенімхат бойынша</span>
-            </div>
-            <Sign role="Қорларды алған" hints={['қолы', 'қолды таратып жазу']} />
-          </div>
+          <Sign role="Берген" hints={['қолы', 'қолды таратып жазу']} values={['', company.releaseAllowedBy]} />
+          <Sign role="Қорларды алған" hints={['қолы', 'қолды таратып жазу']} />
         </div>
       </article>
       </div>

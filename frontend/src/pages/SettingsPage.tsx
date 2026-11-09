@@ -59,11 +59,9 @@ export function SettingsPage() {
         <Field label="Телефон" error={errors.phone}>
           <input className="input" type="tel" value={form.phone ?? ''} onChange={set('phone')} />
         </Field>
-        <Field label="Беруге рұқсат еткен" error={errors.releaseAllowedBy}>
+        <Field label="Берген" error={errors.releaseAllowedBy}>
           <input className="input" value={form.releaseAllowedBy ?? ''} onChange={set('releaseAllowedBy')} placeholder="Тегі, аты-жөні" />
-        </Field>
-        <Field label="Бас бухгалтер" error={errors.chiefAccountant}>
-          <input className="input" value={form.chiefAccountant ?? ''} onChange={set('chiefAccountant')} />
+          <span className="field__hint">Қ-2 жүкқұжатының «Берген» жолына басылады.</span>
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}
         <div className="field__offset">
