@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, type InvoiceRequest } from '../api'
 import { ApiError } from '../api/http'
-import type { Category, Invoice, InvoiceLine, Product, ProductOption as ProductPick, ProductVariant, Unit, UnitCode } from '../api/types'
+import type { Category, Invoice, InvoiceLine, Unit, UnitCode } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
 import { DateInput } from '../components/DateInput'
 import { Field } from '../components/Field'
@@ -11,67 +11,53 @@ import { Alert } from '../components/Alert'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { PaymentsPanel, type PaymentState } from '../components/PaymentsPanel'
 import { useToast } from '../components/Toast'
-import { calcLine, fmt, fmt2, fmtDate, fmtMoney, fmtPack, isoDay, parseNum } from '../lib/format'
+import { ColourChips } from '../components/ColourChips'
+import { loadProducts, type PickOption } from '../lib/productPick'
+import { ClientSheet, ProductSheet, type LineDraft } from '../components/InvoiceSheets'
+import { Stepper } from '../components/Sheet'
+import { useNarrow } from '../lib/useNarrow'
+import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, parseNum } from '../lib/format'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
 
 type Line = InvoiceLine & { key: number }
-type PickOption = Option & { opt: ProductPick }
 let keySeq = 1
 
-/** Products without colours and each colour of the rest; colours get negative ids so they never clash. */
-const loadProducts = (text: string, categoryId: number | null = null): Promise<PickOption[]> =>
-  api.products.options(text, categoryId).then((items) =>
-    items.map((o) => ({
-      id: o.variantId ? -o.variantId : o.productId,
-      label: o.label,
-      hint: [`${fmtMoney(o.price)} ₸`, fmtPack(o.packAmount, o.packUnit) || null, o.categoryName].filter(Boolean).join(' · '),
-      opt: o,
-    })),
-  )
-
-/** Option built from a product and one of its colours (used when switching colour with the chips). */
-function pickFor(product: Product, variant: ProductVariant | null): PickOption {
-  const label = variant ? `${product.name} — ${variant.name}` : product.name
-  const price = variant?.price ?? product.price
+/** Invoice line from what was picked in the phone sheet; keeps the line's key and order when changing one. */
+function draftToLine(d: LineDraft, base: { key: number; sortOrder?: number | null; id?: number | null }): Line {
   return {
-    id: variant ? -variant.id : product.id,
-    label,
-    opt: {
-      productId: product.id, variantId: variant?.id ?? null, label, productName: product.name,
-      variantName: variant?.name ?? null, price, packAmount: product.packAmount, packUnit: product.packUnit,
-      categoryId: product.categoryId, categoryName: product.categoryName,
-    },
+    key: base.key,
+    id: base.id ?? null,
+    sortOrder: base.sortOrder ?? null,
+    categoryId: d.pick.opt.categoryId,
+    categoryName: d.pick.opt.categoryName,
+    productId: d.pick.opt.productId || null,
+    variantId: d.pick.opt.variantId,
+    productName: d.pick.label,
+    unit: d.unit,
+    price: d.price,
+    quantity: d.quantity,
+    discount: d.discount,
+    total: calcLine(d.price, d.quantity, d.discount).total,
   }
 }
 
-/** Colour chips for the selected product: switch colour without searching again. */
-function ColourChips({ productId, selectedVariantId, onPick }: {
-  productId: number
-  selectedVariantId: number | null
-  onPick: (o: PickOption) => void
-}) {
-  const [product, setProduct] = useState<Product | null>(null)
-  useEffect(() => {
-    let alive = true
-    api.products.get(productId).then((p) => alive && setProduct(p)).catch(() => undefined)
-    return () => {
-      alive = false
-    }
-  }, [productId])
-  const colours = product?.variants.filter((v) => v.active) ?? []
-  if (!product || colours.length < 2) return null
-  return (
-    <div className="colour-chips" role="radiogroup" aria-label="Түсі">
-      <span className="colour-chips__label">Түсі:</span>
-      {colours.map((v) => (
-        <button key={v.id} type="button" role="radio" aria-checked={v.id === selectedVariantId}
-          className={`chip ${v.id === selectedVariantId ? 'is-active' : ''}`} onClick={() => onPick(pickFor(product, v))}>
-          {v.name}
-        </button>
-      ))}
-    </div>
-  )
+function lineToDraft(l: Line): LineDraft {
+  return {
+    pick: {
+      id: l.variantId ? -l.variantId : l.productId ?? 0,
+      label: l.productName,
+      opt: {
+        productId: l.productId ?? 0, variantId: l.variantId ?? null, label: l.productName, productName: l.productName,
+        variantName: null, price: l.price, packAmount: null, packUnit: null,
+        categoryId: l.categoryId ?? null, categoryName: l.categoryName ?? null,
+      },
+    },
+    price: l.price,
+    quantity: l.quantity,
+    discount: l.discount ?? null,
+    unit: l.unit,
+  }
 }
 
 export function InvoiceEditPage() {
@@ -100,6 +86,10 @@ export function InvoiceEditPage() {
   const [last, setLast] = useState<{ clientId: number; invoice: Invoice | null } | null>(null)
   const [confirmRepeat, setConfirmRepeat] = useState(false)
   const autoRepeat = useRef(isNew && searchParams.get('repeat') === '1')
+  const phone = useNarrow()
+  const [clientSheet, setClientSheet] = useState(false)
+  // Phone: the product sheet, adding a new line ('new') or changing one
+  const [productSheet, setProductSheet] = useState<'new' | Line | null>(null)
 
   useEffect(() => {
     api.invoices.units().then(setUnits).catch(() => undefined)
@@ -250,6 +240,11 @@ export function InvoiceEditPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [canSave, ok])
 
+  const setQuantity = (line: Line, quantity: number) => {
+    setLines((ls) => ls.map((l) => (l.key === line.key ? { ...l, quantity, total: calcLine(l.price, quantity, l.discount).total } : l)))
+    setDirty(true)
+  }
+
   const upsertLine = (line: Line) => {
     setLines((ls) => (ls.some((l) => l.key === line.key) ? ls.map((l) => (l.key === line.key ? line : l)) : [...ls, line]))
     setEditingLine(null)
@@ -280,6 +275,13 @@ export function InvoiceEditPage() {
           />
         </Field>
         <Field label="Клиент" required>
+          {phone ? (
+            <button type="button" className={`client-card ${client ? '' : 'is-empty'}`} onClick={() => setClientSheet(true)}>
+              <Icon name="client" />
+              <span className="client-card__name">{client?.label ?? 'Клиентті таңдаңыз'}</span>
+              <Icon name="chevronRight" />
+            </button>
+          ) : (
           <div className="inline">
             <AsyncSelect
               value={client}
@@ -298,6 +300,7 @@ export function InvoiceEditPage() {
               <Icon name="plus" />
             </button>
           </div>
+          )}
         </Field>
         {lastInvoice && (
           <div className="repeat-bar">
@@ -325,6 +328,30 @@ export function InvoiceEditPage() {
           )}
         </div>
 
+        {phone ? (
+          <ul className="m-lines">
+            {lines.length === 0 && <li className="m-lines__empty">Әзірге тауар жоқ</li>}
+            {lines.map((l) => (
+              <li key={l.key} className={`m-line ${l.price === 0 ? 'is-unpriced' : ''}`}>
+                <button type="button" className="m-line__main" onClick={() => setProductSheet(l)}>
+                  <span className="m-line__name">{l.productName}</span>
+                  <span className="m-line__calc">
+                    {l.price === 0 ? <span className="price-missing"><Icon name="warning" size={14} />бағасы жоқ</span> : `${fmtMoney(l.price)} ₸`}
+                    {` / ${unitLabel(l.unit)}`}{l.discount ? ` · −${fmt(l.discount)}%` : ''}
+                  </span>
+                </button>
+                <div className="m-line__foot">
+                  <Stepper compact value={String(l.quantity)} label={`«${l.productName}» саны`}
+                    onChange={(v) => {
+                      const q = parseNum(v)
+                      if (q !== null && q > 0) setQuantity(l, q)
+                    }} />
+                  <span className="m-line__total">{fmtMoney(l.total)} ₸</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
         <div className="table-wrap">
           <table className="table table--lines">
             <thead>
@@ -385,7 +412,13 @@ export function InvoiceEditPage() {
             )}
           </table>
         </div>
+        )}
 
+        {phone ? (
+          <button type="button" className="btn btn--outline btn--lg m-add" onClick={() => setProductSheet('new')}>
+            <Icon name="plus" />Тауар қосу
+          </button>
+        ) : (
         <QuickAdd
           units={units}
           nextSort={nextSort}
@@ -394,6 +427,7 @@ export function InvoiceEditPage() {
             setDirty(true)
           }}
         />
+        )}
       </div>
 
       {!isNew && payment && (
@@ -408,6 +442,11 @@ export function InvoiceEditPage() {
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       <div className="editor-actions">
+        {phone && (
+          <button className="btn btn--outline editor-actions__add" onClick={() => setProductSheet('new')} aria-label="Тауар қосу">
+            <Icon name="plus" />Тауар
+          </button>
+        )}
         <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>
         <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>Жабу</button>
         <button className="btn btn--outline editor-actions__print" onClick={report} disabled={!canSave && (dirty || isNew)}
@@ -423,6 +462,43 @@ export function InvoiceEditPage() {
         </div>
       </div>
 
+      {clientSheet && (
+        <ClientSheet
+          onClose={() => setClientSheet(false)}
+          onNew={() => {
+            setClientSheet(false)
+            setNewClient(true)
+          }}
+          onPick={(c) => {
+            setClient({ id: c.id, label: c.label })
+            setDirty(true)
+            setClientSheet(false)
+          }}
+        />
+      )}
+      {productSheet && (
+        <ProductSheet
+          key={productSheet === 'new' ? 'new' : productSheet.key}
+          units={units}
+          initial={productSheet === 'new' ? undefined : lineToDraft(productSheet)}
+          onClose={() => setProductSheet(null)}
+          onDelete={productSheet === 'new' ? undefined : () => {
+            setDeleting(productSheet)
+            setProductSheet(null)
+          }}
+          onSubmit={(d, again) => {
+            if (productSheet === 'new') {
+              setLines((ls) => [...ls, draftToLine(d, { key: keySeq++, id: null, sortOrder: nextSort })])
+              setDirty(true)
+              // The sheet stays open for the next product, so say the last one went in
+              if (again) toast.show('Тауар қосылды')
+            } else {
+              upsertLine(draftToLine(d, productSheet))
+            }
+            if (!again) setProductSheet(null)
+          }}
+        />
+      )}
       {editingLine && (
         <LineForm
           line={editingLine}
