@@ -4,12 +4,15 @@ import { Layout } from './components/Layout'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { ClientPage } from './pages/ClientPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { InvoiceEditPage } from './pages/InvoiceEditPage'
 import { InvoicePrintPage } from './pages/InvoicePrintPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
+import { PriceListPrintPage } from './pages/PriceListPrintPage'
 import { ProductsPage } from './pages/ProductsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { UsersPage } from './pages/UsersPage'
 
 export default function App() {
@@ -28,9 +31,12 @@ export default function App() {
         <Route path="/invoices/:id" element={<InvoiceEditPage />} />
         <Route path="/invoices/:id/print" element={<InvoicePrintPage />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/clients/:id" element={<ClientPage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/print" element={<PriceListPrintPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/users" element={user?.role === 'ADMIN' ? <UsersPage /> : <Navigate to="/" replace />} />
+        <Route path="/settings" element={user?.role === 'ADMIN' ? <SettingsPage /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>

@@ -296,4 +296,124 @@ class ApiIntegrationTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"));
     }
+
+    private String json(String auth, org.springframework.test.web.servlet.RequestBuilder req, int status) throws Exception {
+        return mvc.perform(req).andExpect(status().is(status)).andReturn().getResponse().getContentAsString();
+    }
+
+    private String createInvoice(String auth, String clientId, int price, int qty) throws Exception {
+        return mvc.perform(post("/api/invoices").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Тауар\",\"price\":" + price
+                                + ",\"quantity\":" + qty + "}]}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    void clientCardShowsHistoryDebtAndLastInvoice() throws Exception {
+        String auth = login();
+        String client = mvc.perform(post("/api/clients").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"ип.Карта\",\"phone\":\"+7 701 111 22 33\",\"city\":\"Узынагаш\",\"openingDebt\":5000}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.debt").value(5000))
+                .andReturn().getResponse().getContentAsString();
+        String clientId = extract(client, "id");
+
+        // Search by phone digits regardless of spacing
+        mvc.perform(get("/api/clients").param("q", "7011112233").header("Authorization", auth))
+                .andExpect(jsonPath("$.items[0].id").value(Integer.parseInt(clientId)));
+
+        createInvoice(auth, clientId, 1000, 2);
+        String last = createInvoice(auth, clientId, 500, 3);
+
+        mvc.perform(get("/api/clients/" + clientId + "/summary").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceCount").value(2))
+                .andExpect(jsonPath("$.total").value(3500))
+                .andExpect(jsonPath("$.client.debt").value(8500))
+                .andExpect(jsonPath("$.recentInvoices.length()").value(2))
+                .andExpect(jsonPath("$.recentInvoices[0].status").value("UNPAID"))
+                .andExpect(jsonPath("$.topProducts[0].name").value("Тауар"));
+
+        mvc.perform(get("/api/clients/" + clientId + "/last-invoice").header("Authorization", auth))
+                .andExpect(jsonPath("$.id").value(Integer.parseInt(extract(last, "id"))))
+                .andExpect(jsonPath("$.lines[0].quantity").value(3));
+
+        mvc.perform(get("/api/clients/debtors").header("Authorization", auth))
+                .andExpect(jsonPath("$.debtors[?(@.client.id == " + clientId + ")].debt").value(contains(8500.0)));
+    }
+
+    @Test
+    void paymentsTrackWhatIsOwed() throws Exception {
+        String admin = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Төлем клиенті\"}"))
+                .andReturn().getResponse().getContentAsString(), "id");
+        String invId = extract(createInvoice(admin, clientId, 1000, 10), "id");
+
+        // Partial payment
+        String pay = mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":4000,\"method\":\"TRANSFER\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.methodLabel").value("Аударым"))
+                .andReturn().getResponse().getContentAsString();
+        mvc.perform(get("/api/invoices/" + invId).header("Authorization", admin))
+                .andExpect(jsonPath("$.status").value("PARTIAL"))
+                .andExpect(jsonPath("$.paid").value(4000))
+                .andExpect(jsonPath("$.due").value(6000));
+        mvc.perform(get("/api/invoices").param("dueOnly", "true").param("clientId", clientId).header("Authorization", admin))
+                .andExpect(jsonPath("$.items.length()").value(1));
+
+        // Overpayment, total below what was paid, and deleting a paid invoice are refused
+        mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":6000.01}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Тауар\",\"price\":100,\"quantity\":1}]}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/invoices/" + invId).header("Authorization", admin))
+                .andExpect(status().isBadRequest());
+
+        // Paying the rest settles it
+        mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":6000}"))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/invoices/" + invId).header("Authorization", admin))
+                .andExpect(jsonPath("$.status").value("PAID"))
+                .andExpect(jsonPath("$.due").value(0));
+        mvc.perform(get("/api/invoices").param("dueOnly", "true").param("clientId", clientId).header("Authorization", admin))
+                .andExpect(jsonPath("$.items.length()").value(0));
+
+        // Only admins delete payments
+        createUser(admin, "cashier1", "MANAGER");
+        String manager = login("cashier1", "secret-123");
+        mvc.perform(delete("/api/payments/" + extract(pay, "id")).header("Authorization", manager))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/payments/" + extract(pay, "id")).header("Authorization", admin))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/invoices/" + invId + "/payments").header("Authorization", admin))
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void companySettingsAreEditableByAdminsOnly() throws Exception {
+        String admin = login();
+        createUser(admin, "clerk1", "MANAGER");
+        String manager = login("clerk1", "secret-123");
+        String body = "{\"name\":\"Körkem ЖШС\",\"bin\":\"123456789012\",\"address\":\"Алматы\",\"phone\":\"+7 701 000 00 00\","
+                + "\"chiefAccountant\":\"Бухгалтер А.\",\"releaseAllowedBy\":\"Директор Б.\"}";
+
+        mvc.perform(put("/api/settings/company").header("Authorization", manager)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/settings/company").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(body.replace("123456789012", "12345")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.bin").exists());
+        mvc.perform(put("/api/settings/company").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/settings").header("Authorization", manager))
+                .andExpect(jsonPath("$.company.bin").value("123456789012"))
+                .andExpect(jsonPath("$.company.releaseAllowedBy").value("Директор Б."));
+    }
 }

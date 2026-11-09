@@ -35,6 +35,10 @@ public class Invoice {
     @Column(updatable = false)
     private String createdBy;
 
+    /** Created before payments were tracked; counts as fully paid and accepts no payments. */
+    @Column(nullable = false)
+    private boolean legacyPaid;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC, id ASC")
     @Setter(AccessLevel.NONE)

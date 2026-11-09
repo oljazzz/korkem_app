@@ -12,6 +12,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             select c from Client c
             where lower(c.name) like lower(concat('%', :q, '%'))
                or lower(coalesce(c.address, '')) like lower(concat('%', :q, '%'))
+               or lower(coalesce(c.city, '')) like lower(concat('%', :q, '%'))
+               or replace(coalesce(c.phone, ''), ' ', '') like concat('%', replace(:q, ' ', ''), '%')
             """)
     Page<Client> search(@Param("q") String q, Pageable pageable);
 }

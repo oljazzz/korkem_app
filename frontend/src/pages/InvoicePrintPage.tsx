@@ -66,7 +66,7 @@ export function InvoicePrintPage() {
           </div>
           <div className="z2__bin">
             <span>ЖСН/БСН</span>
-            <BinBoxes value={company.bin} />
+            <BinBoxes value={company.bin ?? ""} />
           </div>
         </div>
 

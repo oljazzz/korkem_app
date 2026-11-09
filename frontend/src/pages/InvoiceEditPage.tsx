@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, type InvoiceRequest } from '../api'
 import { ApiError } from '../api/http'
-import type { Category, InvoiceLine, Product, Unit, UnitCode } from '../api/types'
+import type { Category, Invoice, InvoiceLine, Product, Unit, UnitCode } from '../api/types'
 import { AsyncSelect, type Option } from '../components/AsyncSelect'
 import { DateInput } from '../components/DateInput'
 import { Field } from '../components/Field'
 import { Icon } from '../components/Icon'
 import { Alert } from '../components/Alert'
 import { ConfirmModal, Modal } from '../components/Modal'
+import { PaymentsPanel, type PaymentState } from '../components/PaymentsPanel'
 import { useToast } from '../components/Toast'
-import { calcLine, fmt, fmt2, fmtMoney, isoDay, parseNum } from '../lib/format'
+import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, parseNum } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
@@ -51,6 +52,11 @@ export function InvoiceEditPage() {
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { blocker, allowNextNavigation } = useUnsavedGuard(dirty)
+  const [searchParams] = useSearchParams()
+  const [payment, setPayment] = useState<PaymentState | null>(null)
+  const [last, setLast] = useState<{ clientId: number; invoice: Invoice | null } | null>(null)
+  const [confirmRepeat, setConfirmRepeat] = useState(false)
+  const autoRepeat = useRef(isNew && searchParams.get('repeat') === '1')
 
   useEffect(() => {
     api.invoices.units().then(setUnits).catch(() => undefined)
@@ -66,10 +72,62 @@ export function InvoiceEditPage() {
         setDate(isoDay(new Date(inv.createdAt)))
         setClient(inv.clientId ? { id: inv.clientId, label: inv.clientName ?? '' } : null)
         setLines(inv.lines.map((l) => ({ ...l, key: keySeq++ })))
+        setPayment(paymentState(inv))
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [id, isNew])
+
+  // New invoice opened from a client card: preselect the client
+  useEffect(() => {
+    const clientId = Number(searchParams.get('client'))
+    if (!isNew || !clientId) return
+    api.clients.get(clientId).then((c) => setClient({ id: c.id, label: c.displayName })).catch(() => undefined)
+  }, [isNew, searchParams])
+
+  // The selected client's latest invoice, offered for repeating on a new invoice
+  const lastInvoice = isNew && client && last?.clientId === client.id ? last.invoice : null
+  useEffect(() => {
+    if (!isNew || !client) return
+    let alive = true
+    const clientId = client.id
+    api.clients.lastInvoice(clientId)
+      .then((inv) => alive && setLast({ clientId, invoice: inv }))
+      .catch(() => alive && setLast({ clientId, invoice: null }))
+    return () => {
+      alive = false
+    }
+  }, [isNew, client])
+
+  /** Copies the last invoice's lines at today's price-list prices. */
+  const repeatLast = useCallback(async () => {
+    if (!lastInvoice) return
+    setConfirmRepeat(false)
+    const prices = await Promise.all(
+      lastInvoice.lines.map((l) => (l.productId ? api.products.get(l.productId).then((p) => p.price).catch(() => l.price) : Promise.resolve(l.price))),
+    )
+    let changed = 0
+    const copied = lastInvoice.lines.map((l, i) => {
+      const price = prices[i]
+      if (price !== l.price) changed++
+      const calc = calcLine(price, l.quantity, l.discount, vatRate)
+      return { ...l, id: null, key: keySeq++, price, total: calc.total, vat: calc.vat }
+    })
+    setLines(copied)
+    setDirty(true)
+    toast.show(`№ ${lastInvoice.number} жүкқұжатынан ${copied.length} тауар көшірілді${changed ? `, ${changed} тауардың бағасы жаңарды` : ''}`)
+  }, [lastInvoice, vatRate, toast])
+
+  useEffect(() => {
+    if (autoRepeat.current && lastInvoice) {
+      autoRepeat.current = false
+      repeatLast()
+    }
+  }, [lastInvoice, repeatLast])
+
+  const reloadPayment = () => {
+    if (!isNew) api.invoices.get(Number(id)).then((inv) => setPayment(paymentState(inv))).catch(() => undefined)
+  }
 
   const totals = useMemo(
     () => lines.reduce((acc, l) => ({ total: acc.total + l.total, vat: acc.vat + l.vat }), { total: 0, vat: 0 }),
@@ -103,6 +161,7 @@ export function InvoiceEditPage() {
     try {
       const saved = isNew ? await api.invoices.create(body) : await api.invoices.update(Number(id), body)
       setDirty(false)
+      setPayment(paymentState(saved))
       return saved.id
     } catch (e) {
       const err = e as ApiError
@@ -175,7 +234,7 @@ export function InvoiceEditPage() {
             <AsyncSelect
               value={client}
               placeholder="Клиентті таңдаңыз"
-              autoFocus={isNew}
+              autoFocus={isNew && !searchParams.get('client')}
               onChange={(o) => {
                 setClient(o)
                 setDirty(true)
@@ -189,6 +248,18 @@ export function InvoiceEditPage() {
             </button>
           </div>
         </Field>
+        {lastInvoice && (
+          <div className="repeat-bar">
+            <Icon name="repeat" />
+            <span>
+              Соңғы жүкқұжаты: <b>№ {lastInvoice.number}</b> · {fmtDate(lastInvoice.createdAt)} · {lastInvoice.lines.length} тауар ·{' '}
+              {fmtMoney(lastInvoice.total)} ₸
+            </span>
+            <button className="btn btn--outline btn--s" onClick={() => (lines.length ? setConfirmRepeat(true) : repeatLast())}>
+              Қайталау
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="panel">
@@ -273,6 +344,15 @@ export function InvoiceEditPage() {
         />
       </div>
 
+      {!isNew && payment && (
+        <PaymentsPanel
+          invoiceId={Number(id)}
+          state={payment}
+          dirty={dirty}
+          onChanged={reloadPayment}
+        />
+      )}
+
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       <div className="editor-actions">
@@ -317,6 +397,16 @@ export function InvoiceEditPage() {
           }}
         />
       )}
+      {confirmRepeat && lastInvoice && (
+        <ConfirmModal
+          title="Соңғы жүкқұжатты қайталау"
+          text={`Қазіргі ${lines.length} тауар № ${lastInvoice.number} жүкқұжатының тауарларымен ауыстырылсын ба?`}
+          confirmLabel="Ауыстыру"
+          cancelLabel="Болдырмау"
+          onConfirm={repeatLast}
+          onClose={() => setConfirmRepeat(false)}
+        />
+      )}
       {newClient && (
         <ClientForm
           client={null}
@@ -341,6 +431,10 @@ export function InvoiceEditPage() {
       )}
     </section>
   )
+}
+
+function paymentState(inv: Invoice): PaymentState {
+  return { total: inv.total, paid: inv.paid, due: inv.due, status: inv.status, legacyPaid: inv.legacyPaid }
 }
 
 /** Inline entry bar: product → quantity → Enter adds the line and returns focus to the product field. */

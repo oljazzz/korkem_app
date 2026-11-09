@@ -20,6 +20,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
               and (:clientId is null or c.id = :clientId)
               and (cast(:from as timestamp) is null or i.createdAt >= :from)
               and (cast(:to as timestamp) is null or i.createdAt < :to)
+              and (:dueOnly = false or (i.legacyPaid = false
+                   and (select coalesce(sum(l.total), 0) from InvoiceLine l where l.invoice = i)
+                     > (select coalesce(sum(p.amount), 0) from Payment p where p.invoice = i)))
             """,
             countQuery = """
             select count(i) from Invoice i left join i.client c
@@ -29,10 +32,15 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
               and (:clientId is null or c.id = :clientId)
               and (cast(:from as timestamp) is null or i.createdAt >= :from)
               and (cast(:to as timestamp) is null or i.createdAt < :to)
+              and (:dueOnly = false or (i.legacyPaid = false
+                   and (select coalesce(sum(l.total), 0) from InvoiceLine l where l.invoice = i)
+                     > (select coalesce(sum(p.amount), 0) from Payment p where p.invoice = i)))
             """)
     Page<Invoice> search(@Param("number") Long number, @Param("q") String q,
                          @Param("clientId") Long clientId, @Param("from") Instant from,
-                         @Param("to") Instant to, Pageable pageable);
+                         @Param("to") Instant to, @Param("dueOnly") boolean dueOnly, Pageable pageable);
+
+    java.util.Optional<Invoice> findFirstByClientIdOrderByCreatedAtDescIdDesc(Long clientId);
 
     @EntityGraph(attributePaths = {"client", "lines"})
     @Query("select i from Invoice i where i.id = :id")

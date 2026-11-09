@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import type { Dashboard } from '../api/types'
+import type { Dashboard, Debts } from '../api/types'
 import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
 import { BarList, ColumnChart } from '../components/Charts'
@@ -56,6 +56,12 @@ export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [debts, setDebts] = useState<Debts | null>(null)
+
+  // Receivables do not depend on the selected period
+  useEffect(() => {
+    api.clients.debtors(5).then(setDebts).catch(() => setDebts(null))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -175,6 +181,31 @@ export function DashboardPage() {
         </div>
         {data ? <ColumnChart data={series} /> : <div className="skeleton skeleton--chart" aria-hidden="true" />}
       </div>
+
+      {debts && debts.total > 0 && (
+        <div className="card debts">
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">Алынатын қарыз</h2>
+              <p className="card__sub">клиенттердің төленбеген сомасы, қазіргі күйі</p>
+            </div>
+            <Link className="btn btn--ghost" to="/clients?view=debtors">Барлық қарыздар</Link>
+          </div>
+          <div className="debts__body">
+            <div className="debts__total">
+              {fmtMoney(debts.total)}<span className="stat__unit">₸</span>
+            </div>
+            <ol className="debts__list">
+              {debts.debtors.map((d) => (
+                <li key={d.client.id}>
+                  <Link to={`/clients/${d.client.id}`} className="debts__name">{d.client.name}</Link>
+                  <span className="debts__sum">{fmtMoney(d.debt)} ₸</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
 
       <div className="grid-2">
         <div className="card">

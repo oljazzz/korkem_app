@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, Client, Dashboard, Invoice, InvoiceListItem, Page, Product, SalesReport, Settings, Unit, User } from './types'
+import type { Category, Client, ClientSummary, Company, Dashboard, Debts, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -18,7 +18,16 @@ function crud<T, R>(base: string) {
   }
 }
 
-export type ClientRequest = { name: string; address: string | null }
+export type ClientRequest = {
+  name: string
+  address: string | null
+  phone: string | null
+  city: string | null
+  note: string | null
+  openingDebt: number | null
+}
+export type PaymentRequest = { amount: number; paidOn: string; method: PaymentMethod; note: string | null }
+export type CompanyRequest = Omit<Company, never>
 export type CategoryRequest = { name: string; sortOrder: number | null }
 export type ProductRequest = { categoryId: number | null; name: string; price: number; sortOrder: number | null }
 export type InvoiceRequest = {
@@ -40,7 +49,19 @@ export type UserRequest = Omit<User, 'id'> & { password: string | null }
 
 export const api = {
   settings: () => http.get<Settings>('/api/settings'),
-  clients: crud<Client, ClientRequest>('/api/clients'),
+  updateCompany: (body: CompanyRequest) => http.put<Company>('/api/settings/company', body),
+  clients: {
+    ...crud<Client, ClientRequest>('/api/clients'),
+    summary: (id: number) => http.get<ClientSummary>(`/api/clients/${id}/summary`),
+    lastInvoice: (id: number) => http.get<Invoice>(`/api/clients/${id}/last-invoice`),
+    debtors: (limit = 50) => http.get<Debts>('/api/clients/debtors', { limit }),
+  },
+  payments: {
+    list: (invoiceId: number) => http.get<Payment[]>(`/api/invoices/${invoiceId}/payments`),
+    add: (invoiceId: number, body: PaymentRequest) => http.post<Payment>(`/api/invoices/${invoiceId}/payments`, body),
+    remove: (id: number) => http.delete(`/api/payments/${id}`),
+    methods: () => http.get<{ value: PaymentMethod; label: string }[]>('/api/payments/methods'),
+  },
   categories: {
     ...crud<Category, CategoryRequest>('/api/categories'),
     all: () => http.get<Category[]>('/api/categories/all'),

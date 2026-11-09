@@ -58,14 +58,15 @@ export function Toolbar(p: Props) {
   )
 }
 
-export function TableState({ loading, error, empty, colSpan }: {
+export function TableState({ loading, error, empty, colSpan, emptyText = 'Деректер жоқ' }: {
   loading: boolean
   error: string | null
   empty: boolean
   colSpan: number
+  emptyText?: string
 }) {
   if (error) return <tr><td colSpan={colSpan} className="table__msg table__msg--error">{error}</td></tr>
   if (loading && empty) return <SkeletonRows cols={colSpan} />
-  if (empty) return <tr><td colSpan={colSpan} className="table__msg">Деректер жоқ</td></tr>
+  if (empty) return <tr><td colSpan={colSpan} className="table__msg">{emptyText}</td></tr>
   return null
 }

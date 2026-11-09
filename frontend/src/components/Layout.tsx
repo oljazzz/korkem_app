@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
   { to: '/categories', label: 'Санаттар', icon: 'folder' },
   { to: '/clients', label: 'Клиенттер', icon: 'client', tab: true },
   { to: '/users', label: 'Пайдаланушылар', icon: 'users', adminOnly: true },
+  { to: '/settings', label: 'Баптаулар', icon: 'settings', adminOnly: true },
 ]
 
 export const ROLE_LABEL = { ADMIN: 'Әкімші', MANAGER: 'Менеджер' } as const

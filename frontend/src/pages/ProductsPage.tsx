@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Icon } from '../components/Icon'
 import { api } from '../api'
 import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
@@ -61,7 +63,11 @@ export function ProductsPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Анықтамалық" title="Баға тізімі" />
+      <PageHeader eyebrow="Анықтамалық" title="Баға тізімі">
+        <Link className="btn btn--outline" to={`/products/print${categoryId ? `?category=${categoryId}` : ''}`}>
+          <Icon name="print" />Басып шығару / PDF
+        </Link>
+      </PageHeader>
       <Toolbar
         onCreate={() => setEditing('new')}
         search={list.q}

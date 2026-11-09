@@ -11,14 +11,15 @@ public final class InvoiceDtos {
     private InvoiceDtos() {}
 
     public record InvoiceListItem(Long id, Long number, Long clientId, String clientName, Instant createdAt,
-                                  BigDecimal total) {}
+                                  BigDecimal total, BigDecimal paid, BigDecimal due, PaymentStatus status) {}
 
     public record LineDto(Long id, Long categoryId, String categoryName, Long productId, String productName,
                           Unit unit, String unitLabel, BigDecimal price, BigDecimal quantity,
                           BigDecimal discount, BigDecimal total, BigDecimal vat, Integer sortOrder) {}
 
     public record InvoiceDto(Long id, Long number, Long clientId, String clientName, Instant createdAt,
-                             String createdBy, List<LineDto> lines, BigDecimal total, BigDecimal vat) {}
+                             String createdBy, List<LineDto> lines, BigDecimal total, BigDecimal vat,
+                             BigDecimal paid, BigDecimal due, PaymentStatus status, boolean legacyPaid) {}
 
     public record LineRequest(
             Long categoryId,

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import type { InvoiceListItem } from '../api/types'
 import { useIsAdmin } from '../auth/AuthContext'
@@ -9,6 +9,7 @@ import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { ConfirmModal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
+import { PaymentBadge } from '../components/PaymentBadge'
 import { RowActions, rowProps } from '../components/RowActions'
 import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
@@ -19,9 +20,32 @@ export function InvoicesPage() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const toast = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const clientId = Number(searchParams.get('client')) || null
+  const [clientName, setClientName] = useState<string | null>(null)
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const list = useList<InvoiceListItem>((p) => api.invoices.list({ ...p, from: from || null, to: to || null }))
+  const [dueOnly, setDueOnly] = useState(false)
+  const list = useList<InvoiceListItem>((p) =>
+    api.invoices.list({ ...p, from: from || null, to: to || null, clientId, dueOnly: dueOnly ? 'true' : null }),
+  )
+
+  // Opened from a client card: show whose invoices these are
+  useEffect(() => {
+    if (!clientId) return
+    let alive = true
+    api.clients.get(clientId).then((c) => alive && setClientName(c.name)).catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [clientId])
+
+  const clearClient = () => {
+    setSearchParams({})
+    setClientName(null)
+    list.setPage(0)
+    list.reload()
+  }
   const [checked, setChecked] = useState<Map<number, number>>(new Map()) // id -> number
   const [deleting, setDeleting] = useState<InvoiceListItem | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -98,7 +122,28 @@ export function InvoicesPage() {
             <button className="btn btn--ghost btn--s" onClick={() => setPeriod('', '')}>Тазалау</button>
           )}
         </div>
+        <label className="checkbox toolbar__toggle">
+          <input
+            type="checkbox"
+            checked={dueOnly}
+            onChange={(e) => {
+              setDueOnly(e.target.checked)
+              list.setPage(0)
+              list.reload()
+            }}
+          />
+          Тек төленбегендер
+        </label>
       </Toolbar>
+
+      {clientId && (
+        <div className="filter-chip-row">
+          <span className="filter-chip">
+            Клиент: <b>{clientName ?? '…'}</b>
+            <button className="icon-btn" aria-label="Клиент сүзгісін алу" onClick={clearClient}><Icon name="close" size={16} /></button>
+          </span>
+        </div>
+      )}
 
       {checked.size > 0 && (
         <div className="selection-bar">
@@ -124,12 +169,13 @@ export function InvoicesPage() {
               <th style={{ width: 120 }}>№</th>
               <th style={{ width: 130 }}>Күні</th>
               <th>Клиент</th>
+              <th style={{ width: 130 }}>Төлем</th>
               <th className="num" style={{ width: 160 }}>Сомасы, ₸</th>
               <th aria-label="Әрекеттер" style={{ width: 136 }} />
             </tr>
           </thead>
           <tbody>
-            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={6} />
+            <TableState loading={list.loading} error={list.error} empty={list.data.items.length === 0} colSpan={7} />
             {list.data.items.map((i) => (
               <tr key={i.id} {...rowProps(() => open(i), isAdmin ? () => setDeleting(i) : undefined)}>
                 <td className="check">
@@ -140,6 +186,10 @@ export function InvoicesPage() {
                 <td className="mono strong" data-title>№ {i.number}</td>
                 <td className="muted-cell" data-label="Күні">{fmtDate(i.createdAt)}</td>
                 <td data-label="Клиент">{i.clientName}</td>
+                <td className="cell-status">
+                  <PaymentBadge status={i.status} />
+                  {i.status === 'PARTIAL' && <span className="cell-sub">қалды {fmtMoney(i.due)} ₸</span>}
+                </td>
                 <td className="num strong cell-amount">{fmtMoney(i.total)} ₸</td>
                 <RowActions
                   name={`№ ${i.number}`}

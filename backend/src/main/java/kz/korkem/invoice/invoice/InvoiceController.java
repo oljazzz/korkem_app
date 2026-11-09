@@ -26,9 +26,10 @@ public class InvoiceController {
                                               @RequestParam(required = false) Long clientId,
                                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                               @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                              @RequestParam(defaultValue = "false") boolean dueOnly,
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "50") int size) {
-        return service.list(q, clientId, from, to, page, size);
+        return service.list(q, clientId, from, to, dueOnly, page, size);
     }
 
     @GetMapping("/units")

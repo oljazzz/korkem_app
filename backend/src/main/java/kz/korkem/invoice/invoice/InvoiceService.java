@@ -15,6 +15,7 @@ import kz.korkem.invoice.common.BadRequestException;
 import kz.korkem.invoice.common.NotFoundException;
 import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
+import kz.korkem.invoice.payment.PaymentRepository;
 import kz.korkem.invoice.product.Product;
 import kz.korkem.invoice.product.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +33,17 @@ public class InvoiceService {
     private final ProductRepository products;
     private final CategoryRepository categories;
     private final InvoiceCalculator calculator;
+    private final PaymentRepository payments;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
 
     @Transactional(readOnly = true)
     /**
      * Invoice list. A purely numeric query searches by invoice number; [from, to] are calendar days
-     * in the Almaty time zone, both inclusive and optional.
+     * in the Almaty time zone, both inclusive and optional. {@code dueOnly} keeps invoices with money still owed.
      */
     public PageResponse<InvoiceListItem> list(String q, Long clientId, LocalDate from,
-                                              LocalDate to, int page, int size) {
+                                              LocalDate to, boolean dueOnly, int page, int size) {
         Instant fromTs = from == null ? null : from.atStartOfDay(ZONE).toInstant();
         Instant toTs = to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant();
         String query = q == null ? "" : q.trim();
@@ -51,17 +53,31 @@ public class InvoiceService {
             number = Long.parseLong(digits);
             query = "";
         }
-        var result = invoices.search(number, query, clientId, fromTs, toTs,
+        var result = invoices.search(number, query, clientId, fromTs, toTs, dueOnly,
                 PageRequest.of(page, PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "number")));
         Map<Long, BigDecimal> totals = new HashMap<>();
+        Map<Long, BigDecimal> paid = new HashMap<>();
         if (!result.isEmpty()) {
-            invoices.totalsFor(result.map(Invoice::getId).getContent())
-                    .forEach(r -> totals.put((Long) r[0], (BigDecimal) r[1]));
+            var ids = result.map(Invoice::getId).getContent();
+            invoices.totalsFor(ids).forEach(r -> totals.put((Long) r[0], (BigDecimal) r[1]));
+            payments.paidFor(ids).forEach(r -> paid.put((Long) r[0], (BigDecimal) r[1]));
         }
-        return PageResponse.of(result, i -> new InvoiceListItem(i.getId(), i.getNumber(),
-                i.getClient() == null ? null : i.getClient().getId(),
-                i.getClient() == null ? null : i.getClient().getDisplayName(), i.getCreatedAt(),
-                totals.getOrDefault(i.getId(), BigDecimal.ZERO)));
+        return PageResponse.of(result, i -> {
+            BigDecimal total = totals.getOrDefault(i.getId(), BigDecimal.ZERO);
+            BigDecimal p = paid.getOrDefault(i.getId(), BigDecimal.ZERO);
+            return new InvoiceListItem(i.getId(), i.getNumber(),
+                    i.getClient() == null ? null : i.getClient().getId(),
+                    i.getClient() == null ? null : i.getClient().getDisplayName(), i.getCreatedAt(), total,
+                    p, PaymentStatus.due(total, p, i.isLegacyPaid()), PaymentStatus.of(total, p, i.isLegacyPaid()));
+        });
+    }
+
+    /** The client's most recent invoice, used to repeat an order. */
+    @Transactional(readOnly = true)
+    public InvoiceDto lastForClient(Long clientId) {
+        return invoices.findFirstByClientIdOrderByCreatedAtDescIdDesc(clientId)
+                .map(i -> toDto(find(i.getId())))
+                .orElseThrow(() -> new NotFoundException("Клиенттің жүкқұжаттары жоқ"));
     }
 
     @Transactional(readOnly = true)
@@ -86,12 +102,20 @@ public class InvoiceService {
             inv.setCreatedAt(documentTime(req.date()));
         }
         apply(inv, req);
+        BigDecimal paid = payments.paidFor(id);
+        BigDecimal total = inv.getLines().stream().map(InvoiceLine::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(paid) < 0) {
+            throw new BadRequestException("Жүкқұжат сомасы төленген сомадан (" + paid.toPlainString() + " ₸) аз болмауы керек");
+        }
         invoices.flush();
         return toDto(inv);
     }
 
     @Transactional
     public void delete(Long id) {
+        if (payments.existsByInvoiceId(id)) {
+            throw new BadRequestException("Төлемдері бар жүкқұжатты жоюға болмайды: алдымен төлемдерді жойыңыз");
+        }
         invoices.delete(find(id));
     }
 
@@ -158,7 +182,10 @@ public class InvoiceService {
         BigDecimal total = lines.stream().map(LineDto::total).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal vat = lines.stream().map(LineDto::vat).reduce(BigDecimal.ZERO, BigDecimal::add);
         var c = inv.getClient();
+        BigDecimal paid = inv.getId() == null ? BigDecimal.ZERO : payments.paidFor(inv.getId());
+        boolean legacy = inv.isLegacyPaid();
         return new InvoiceDto(inv.getId(), inv.getNumber(), c == null ? null : c.getId(),
-                c == null ? null : c.getDisplayName(), inv.getCreatedAt(), inv.getCreatedBy(), lines, total, vat);
+                c == null ? null : c.getDisplayName(), inv.getCreatedAt(), inv.getCreatedBy(), lines, total, vat,
+                paid, PaymentStatus.due(total, paid, legacy), PaymentStatus.of(total, paid, legacy), legacy);
     }
 }

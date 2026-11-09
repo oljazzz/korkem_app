@@ -773,3 +773,116 @@ input[type='checkbox']:checked {
   .chips::-webkit-scrollbar { display: none; }
   .chip { flex: none; white-space: nowrap; }
 }
+
+
+/* =====================================================================
+   Clients, payments, company settings, price list
+   ===================================================================== */
+.nowrap { white-space: nowrap; }
+.cell-sub { display: block; margin-top: 2px; font-size: var(--kr-font-03); font-weight: var(--kr-weight-regular); color: var(--text-muted); }
+.text-debt { color: var(--danger); font-weight: var(--kr-weight-bold); }
+.field__hint { display: block; margin-top: var(--kr-mu025); font-size: var(--kr-font-03); color: var(--text-muted); }
+.field__static { min-height: var(--kr-control-m); display: flex; align-items: center; font-weight: var(--kr-weight-semibold); }
+.form-grid__intro { margin: 0 0 var(--kr-mu125); }
+.toolbar__toggle { min-height: var(--kr-control-m); padding: 0 var(--kr-mu050); }
+
+/* Payment status pill: text + tone, never colour alone */
+.status { display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--kr-mu050); border-radius: var(--kr-radius-pill); font-size: var(--kr-font-03); font-weight: var(--kr-weight-semibold); white-space: nowrap; }
+.status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status--paid { background: var(--success-soft, var(--brand-soft)); color: var(--success); }
+.status--partial { background: var(--warning-soft); color: var(--text); }
+.status--partial::before { background: var(--warning); }
+.status--unpaid { background: var(--danger-soft); color: var(--danger); }
+
+.filter-chip-row { margin: calc(-1 * var(--kr-mu050)) 0 var(--kr-mu100); }
+.filter-chip { display: inline-flex; align-items: center; gap: var(--kr-mu050); padding: 2px 2px 2px var(--kr-mu075); border: 1px solid var(--border-strong); border-radius: var(--kr-radius-pill); background: var(--surface); font-size: var(--kr-font-04); }
+.filter-chip .icon-btn { width: 28px; height: 28px; }
+
+/* Client card */
+.client__head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--kr-mu100); margin: var(--kr-mu025) 0 var(--kr-mu150); }
+.client__who { min-width: 0; }
+.client__meta { display: flex; flex-wrap: wrap; gap: var(--kr-mu025) var(--kr-mu100); margin: var(--kr-mu050) 0 0; padding: 0; list-style: none; font-size: var(--kr-font-05); }
+.client__note { margin: var(--kr-mu050) 0 0; padding: var(--kr-mu050) var(--kr-mu075); border-left: 3px solid var(--border-strong); color: var(--text-secondary); font-size: var(--kr-font-04); }
+.client__actions { display: flex; flex-wrap: wrap; gap: var(--kr-mu050); }
+.client .stat:first-child { background: var(--surface); border-color: var(--border); color: var(--text); }
+.client .stat:first-child::after { display: none; }
+.client .stat:first-child .stat__label, .client .stat:first-child .stat__exact { color: var(--text-secondary); }
+.stat--debt { box-shadow: inset 4px 0 0 var(--danger), var(--kr-shadow-s); }
+.client .stat--debt .stat__value { color: var(--danger); }
+.stat__value--date { font-size: var(--kr-font-08); }
+.table--compact td { padding: var(--kr-mu050) var(--kr-mu075); }
+.table--compact tbody tr:last-child td { border-bottom: 0; }
+.top-products { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.top-products li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--kr-mu075); padding: var(--kr-mu050) 0; border-bottom: 1px solid var(--border); }
+.top-products li:last-child { border-bottom: 0; }
+.top-products__name { grid-column: 1; grid-row: 1; font-weight: var(--kr-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-products__meta { grid-column: 1; grid-row: 2; font-size: var(--kr-font-03); color: var(--text-muted); }
+.top-products__sum { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-weight: var(--kr-weight-bold); white-space: nowrap; }
+
+/* Repeat the client's last invoice */
+.repeat-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--kr-mu050) var(--kr-mu075); margin-top: var(--kr-mu050); padding: var(--kr-mu075) var(--kr-mu100); border-radius: var(--kr-radius-m); background: var(--info-soft); font-size: var(--kr-font-04); }
+.repeat-bar > svg { color: var(--info); flex: none; }
+.repeat-bar > span { flex: 1; min-width: 200px; }
+
+/* Payments panel in the invoice editor */
+.payments { padding: var(--kr-mu125) var(--kr-mu150); background: var(--surface); border: 1px solid var(--border); border-radius: var(--kr-radius-l); box-shadow: var(--kr-shadow-s); }
+.payments__summary { display: flex; align-items: center; flex-wrap: wrap; gap: var(--kr-mu075) var(--kr-mu200); }
+.payments__summary > div { display: flex; flex-direction: column; }
+.payments__summary span { font-size: var(--kr-font-03); color: var(--text-muted); }
+.payments__summary b { font-size: var(--kr-font-06); }
+.payments__summary .is-due b { color: var(--danger); }
+.payments__add { margin-left: auto; }
+.payments__hint { margin-top: var(--kr-mu050); }
+.payments__list { margin-top: var(--kr-mu100); border-top: 1px solid var(--border); }
+
+/* Dashboard receivables */
+.debts__body { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: var(--kr-mu150); align-items: start; }
+.debts__total { font-size: var(--kr-font-09); font-weight: var(--kr-weight-bold); color: var(--danger); line-height: 1.1; }
+.debts__list { margin: 0; padding: 0; list-style: none; }
+.debts__list li { display: flex; justify-content: space-between; gap: var(--kr-mu075); padding: var(--kr-mu050) 0; border-bottom: 1px solid var(--border); }
+.debts__list li:last-child { border-bottom: 0; }
+.debts__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); text-decoration: none; font-weight: var(--kr-weight-semibold); }
+.debts__name:hover { color: var(--text-link); text-decoration: underline; }
+.debts__sum { font-weight: var(--kr-weight-bold); white-space: nowrap; }
+
+/* Customer price list (printed, theme-independent) */
+.pricelist {
+  box-sizing: border-box; width: 100%; max-width: 794px; padding: 36px 40px; background: #fff; color: #111;
+  border-radius: var(--kr-radius-m); box-shadow: var(--kr-shadow-m); font-size: 13px;
+}
+.pricelist__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 14px; border-bottom: 3px solid #188803; }
+.pricelist__company { font-size: 18px; font-weight: 700; }
+.pricelist__contacts { margin-top: 2px; color: #555; font-size: 12px; }
+.pricelist__title { text-align: right; color: #555; font-size: 12px; }
+.pricelist__title h1 { margin: 0 0 2px; color: #111; font-size: 22px; }
+.pricelist__table { width: 100%; margin-top: 14px; border-collapse: collapse; }
+.pricelist__table th { padding: 6px 8px; border-bottom: 2px solid #111; text-align: left; font-size: 12px; }
+.pricelist__table td { padding: 5px 8px; border-bottom: 1px solid #e3e3e3; }
+.pricelist__table .c { width: 40px; text-align: center; color: #666; }
+.pricelist__table .n { width: 120px; text-align: right; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pricelist__group td { padding-top: 14px; border-bottom: 1px solid #188803; color: #0f5c02; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 12px; }
+.pricelist__table tr { break-inside: avoid; }
+.pricelist__foot { margin-top: 18px; color: #666; font-size: 11px; }
+
+@media (max-width: 760px) {
+  .client__actions { width: 100%; }
+  .client__actions .btn { flex: 1 1 auto; }
+  .debts__body { grid-template-columns: minmax(0, 1fr); gap: var(--kr-mu075); }
+  .payments { padding: var(--kr-mu100); }
+  .payments__add { width: 100%; margin-left: 0; }
+  .table--cards td.cell-status { grid-column: 1 / -1; }
+  .pricelist { padding: 20px 16px; font-size: 12px; }
+  .pricelist__head { flex-direction: column; align-items: flex-start; }
+  .pricelist__title { text-align: left; }
+}
+@media print {
+  .pricelist { box-shadow: none; padding: 0; max-width: none; border-radius: 0; }
+}
+/* Option chips inside dialogs (payment method) fill one row */
+.modal .chips { flex-wrap: nowrap; }
+.modal .chip { flex: 1 1 0; padding: 0 var(--kr-mu050); white-space: nowrap; }
+@media (max-width: 760px) {
+  .hide-phone { display: none; }
+  .table--compact td { padding: var(--kr-mu050) var(--kr-mu025); }
+  .stat__value--date { font-size: var(--kr-font-07); white-space: nowrap; }
+}

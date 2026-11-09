@@ -9,7 +9,49 @@ export interface Client {
   id: number
   name: string
   address: string | null
+  phone: string | null
+  city: string | null
+  note: string | null
+  openingDebt: number
   displayName: string
+  /** Opening debt plus what is still owed on invoices. */
+  debt: number
+}
+
+export interface TopProduct {
+  name: string
+  quantity: number
+  total: number
+  invoices: number
+}
+
+export interface ClientSummary {
+  client: Client
+  invoiceCount: number
+  total: number
+  lastInvoiceAt: string | null
+  recentInvoices: InvoiceListItem[]
+  topProducts: TopProduct[]
+}
+
+export interface Debts {
+  total: number
+  debtors: { client: Client; debt: number }[]
+}
+
+export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID'
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER'
+
+export interface Payment {
+  id: number
+  invoiceId: number
+  amount: number
+  paidOn: string
+  method: PaymentMethod
+  methodLabel: string
+  note: string | null
+  createdBy: string | null
+  createdAt: string
 }
 
 export interface Category {
@@ -41,6 +83,9 @@ export interface InvoiceListItem {
   clientName: string | null
   createdAt: string
   total: number
+  paid: number
+  due: number
+  status: PaymentStatus
 }
 
 export interface InvoiceLine {
@@ -69,6 +114,11 @@ export interface Invoice {
   lines: InvoiceLine[]
   total: number
   vat: number
+  paid: number
+  due: number
+  status: PaymentStatus
+  /** Created before payments were tracked; counts as paid. */
+  legacyPaid: boolean
 }
 
 export type Role = 'ADMIN' | 'MANAGER'
@@ -86,9 +136,11 @@ export interface User {
 
 export interface Company {
   name: string
-  bin: string
-  chiefAccountant: string
-  releaseAllowedBy: string
+  bin: string | null
+  address: string | null
+  phone: string | null
+  chiefAccountant: string | null
+  releaseAllowedBy: string | null
 }
 
 export interface Settings {
