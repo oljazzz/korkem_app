@@ -980,3 +980,13 @@ input[type='checkbox']:checked {
   .table--lines tbody tr.is-unpriced { box-shadow: inset 3px 0 0 var(--warning); }
   .table--lines tbody tr.is-unpriced td:first-child { box-shadow: none; }
 }
+
+/* Sales report summary: three figures (no VAT) */
+.summary.summary--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) {
+  .summary.summary--three .summary__item:nth-child(3) { border-left: 1px solid var(--border); border-top: 0; }
+}
+@media (max-width: 760px) {
+  .summary.summary--three { grid-template-columns: minmax(0, 1fr); }
+  .summary.summary--three .summary__item + .summary__item { border-left: 0; border-top: 1px solid var(--border); }
+}

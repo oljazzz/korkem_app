@@ -152,7 +152,8 @@ export function InvoicePrintPage() {
                 <td className="n">{fmtMoney(l.quantity)}</td>
                 <td className="n">{fmtMoney(l.quantity ? l.total / l.quantity : l.price)}</td>
                 <td className="n">{fmtMoney(l.total)}</td>
-                <td className="n">{fmtMoney(l.vat)}</td>
+                {/* VAT is not shown: the column stays on the official form but is left blank */}
+                <td className="n" />
               </tr>
             ))}
           </tbody>
@@ -163,7 +164,7 @@ export function InvoicePrintPage() {
               <td className="n">{fmtMoney(qty)}</td>
               <td className="c">х</td>
               <td className="n">{fmtMoney(inv.total)}</td>
-              <td className="n">{fmtMoney(inv.vat)}</td>
+              <td className="n" />
             </tr>
           </tfoot>
         </table>

@@ -53,10 +53,9 @@ export function parseNum(v: string): number | null {
 }
 
 /** Mirror of the backend InvoiceCalculator, for live preview only (the server recalculates). */
-export function calcLine(price: number, quantity: number, discount: number | null, vatRate: number) {
+export function calcLine(price: number, quantity: number, discount: number | null) {
   let total = price * quantity
   if (discount && discount > 0) total = (total * (100 - discount)) / 100
   total = Math.round(total * 100) / 100
-  const vat = Math.round(((total * vatRate) / (100 + vatRate)) * 100) / 100
-  return { total, vat }
+  return { total }
 }

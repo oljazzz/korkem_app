@@ -7,9 +7,9 @@ import { PageHeader } from '../components/Layout'
 import { useToast } from '../components/Toast'
 import { setCompany, useSettings } from '../lib/settings'
 
-/** Company details printed on documents (Q-2, price list). Admins only; VAT is server configuration. */
+/** Company details printed on documents (Q-2, price list). Admins only. */
 export function SettingsPage() {
-  const { company, vatRate } = useSettings()
+  const { company } = useSettings()
   const toast = useToast()
   // null until the user edits: the form shows the loaded settings
   const [draft, setDraft] = useState<typeof company | null>(null)
@@ -64,10 +64,6 @@ export function SettingsPage() {
         </Field>
         <Field label="Бас бухгалтер" error={errors.chiefAccountant}>
           <input className="input" value={form.chiefAccountant ?? ''} onChange={set('chiefAccountant')} />
-        </Field>
-        <Field label="ҚҚС мөлшерлемесі">
-          <div className="field__static">{vatRate}%</div>
-          <span className="field__hint">Сервер баптауында (VAT_RATE) өзгертіледі.</span>
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}
         <div className="field__offset">

@@ -136,7 +136,8 @@ export interface InvoiceLine {
   quantity: number
   discount: number | null
   total: number
-  vat: number
+  /** Sent by the server; not shown in the UI. */
+  vat?: number
   sortOrder: number | null
 }
 
@@ -183,7 +184,6 @@ export interface Company {
 
 export interface Settings {
   company: Company
-  vatRate: number
 }
 
 export interface SalesRow {

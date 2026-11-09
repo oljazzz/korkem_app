@@ -161,7 +161,7 @@ export function DashboardPage() {
           <div>
             <h2 className="card__title">Түсім</h2>
             <p className="card__sub">
-              {data?.granularity === 'month' ? 'айлар' : 'күндер'} бойынша, ₸ · оның ішінде ҚҚС {data ? fmtCompact(data.current.vat) : '—'}
+              {data?.granularity === 'month' ? 'айлар' : 'күндер'} бойынша, ₸
             </p>
           </div>
           <Link className="btn btn--ghost" to={`/reports?from=${range[0]}&to=${range[1]}`}>

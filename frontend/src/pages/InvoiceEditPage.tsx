@@ -12,7 +12,6 @@ import { ConfirmModal, Modal } from '../components/Modal'
 import { PaymentsPanel, type PaymentState } from '../components/PaymentsPanel'
 import { useToast } from '../components/Toast'
 import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, parseNum } from '../lib/format'
-import { useSettings } from '../lib/settings'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
 
@@ -34,7 +33,6 @@ export function InvoiceEditPage() {
   const { id } = useParams()
   const isNew = id === undefined
   const navigate = useNavigate()
-  const { vatRate } = useSettings()
   const toast = useToast()
 
   const [number, setNumber] = useState<number | null>(null)
@@ -110,13 +108,13 @@ export function InvoiceEditPage() {
     const copied = lastInvoice.lines.map((l, i) => {
       const price = prices[i]
       if (price !== l.price) changed++
-      const calc = calcLine(price, l.quantity, l.discount, vatRate)
-      return { ...l, id: null, key: keySeq++, price, total: calc.total, vat: calc.vat }
+      const calc = calcLine(price, l.quantity, l.discount)
+      return { ...l, id: null, key: keySeq++, price, total: calc.total }
     })
     setLines(copied)
     setDirty(true)
     toast.show(`№ ${lastInvoice.number} жүкқұжатынан ${copied.length} тауар көшірілді${changed ? `, ${changed} тауардың бағасы жаңарды` : ''}`)
-  }, [lastInvoice, vatRate, toast])
+  }, [lastInvoice, toast])
 
   useEffect(() => {
     if (autoRepeat.current && lastInvoice) {
@@ -130,7 +128,7 @@ export function InvoiceEditPage() {
   }
 
   const totals = useMemo(
-    () => lines.reduce((acc, l) => ({ total: acc.total + l.total, vat: acc.vat + l.vat }), { total: 0, vat: 0 }),
+    () => ({ total: lines.reduce((sum, l) => sum + l.total, 0) }),
     [lines],
   )
   const unpriced = lines.filter((l) => l.price === 0).length
@@ -286,13 +284,12 @@ export function InvoiceEditPage() {
                 <th>Бірлік</th>
                 <th className="num">Жеңілдік</th>
                 <th className="num">Сомасы</th>
-                <th className="num">ҚҚС</th>
                 <th aria-label="Әрекеттер" style={{ width: 96 }} />
               </tr>
             </thead>
             <tbody>
               {lines.length === 0 && (
-                <tr><td colSpan={9} className="table__msg">Төмендегі жолақтан тауар қосыңыз: атауын жазып, санын енгізіп, Enter басыңыз</td></tr>
+                <tr><td colSpan={8} className="table__msg">Төмендегі жолақтан тауар қосыңыз: атауын жазып, санын енгізіп, Enter басыңыз</td></tr>
               )}
               {lines.map((l, i) => (
                 <tr key={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
@@ -314,7 +311,6 @@ export function InvoiceEditPage() {
                   <td className="line-col">{unitLabel(l.unit)}</td>
                   <td className="num line-col">{l.discount ? `${fmt(l.discount)}%` : ''}</td>
                   <td className="num strong line-total">{fmtMoney(l.total)}</td>
-                  <td className="num muted-cell line-col">{fmt2(l.vat)}</td>
                   <td className="row-actions">
                     <button className="icon-btn" title="Өзгерту" aria-label={`«${l.productName}» өзгерту`} onClick={() => setEditingLine(l)}>
                       <Icon name="edit" />
@@ -331,7 +327,6 @@ export function InvoiceEditPage() {
                 <tr>
                   <td colSpan={6} className="line-foot-label">Барлығы</td>
                   <td className="num line-foot-total">{fmtMoney(totals.total)}</td>
-                  <td className="num line-col">{fmt2(totals.vat)}</td>
                   <td className="line-col" />
                 </tr>
               </tfoot>
@@ -341,7 +336,6 @@ export function InvoiceEditPage() {
 
         <QuickAdd
           units={units}
-          vatRate={vatRate}
           nextSort={nextSort}
           onAdd={(line) => {
             setLines((ls) => [...ls, line])
@@ -374,7 +368,6 @@ export function InvoiceEditPage() {
         <div className="editor-total" aria-live="polite">
           <span className="editor-total__label">Барлығы</span>
           <span className="editor-total__value">{fmtMoney(totals.total)} ₸</span>
-          <span className="editor-total__vat">оның ішінде ҚҚС {fmt2(totals.vat)} ₸</span>
         </div>
       </div>
 
@@ -444,9 +437,8 @@ function paymentState(inv: Invoice): PaymentState {
 }
 
 /** Inline entry bar: product → quantity → Enter adds the line and returns focus to the product field. */
-function QuickAdd({ units, vatRate, nextSort, onAdd }: {
+function QuickAdd({ units, nextSort, onAdd }: {
   units: Unit[]
-  vatRate: number
   nextSort: number
   onAdd: (line: Line) => void
 }) {
@@ -462,7 +454,7 @@ function QuickAdd({ units, vatRate, nextSort, onAdd }: {
   const p = parseNum(price)
   const q = parseNum(quantity)
   const d = parseNum(discount)
-  const calc = p !== null && q !== null ? calcLine(p, q, d, vatRate) : null
+  const calc = p !== null && q !== null ? calcLine(p, q, d) : null
 
   const add = () => {
     const errs = {
@@ -489,7 +481,6 @@ function QuickAdd({ units, vatRate, nextSort, onAdd }: {
       quantity: q!,
       discount: d,
       total: calc.total,
-      vat: calc.vat,
       sortOrder: nextSort,
     })
     setProduct(null)
@@ -572,7 +563,6 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   onClose: () => void
   onSave: (l: Line) => void
 }) {
-  const { vatRate } = useSettings()
   const [categoryId, setCategoryId] = useState<number | null>(line.categoryId ?? null)
   const [product, setProduct] = useState<Option | null>({ id: line.productId ?? -1, label: line.productName })
   const [productId, setProductId] = useState<number | null>(line.productId ?? null)
@@ -587,7 +577,7 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   const p = parseNum(price)
   const q = parseNum(quantity)
   const d = parseNum(discount)
-  const calc = p !== null && q !== null ? calcLine(p, q, d, vatRate) : null
+  const calc = p !== null && q !== null ? calcLine(p, q, d) : null
 
   const submit = () => {
     const errs: Record<string, string> = {}
@@ -608,7 +598,6 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
       quantity: q!,
       discount: d,
       total: calc.total,
-      vat: calc.vat,
       sortOrder: parseNum(sortOrder),
     })
   }
@@ -673,7 +662,6 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
         </Field>
         <div className="line-summary">
           <span>Сомасы: <b>{calc ? `${fmt2(calc.total)} ₸` : '—'}</b></span>
-          <span className="muted">оның ішінде ҚҚС {vatRate}%: {calc ? fmt2(calc.vat) : '—'}</span>
         </div>
         <button hidden />
       </form>

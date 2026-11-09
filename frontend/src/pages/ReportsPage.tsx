@@ -27,7 +27,7 @@ export function ReportsPage() {
   const [city, setCity] = useState('')
   const [cities, setCities] = useState<CityCount[]>([])
   const [report, setReport] = useState<SalesReport | null>(null)
-  const { company, vatRate } = useSettings()
+  const { company } = useSettings()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sort, setSort] = useState<SortKey>('total')
@@ -80,10 +80,10 @@ export function ReportsPage() {
       [company.name],
       [subtitle],
       [],
-      ['№', 'Тауар атауы', 'Санат', 'Бірлік бағасы', 'Саны', 'Барлығы', 'оның ішінде ҚҚС', 'Жүкқұжаттар'],
-      ...rows.map((r, i) => [i + 1, r.productName, r.categoryName ?? '', r.avgPrice, r.quantity, r.total, r.vat, r.invoices]),
+      ['№', 'Тауар атауы', 'Санат', 'Бірлік бағасы', 'Саны', 'Барлығы', 'Жүкқұжаттар'],
+      ...rows.map((r, i) => [i + 1, r.productName, r.categoryName ?? '', r.avgPrice, r.quantity, r.total, r.invoices]),
       [],
-      ['', 'Жалпы саны мен сомасы', '', '', report.totalQuantity, report.total, report.vat, report.invoiceCount],
+      ['', 'Жалпы саны мен сомасы', '', '', report.totalQuantity, report.total, report.invoiceCount],
     ]
     const csv = '﻿' + lines.map((l) => l.map((c) => esc(c as string | number)).join(';')).join('\r\n')
     const a = document.createElement('a')
@@ -149,14 +149,10 @@ export function ReportsPage() {
         <div>{subtitle}</div>
       </div>
 
-      <div className={`summary ${loading ? 'is-loading' : ''}`}>
+      <div className={`summary summary--three ${loading ? 'is-loading' : ''}`}>
         <div className="summary__item">
           <span>Барлығы сатылды</span>
           <b>{fmtMoney(report?.total)} ₸</b>
-        </div>
-        <div className="summary__item">
-          <span>оның ішінде ҚҚС {vatRate}%</span>
-          <b>{fmtMoney(report?.vat)} ₸</b>
         </div>
         <div className="summary__item">
           <span>Саны</span>
@@ -187,14 +183,13 @@ export function ReportsPage() {
               <th className="num">Бірлік бағасы</th>
               <SortTh k="quantity" sort={sort} setSort={setSort} num>Саны</SortTh>
               <SortTh k="total" sort={sort} setSort={setSort} num>Барлығы, ₸</SortTh>
-              <th className="num">оның ішінде ҚҚС</th>
               <th className="num">Жүкқ.</th>
             </tr>
           </thead>
           <tbody>
-            {loading && rows.length === 0 && <SkeletonRows cols={8} />}
+            {loading && rows.length === 0 && <SkeletonRows cols={7} />}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={8} className="table__msg">Таңдалған кезеңде сатылым жоқ</td></tr>
+              <tr><td colSpan={7} className="table__msg">Таңдалған кезеңде сатылым жоқ</td></tr>
             )}
             {rows.map((r, i) => (
               <tr key={r.productName}>
@@ -204,7 +199,6 @@ export function ReportsPage() {
                 <td className="num">{fmtMoney(r.avgPrice)}</td>
                 <td className="num">{fmtMoney(r.quantity)}</td>
                 <td className="num strong">{fmtMoney(r.total)}</td>
-                <td className="num muted-cell">{fmtMoney(r.vat)}</td>
                 <td className="num muted-cell">{r.invoices}</td>
               </tr>
             ))}
@@ -216,7 +210,6 @@ export function ReportsPage() {
                 <td colSpan={3}>Жалпы саны мен сомасы</td>
                 <td className="num">{fmtMoney(report.totalQuantity)}</td>
                 <td className="num">{fmtMoney(report.total)}</td>
-                <td className="num">{fmtMoney(report.vat)}</td>
                 <td className="num">{report.invoiceCount}</td>
               </tr>
             </tfoot>

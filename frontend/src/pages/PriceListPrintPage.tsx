@@ -103,7 +103,7 @@ export function PriceListPrintPage() {
             ))}
           </table>
         )}
-        <footer className="pricelist__foot">Бағаларға ҚҚС кіреді. Бағалар алдын ала ескертусіз өзгеруі мүмкін.</footer>
+        <footer className="pricelist__foot">Бағалар алдын ала ескертусіз өзгеруі мүмкін.</footer>
       </article>
     </section>
   )

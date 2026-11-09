@@ -4,7 +4,6 @@ import type { Company, Settings } from '../api/types'
 
 const DEFAULTS: Settings = {
   company: { name: '', bin: null, address: null, phone: null, chiefAccountant: null, releaseAllowedBy: null },
-  vatRate: 12,
 }
 
 let cache: Promise<Settings> | null = null
@@ -18,7 +17,7 @@ function load() {
   return cache
 }
 
-/** Server settings (company details, VAT rate), fetched once per session and shared by all pages. */
+/** Server settings (company details), fetched once per session and shared by all pages. */
 export function useSettings(): Settings {
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   useEffect(() => {
