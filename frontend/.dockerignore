@@ -1,2 +1,6 @@
 node_modules
 dist
+# Keep local env files (and anything secret in them) out of the image
+.env
+.env.*
+!.env.example

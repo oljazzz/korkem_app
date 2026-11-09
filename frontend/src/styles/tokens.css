@@ -73,7 +73,7 @@
   --kr-mu400: 4rem;     /* 64px */
 
   /* ---------- 3. Typography (Mozaic font scale) ---------- */
-  --kr-font: 'Roboto', 'Helvetica Neue', Arial, sans-serif; /* stands in for LeroyMerlinSans */
+  --kr-font: 'Roboto Variable', 'Roboto', 'Helvetica Neue', Arial, sans-serif; /* stands in for LeroyMerlinSans */
   --kr-font-01: 0.6875rem; /* 11 — legal text */
   --kr-font-02: 0.75rem;   /* 12 — caption */
   --kr-font-03: 0.8125rem; /* 13 */

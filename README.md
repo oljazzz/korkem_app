@@ -84,8 +84,10 @@ docker compose up --build
 - Кіргенде JWT **httpOnly, SameSite=Strict** cookie ретінде беріледі: JavaScript оны оқи алмайды, басқа сайттардан келген сұраныстарға қосылмайды (CSRF-тен қорғаныс). Сондықтан фронтенд пен API бір доменде болуы керек (nginx `/api` арқылы).
 - Бір логинге 15 минут ішінде 5 сәтсіз әрекеттен кейін (бір IP-ден 20) кіру уақытша бұғатталады (429).
 - Бұғатталған/жойылған пайдаланушының сессиясы бірден тоқтайды; рөл әр сұраныста базадан алынады.
-- nginx: CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. HSTS-ті TLS аяқталатын жерде қосыңыз.
-- Бэкенд контейнері root емес пайдаланушымен жұмыс істейді.
+- nginx: CSP (тек `'self'`), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`. Тақырыптар `frontend/security-headers.conf` файлында, әр `location`-ға қосылады. HSTS-ті TLS аяқталатын жерде қосыңыз.
+- Roboto қаріпі жобаның ішінен беріледі (`@fontsource-variable/roboto`): үшінші тарап серверлеріне сұраныс жоқ.
+- Бір қойындыдан шыққанда (немесе сессия аяқталғанда) басқа қойындылар да шығады.
+- Бэкенд пен фронтенд (nginx-unprivileged, 8080 порты) контейнерлері root емес пайдаланушымен жұмыс істейді.
 
 ## Тесттер
 

@@ -4,6 +4,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 import { ToastProvider } from './components/Toast'
+// Self-hosted font: no third-party requests, so the CSP can stay 'self'-only
+import '@fontsource-variable/roboto'
 import './styles/tokens.css'
 import './index.css'
 
