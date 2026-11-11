@@ -68,7 +68,7 @@ export function PriceListPrintPage() {
         <span className="muted">PDF ретінде сақтап, клиентке жіберуге болады</span>
       </div>
       {error && <Alert>{error}</Alert>}
-      {/* The app's default print page is landscape (form Q-2); a price list reads better in portrait */}
+      {/* The default print page is landscape; a price list reads better in portrait */}
       <style>{'@media print { @page { size: A4 portrait; margin: 12mm; } }'}</style>
 
       <article className="pricelist" lang="kk">

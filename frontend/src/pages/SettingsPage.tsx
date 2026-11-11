@@ -7,7 +7,7 @@ import { PageHeader } from '../components/Layout'
 import { useToast } from '../components/Toast'
 import { setCompany, useSettings } from '../lib/settings'
 
-/** Company details printed on documents (Q-2, price list). Admins only. */
+/** Company details printed on documents (invoice, price list). Admins only. */
 export function SettingsPage() {
   const { company } = useSettings()
   const toast = useToast()
@@ -46,7 +46,7 @@ export function SettingsPage() {
     <section className="page">
       <PageHeader eyebrow="Баптаулар" title="Ұйым деректері" />
       <form className="form-grid" onSubmit={(e) => { e.preventDefault(); save() }}>
-        <p className="muted form-grid__intro">Бұл деректер Қ-2 жүкқұжатында және баға тізімінде басылады.</p>
+        <p className="muted form-grid__intro">Бұл деректер жүкқұжатта және баға тізімінде басылады.</p>
         <Field label="Атауы" required error={errors.name}>
           <input className="input" value={form.name} onChange={set('name')} />
         </Field>
@@ -61,7 +61,7 @@ export function SettingsPage() {
         </Field>
         <Field label="Берген" error={errors.releaseAllowedBy}>
           <input className="input" value={form.releaseAllowedBy ?? ''} onChange={set('releaseAllowedBy')} placeholder="Тегі, аты-жөні" />
-          <span className="field__hint">Қ-2 жүкқұжатының «Берген» жолына басылады.</span>
+          <span className="field__hint">Жүкқұжаттың «Берген» жолына басылады.</span>
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}
         <div className="field__offset">

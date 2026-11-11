@@ -197,7 +197,7 @@ export interface Invoice {
   id: number
   number: number
   clientId: number | null
-  /** Full "name - address", printed on form Q-2. */
+  /** Full "name - address" of the client. */
   clientName: string | null
   clientLabel: string | null
   createdAt: string

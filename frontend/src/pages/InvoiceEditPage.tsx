@@ -15,6 +15,7 @@ import { ColourChips } from '../components/ColourChips'
 import { loadProducts, type PickOption } from '../lib/productPick'
 import { ClientSheet, ProductSheet, type LineDraft } from '../components/InvoiceSheets'
 import { Stepper } from '../components/Sheet'
+import { SortableCard, SortableList, SortableRow } from '../components/Sortable'
 import { useNarrow } from '../lib/useNarrow'
 import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, numericInput, parseNum } from '../lib/format'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
@@ -240,6 +241,12 @@ export function InvoiceEditPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [canSave, ok])
 
+  /** New order from drag and drop; numbering follows it, so print and save keep it. */
+  const reorder = (next: Line[]) => {
+    setLines(next.map((l, i) => ({ ...l, sortOrder: i + 1 })))
+    setDirty(true)
+  }
+
   const setQuantity = (line: Line, quantity: number) => {
     setLines((ls) => ls.map((l) => (l.key === line.key ? { ...l, quantity, total: calcLine(l.price, quantity, l.discount).total } : l)))
     setDirty(true)
@@ -329,10 +336,14 @@ export function InvoiceEditPage() {
         </div>
 
         {phone ? (
+          <SortableList items={lines} onMove={reorder}>
           <ul className="m-lines">
             {lines.length === 0 && <li className="m-lines__empty">Әзірге тауар жоқ</li>}
             {lines.map((l) => (
-              <li key={l.key} className={`m-line ${l.price === 0 ? 'is-unpriced' : ''}`}>
+              <SortableCard key={l.key} id={l.key} className={`m-line ${l.price === 0 ? 'is-unpriced' : ''}`}>
+                {(handle) => (<>
+                {handle}
+                <div className="m-line__body">
                 <button type="button" className="m-line__main" onClick={() => setProductSheet(l)}>
                   <span className="m-line__name">{l.productName}</span>
                   <span className="m-line__calc">
@@ -348,15 +359,19 @@ export function InvoiceEditPage() {
                     }} />
                   <span className="m-line__total">{fmtMoney(l.total)} ₸</span>
                 </div>
-              </li>
+                </div>
+                </>)}
+              </SortableCard>
             ))}
           </ul>
+          </SortableList>
         ) : (
+        <SortableList items={lines} onMove={reorder}>
         <div className="table-wrap">
           <table className="table table--lines">
             <thead>
               <tr>
-                <th className="num" style={{ width: 44 }}>№</th>
+                <th className="num" style={{ width: 64 }}>№</th>
                 <th>Тауар</th>
                 <th className="num">Бағасы</th>
                 <th className="num">Саны</th>
@@ -371,8 +386,9 @@ export function InvoiceEditPage() {
                 <tr><td colSpan={8} className="table__msg">Төмендегі жолақтан тауар қосыңыз: атауын жазып, санын енгізіп, Enter басыңыз</td></tr>
               )}
               {lines.map((l, i) => (
-                <tr key={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
-                  <td className="num muted-cell line-no">{i + 1}</td>
+                <SortableRow key={l.key} id={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
+                  {(handle) => (<>
+                  <td className="num muted-cell line-no"><span className="line-no__in">{handle}{i + 1}</span></td>
                   <td className="strong line-name">{l.productName}</td>
                   {/* Phones: one compact "qty × price" line instead of four columns */}
                   <td className="line-calc">
@@ -398,7 +414,8 @@ export function InvoiceEditPage() {
                       <Icon name="trash" />
                     </button>
                   </td>
-                </tr>
+                  </>)}
+                </SortableRow>
               ))}
             </tbody>
             {lines.length > 0 && (
@@ -412,6 +429,7 @@ export function InvoiceEditPage() {
             )}
           </table>
         </div>
+        </SortableList>
         )}
 
         {phone ? (
@@ -450,8 +468,8 @@ export function InvoiceEditPage() {
         <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>
         <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>Жабу</button>
         <button className="btn btn--outline editor-actions__print" onClick={report} disabled={!canSave && (dirty || isNew)}
-          title="Қ-2 басып шығару" aria-label="Қ-2 басып шығару">
-          <Icon name="print" /><span className="btn__label">Қ-2 басып шығару</span>
+          title="Басып шығару" aria-label="Басып шығару">
+          <Icon name="print" /><span className="btn__label">Басып шығару</span>
         </button>
         <span className="muted editor-actions__status" role="status">
           {missing.length > 0 ? `Сақтау үшін ${missing.join(' және ')}` : dirty ? 'Сақталмаған өзгерістер бар' : ''}

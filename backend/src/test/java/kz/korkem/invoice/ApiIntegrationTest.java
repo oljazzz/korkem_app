@@ -604,4 +604,38 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/reports/sales").param("clientId", clientId).header("Authorization", admin))
                 .andExpect(jsonPath("$.rows[*].groupName").value(everyItem(is("СТАТУС ПФ-115 эмаль 2,6 кг"))));
     }
+
+    @Test
+    void linesKeepTheOrderChosenInTheEditor() throws Exception {
+        String auth = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"ип.Ретті\"}")).andReturn().getResponse().getContentAsString(), "id");
+        String[] ids = new String[3];
+        String[] names = {"Ретті А", "Ретті Б", "Ретті В"};
+        for (int i = 0; i < 3; i++) {
+            ids[i] = extract(mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"" + names[i] + "\",\"price\":100}")).andReturn().getResponse().getContentAsString(), "id");
+        }
+        // Entered А, Б, В, then dragged В to the top: the editor numbers them 2, 3, 1
+        String inv = mvc.perform(post("/api/invoices").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":["
+                                + "{\"productId\":" + ids[0] + ",\"price\":100,\"quantity\":1,\"sortOrder\":2},"
+                                + "{\"productId\":" + ids[1] + ",\"price\":100,\"quantity\":1,\"sortOrder\":3},"
+                                + "{\"productId\":" + ids[2] + ",\"price\":100,\"quantity\":1,\"sortOrder\":1}]}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String invId = extract(inv, "id");
+        mvc.perform(get("/api/invoices/" + invId).header("Authorization", auth))
+                .andExpect(jsonPath("$.lines[*].productName").value(contains("Ретті В", "Ретті А", "Ретті Б")));
+
+        // Reordered again on an existing invoice: Б first
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":["
+                                + "{\"productId\":" + ids[1] + ",\"price\":100,\"quantity\":1,\"sortOrder\":1},"
+                                + "{\"productId\":" + ids[2] + ",\"price\":100,\"quantity\":1,\"sortOrder\":2},"
+                                + "{\"productId\":" + ids[0] + ",\"price\":100,\"quantity\":1,\"sortOrder\":3}]}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/invoices/" + invId).header("Authorization", auth))
+                .andExpect(jsonPath("$.lines[*].productName").value(contains("Ретті Б", "Ретті В", "Ретті А")));
+    }
 }

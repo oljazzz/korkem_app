@@ -1051,7 +1051,7 @@ input[type='checkbox']:checked {
 /* ---------- Android phones (Samsung A-series: 384dp wide, 360 or less with enlarged screen zoom/text) ---------- */
 /* Android paints a blue box over anything tapped; replace it with our own press states */
 html { -webkit-tap-highlight-color: transparent; }
-/* iOS Safari and Android Chrome enlarge text they think is too small (the scaled-down Q-2 sheet); keep our sizes */
+/* iOS Safari and Android Chrome enlarge text they think is too small (the scaled-down printed invoice); keep our sizes */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (hover: none) {
   .row-link:active > td, .table--cards .row-link:active { background: var(--surface-sunken); }
@@ -1153,3 +1153,16 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
 
 /* App version under the sign-in button */
 .app-version { margin: var(--kr-mu150) 0 0; text-align: center; font-size: var(--kr-font-03); color: var(--text-muted); }
+
+/* ---------- Drag-and-drop line order ---------- */
+.drag-handle {
+  display: inline-grid; place-items: center; flex: none; width: 26px; height: 32px; padding: 0; border: 0; border-radius: var(--kr-radius-s);
+  background: none; color: var(--text-muted); cursor: grab; touch-action: none;
+}
+.drag-handle:hover { color: var(--text); background: var(--surface-sunken); }
+.drag-handle:active { cursor: grabbing; }
+.line-no__in { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.table--lines tr.is-dragging td { background: var(--surface); box-shadow: 0 6px 16px rgb(0 0 0 / 0.12); }
+.m-line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--kr-mu025); align-items: start; background: var(--surface-page); }
+.m-line .drag-handle { width: 36px; height: 44px; margin-left: -8px; }
+.m-line.is-dragging { background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 0.16); border-radius: var(--kr-radius-m); }
