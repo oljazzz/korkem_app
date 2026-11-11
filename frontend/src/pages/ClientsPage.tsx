@@ -16,6 +16,7 @@ import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmt, fmtDate, fmtMoney, parseNum } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useTranslation } from 'react-i18next'
 
 type View = 'all' | 'debtors' | 'duplicates'
 
@@ -23,6 +24,7 @@ export function ClientsPage() {
   const isAdmin = useIsAdmin()
   const toast = useToast()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const initialView = searchParams.get('view')
   const [view, setView] = useState<View>(initialView === 'debtors' || initialView === 'duplicates' ? initialView : 'all')
@@ -68,9 +70,9 @@ export function ClientsPage() {
     try {
       await api.clients.remove(c.id)
       list.reload()
-      toast.show(`«${c.name}» жойылды`)
+      toast.show(t('clients.deleted', { name: c.name }))
     } catch (e) {
-      setError((e as ApiError).status === 409 ? 'Клиенттің жүкқұжаттары бар — жоюға болмайды' : (e as Error).message)
+      setError((e as ApiError).status === 409 ? t('clients.hasInvoices') : (e as Error).message)
     }
   }
 
@@ -79,7 +81,7 @@ export function ClientsPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Анықтамалық" title="Клиенттер" />
+      <PageHeader eyebrow={t('clients.eyebrow')} title={t('clients.title')} />
       <Toolbar
         onCreate={() => setEditing('new')}
         search={list.q}
@@ -87,23 +89,23 @@ export function ClientsPage() {
           setView('all')
           list.search(q)
         }}
-        searchPlaceholder="Аты, телефоны немесе елді мекені"
+        searchPlaceholder={t('clients.searchPlaceholder')}
       >
-        <div className="chips" role="group" aria-label="Көрініс">
+        <div className="chips" role="group" aria-label={t('clients.view')}>
           <button className={`chip ${view === 'all' ? 'is-active' : ''}`} aria-pressed={view === 'all'} onClick={() => setView('all')}>
-            Барлығы
+            {t('clients.viewAll')}
           </button>
           <button className={`chip ${view === 'debtors' ? 'is-active' : ''}`} aria-pressed={view === 'debtors'} onClick={() => setView('debtors')}>
-            Қарызы барлар
+            {t('clients.viewDebtors')}
           </button>
           <button className={`chip ${view === 'duplicates' ? 'is-active' : ''}`} aria-pressed={view === 'duplicates'} onClick={() => setView('duplicates')}>
-            Қайталанатындар
+            {t('clients.viewDuplicates')}
           </button>
         </div>
         {view === 'all' && cities.length > 0 && (
           <select
             className="input toolbar__select"
-            aria-label="Елді мекен / базар бойынша сүзу"
+            aria-label={t('clients.cityFilter')}
             value={city}
             onChange={(e) => {
               setCity(e.target.value)
@@ -111,15 +113,15 @@ export function ClientsPage() {
               list.reload()
             }}
           >
-            <option value="">Барлық елді мекендер</option>
+            <option value="">{t('clients.allCities')}</option>
             {cities.map((c) => <option key={c.city} value={c.city}>{c.city} ({c.clients})</option>)}
           </select>
         )}
       </Toolbar>
       {view === 'debtors' && debts && (
         <div className="selection-bar">
-          Жалпы қарыз: <b>{fmtMoney(debts.total)} ₸</b>
-          <span className="selection-bar__nums">{debts.debtors.length} клиент</span>
+          {t('clients.totalDebt')} <b>{fmtMoney(debts.total)} ₸</b>
+          <span className="selection-bar__nums">{t('clients.debtorCount', { count: debts.debtors.length })}</span>
         </div>
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
@@ -135,11 +137,11 @@ export function ClientsPage() {
         <table className="table table--cards">
           <thead>
             <tr>
-              <th>Аты</th>
-              <th style={{ width: 190 }}>Телефон</th>
-              <th style={{ width: 200 }}>Елді мекен / базар</th>
-              <th className="num" style={{ width: 150 }}>Қарызы, ₸</th>
-              <th aria-label="Әрекеттер" style={{ width: 96 }} />
+              <th>{t('clients.colName')}</th>
+              <th style={{ width: 190 }}>{t('clients.colPhone')}</th>
+              <th style={{ width: 200 }}>{t('clients.colCity')}</th>
+              <th className="num" style={{ width: 150 }}>{t('clients.colDebt')}</th>
+              <th aria-label={t('clients.colActions')} style={{ width: 96 }} />
             </tr>
           </thead>
           <tbody>
@@ -147,7 +149,7 @@ export function ClientsPage() {
               loading={loading}
               error={view === 'all' ? list.error : null}
               empty={rows.length === 0}
-              emptyText={view === 'debtors' ? 'Қарызы бар клиент жоқ' : undefined}
+              emptyText={view === 'debtors' ? t('clients.noDebtors') : undefined}
               colSpan={5}
             />
             {rows.map((c) => (
@@ -157,8 +159,8 @@ export function ClientsPage() {
                   {c.city && c.address && <span className="cell-sub">{c.address}</span>}
                   {!c.city && c.place && <span className="cell-sub">{c.place}</span>}
                 </td>
-                <td data-label="Телефон" className="nowrap">{c.phone}</td>
-                <td data-label="Елді мекен">{c.city}</td>
+                <td data-label={t('clients.colPhone')} className="nowrap">{c.phone}</td>
+                <td data-label={t('clients.cityShort')}>{c.city}</td>
                 <td className={`num cell-amount ${c.debt > 0 ? 'text-debt' : 'muted-cell'}`}>
                   {c.debt > 0 ? `${fmtMoney(c.debt)} ₸` : '—'}
                 </td>
@@ -182,7 +184,7 @@ export function ClientsPage() {
             setMergePair(null)
             setDupVersion((v) => v + 1)
             list.reload()
-            toast.show(`«${r.removedName}» → «${r.primary.name}»: ${r.movedInvoices} жүкқұжат көшірілді`)
+            toast.show(t('clients.merged', { from: r.removedName, to: r.primary.name, count: r.movedInvoices }))
           }}
         />
       )}
@@ -194,17 +196,17 @@ export function ClientsPage() {
             setEditing(null)
             list.setSelectedId(c.id)
             list.reload()
-            toast.show('Клиент сақталды')
+            toast.show(t('clients.saved'))
           }}
         />
       )}
       {deleting && (
         <ConfirmModal
-          title="Клиентті жою"
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('clients.deleteTitle')}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
-          text={`«${deleting.name}» клиентін жою керек пе?`}
+          text={t('clients.deleteText', { name: deleting.name })}
           onConfirm={remove}
           onClose={() => setDeleting(null)}
         />
@@ -220,12 +222,13 @@ function Duplicates({ groups, canMerge, onOpen, onMerge }: {
   onOpen: (c: Client) => void
   onMerge: (primaryId: number, otherId: number) => void
 }) {
-  if (!groups) return <div className="card"><p className="muted">Жүктелуде…</p></div>
-  if (groups.length === 0) return <div className="card"><p className="muted">Телефоны бірдей клиенттер жоқ</p></div>
+  const { t } = useTranslation()
+  if (!groups) return <div className="card"><p className="muted">{t('common.loading')}</p></div>
+  if (groups.length === 0) return <div className="card"><p className="muted">{t('clients.noDuplicates')}</p></div>
   return (
     <>
       <p className="muted dup-intro">
-        Телефоны бірдей {groups.length} топ. Әр топта бірінші тұрған клиенттің соңғы жүкқұжаты жаңа, біріктіргенде сол қалады.
+        {t('clients.duplicatesIntro', { count: groups.length })}
       </p>
       <div className="dup-list">
         {groups.map((g) => (
@@ -238,13 +241,13 @@ function Duplicates({ groups, canMerge, onOpen, onMerge }: {
                   {(s.client.city || s.client.address) && ` · ${s.client.city ?? s.client.address}`}
                 </span>
                 <span className="dup__stats">
-                  {fmt(s.invoiceCount)} жүкқұжат · {s.lastInvoiceAt ? fmtDate(s.lastInvoiceAt) : 'жүкқұжаты жоқ'}
+                  {t('clients.duplicateMeta', { count: fmt(s.invoiceCount), last: s.lastInvoiceAt ? fmtDate(s.lastInvoiceAt) : t('clients.noInvoice') })}
                 </span>
                 {i === 0 ? (
-                  <span className="dup__tag">Басты</span>
+                  <span className="dup__tag">{t('clients.primary')}</span>
                 ) : canMerge ? (
                   <button className="btn btn--outline btn--s" onClick={() => onMerge(g[0].client.id, s.client.id)}>
-                    <Icon name="merge" />Біріктіру
+                    <Icon name="merge" />{t('clients.merge')}
                   </button>
                 ) : <span />}
               </div>
@@ -262,6 +265,7 @@ export function ClientForm({ client, onClose, onSaved }: {
   onSaved: (c: Client) => void
 }) {
   const [name, setName] = useState(client?.name ?? '')
+  const { t } = useTranslation()
   const [phone, setPhone] = useState(client?.phone ?? '')
   const [city, setCity] = useState(client?.city ?? '')
   const [address, setAddress] = useState(client?.address ?? '')
@@ -273,7 +277,7 @@ export function ClientForm({ client, onClose, onSaved }: {
   const save = async () => {
     const debt = parseNum(openingDebt)
     if (openingDebt.trim() && (debt === null || debt < 0)) {
-      setErrors({ openingDebt: 'Теріс емес сан енгізіңіз' })
+      setErrors({ openingDebt: t('clients.debtNegative') })
       return
     }
     setBusy(true)
@@ -297,37 +301,37 @@ export function ClientForm({ client, onClose, onSaved }: {
 
   return (
     <Modal
-      title={client ? 'Клиентті өзгерту' : 'Жаңа клиент'}
+      title={client ? t('clients.editTitle') : t('clients.newTitle')}
       width={560}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save} disabled={busy}>Сақтау</button>
-          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
+          <button className="btn btn--primary" onClick={save} disabled={busy}>{t('common.save')}</button>
+          <button className="btn btn--ghost" onClick={onClose}>{t('common.cancel')}</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Аты" required error={errors.name}>
-          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ип.Анар" />
+        <Field label={t('clients.name')} required error={errors.name}>
+          <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t('clients.namePlaceholder')} />
         </Field>
-        <Field label="Телефон" error={errors.phone}>
+        <Field label={t('clients.phone')} error={errors.phone}>
           <input className="input" type="tel" inputMode="tel" autoComplete="off" value={phone}
             onChange={(e) => setPhone(e.target.value)} placeholder="+7 701 123 45 67" />
         </Field>
-        <Field label="Елді мекен / базар" error={errors.city}>
-          <input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Узынагаш, Еламан базары" />
+        <Field label={t('clients.city')} error={errors.city}>
+          <input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder={t('clients.cityPlaceholder')} />
         </Field>
-        <Field label="Мекенжайы" error={errors.address}>
-          <textarea className="input" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Қатар, контейнер, бағдар" />
+        <Field label={t('clients.address')} error={errors.address}>
+          <textarea className="input" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('clients.addressPlaceholder')} />
         </Field>
-        <Field label="Ескертпе" error={errors.note}>
+        <Field label={t('clients.note')} error={errors.note}>
           <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
-        <Field label="Бастапқы қарыз, ₸" error={errors.openingDebt}>
+        <Field label={t('clients.openingDebt')} error={errors.openingDebt}>
           <input className="input num-input" inputMode="decimal" value={openingDebt}
             onChange={(e) => setOpeningDebt(e.target.value)} placeholder="0" />
-          <span className="field__hint">Жүйеге дейінгі қарыз. Ескі жүкқұжаттар төленген деп саналады.</span>
+          <span className="field__hint">{t('clients.openingDebtHint')}</span>
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />

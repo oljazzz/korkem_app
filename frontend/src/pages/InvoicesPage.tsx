@@ -15,11 +15,13 @@ import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useTranslation } from 'react-i18next'
 
 export function InvoicesPage() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const toast = useToast()
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const clientId = Number(searchParams.get('client')) || null
   const [clientName, setClientName] = useState<string | null>(null)
@@ -91,7 +93,7 @@ export function InvoicesPage() {
         return n
       })
       list.reload()
-      toast.show(`№ ${inv.number} жүкқұжат жойылды`)
+      toast.show(t('invoices.deleted', { number: inv.number }))
     } catch (e) {
       setError((e as Error).message)
     }
@@ -99,21 +101,21 @@ export function InvoicesPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Сатылым" title="Жүкқұжаттар" />
+      <PageHeader eyebrow={t('invoices.eyebrow')} title={t('invoices.title')} />
 
       <Toolbar
         onCreate={() => navigate('/invoices/new')}
-        createLabel="Жаңа жүкқұжат"
+        createLabel={t('invoices.new')}
         search={list.q}
         onSearch={list.search}
-        searchPlaceholder="Нөмір немесе клиент"
+        searchPlaceholder={t('invoices.searchPlaceholder')}
       >
-        <div className="daterange" role="group" aria-label="Кезең">
-          <DateInput value={from} max={to || undefined} ariaLabel="Басталу күні" onChange={(v) => setPeriod(v, to)} />
+        <div className="daterange" role="group" aria-label={t('period.group')}>
+          <DateInput value={from} max={to || undefined} ariaLabel={t('period.from')} onChange={(v) => setPeriod(v, to)} />
           <span aria-hidden="true">—</span>
-          <DateInput value={to} min={from || undefined} ariaLabel="Аяқталу күні" onChange={(v) => setPeriod(from, v)} />
+          <DateInput value={to} min={from || undefined} ariaLabel={t('period.to')} onChange={(v) => setPeriod(from, v)} />
           {(from || to) && (
-            <button className="btn btn--ghost btn--s" onClick={() => setPeriod('', '')}>Тазалау</button>
+            <button className="btn btn--ghost btn--s" onClick={() => setPeriod('', '')}>{t('common.clear')}</button>
           )}
         </div>
         <label className="checkbox toolbar__toggle">
@@ -126,42 +128,42 @@ export function InvoicesPage() {
               list.reload()
             }}
           />
-          Тек төленбегендер
+          {t('invoices.unpaidOnly')}
         </label>
       </Toolbar>
 
       {clientId && (
         <div className="filter-chip-row">
           <span className="filter-chip">
-            Клиент: <b>{clientName ?? '…'}</b>
-            <button className="icon-btn" aria-label="Клиент сүзгісін алу" onClick={clearClient}><Icon name="close" size={16} /></button>
+            {t('invoices.clientFilter')} <b>{clientName ?? '…'}</b>
+            <button className="icon-btn" aria-label={t('invoices.clearClient')} onClick={clearClient}><Icon name="close" size={16} /></button>
           </span>
         </div>
       )}
 
       {checked.size > 0 && (
         <div className="selection-bar">
-          Белгіленген жүкқұжаттар: <b>{checked.size}</b>
+          {t('invoices.selected')} <b>{checked.size}</b>
           <span className="selection-bar__nums">
             {[...checked.values()].sort((a, b) => b - a).slice(0, 12).map((n) => `№${n}`).join(', ')}
             {checked.size > 12 ? '…' : ''}
           </span>
-          <button className="link-btn" onClick={() => setChecked(new Map())}>Белгілерді алу</button>
+          <button className="link-btn" onClick={() => setChecked(new Map())}>{t('invoices.clearSelection')}</button>
           <button
             className="btn btn--outline btn--s"
-            title="Белгіленген жүкқұжаттар бойынша сатылған тауарлар есебі"
+            title={t('invoices.reportTitle')}
             onClick={() => navigate(`/reports?invoiceIds=${[...checked.keys()].join(',')}`)}
           >
             <Icon name="report" />
-            Тауарлар есебі
+            {t('invoices.report')}
           </button>
         </div>
       )}
       {summary && (
         <div className="list-summary" aria-live="polite">
-          <span><b>{fmt(summary.count)}</b> жүкқұжат</span>
-          <span>сомасы <b>{fmtMoney(summary.total)} ₸</b></span>
-          {summary.due > 0 && <span className="list-summary__due">төленбегені <b>{fmtMoney(summary.due)} ₸</b></span>}
+          <span><b>{fmt(summary.count)}</b> {t('invoices.count')}</span>
+          <span>{t('invoices.sum')} <b>{fmtMoney(summary.total)} ₸</b></span>
+          {summary.due > 0 && <span className="list-summary__due">{t('invoices.unpaid')} <b>{fmtMoney(summary.due)} ₸</b></span>}
         </div>
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
@@ -172,15 +174,15 @@ export function InvoicesPage() {
             <tr>
               <th className="check">
                 <label className="check__hit">
-                  <input type="checkbox" aria-label="Беттегінің бәрін белгілеу" checked={allOnPage} onChange={toggleAll} />
+                  <input type="checkbox" aria-label={t('invoices.selectAll')} checked={allOnPage} onChange={toggleAll} />
                 </label>
               </th>
               <th style={{ width: 120 }}>№</th>
-              <th style={{ width: 130 }}>Күні</th>
-              <th>Клиент</th>
-              <th style={{ width: 130 }}>Төлем</th>
-              <th className="num" style={{ width: 160 }}>Сомасы, ₸</th>
-              <th aria-label="Әрекеттер" style={{ width: 136 }} />
+              <th style={{ width: 130 }}>{t('invoices.colDate')}</th>
+              <th>{t('invoices.colClient')}</th>
+              <th style={{ width: 130 }}>{t('invoices.colPayment')}</th>
+              <th className="num" style={{ width: 160 }}>{t('invoices.colSum')}</th>
+              <th aria-label={t('invoices.colActions')} style={{ width: 136 }} />
             </tr>
           </thead>
           <tbody>
@@ -189,18 +191,18 @@ export function InvoicesPage() {
               <tr key={i.id} {...rowProps(() => open(i), isAdmin ? () => setDeleting(i) : undefined)}>
                 <td className="check">
                   <label className="check__hit">
-                    <input type="checkbox" aria-label={`№${i.number} белгілеу`} checked={checked.has(i.id)} onChange={() => toggle(i)} />
+                    <input type="checkbox" aria-label={t('invoices.selectOne', { number: i.number })} checked={checked.has(i.id)} onChange={() => toggle(i)} />
                   </label>
                 </td>
                 <td className="mono strong" data-title>№ {i.number}</td>
-                <td className="muted-cell" data-label="Күні">{fmtDate(i.createdAt)}</td>
-                <td data-label="Клиент">
+                <td className="muted-cell" data-label={t('invoices.colDate')}>{fmtDate(i.createdAt)}</td>
+                <td data-label={t('invoices.colClient')}>
                   <span className="strong">{i.clientName}</span>
                   {i.clientPlace && <span className="cell-sub">{i.clientPlace}</span>}
                 </td>
                 <td className="cell-status">
                   <PaymentBadge status={i.status} />
-                  {i.status === 'PARTIAL' && <span className="cell-sub">қалды {fmtMoney(i.due)} ₸</span>}
+                  {i.status === 'PARTIAL' && <span className="cell-sub">{t('invoices.due', { amount: fmtMoney(i.due) })}</span>}
                 </td>
                 <td className="num strong cell-amount">{fmtMoney(i.total)} ₸</td>
                 <RowActions
@@ -208,7 +210,7 @@ export function InvoicesPage() {
                   onEdit={() => open(i)}
                   onDelete={isAdmin ? () => setDeleting(i) : undefined}
                 >
-                  <button className="icon-btn" title="Басып шығару" aria-label={`№ ${i.number} — басып шығару`}
+                  <button className="icon-btn" title={t('invoices.print')} aria-label={t('invoices.printLabel', { number: i.number })}
                     onClick={() => navigate(`/invoices/${i.id}/print`)}>
                     <Icon name="print" />
                   </button>
@@ -224,10 +226,10 @@ export function InvoicesPage() {
 
       {deleting && (
         <ConfirmModal
-          title="Жүкқұжатты жою"
-          text={`№ ${deleting.number} жүкқұжатты жою керек пе? Бұл әрекетті қайтару мүмкін емес.`}
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('invoices.deleteTitle')}
+          text={t('invoices.deleteText', { number: deleting.number })}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
           onConfirm={remove}
           onClose={() => setDeleting(null)}

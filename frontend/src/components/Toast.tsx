@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { useTranslation } from 'react-i18next'
 
 interface ToastApi {
   /** Shows a short confirmation ("Сақталды") at the bottom of the screen. */
@@ -12,10 +13,11 @@ const ToastContext = createContext<ToastApi>({ show: () => undefined })
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [text, setText] = useState<string | null>(null)
   const [seq, setSeq] = useState(0)
+  const { t } = useTranslation()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const show = useCallback((t: string) => {
-    setText(t)
+  const show = useCallback((message: string) => {
+    setText(message)
     setSeq((n) => n + 1)
   }, [])
 
@@ -36,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div className="notice" key={seq}>
             <Icon name="check" />
             <span>{text}</span>
-            <button className="icon-btn" aria-label="Жабу" onClick={() => setText(null)}><Icon name="close" size={16} /></button>
+            <button className="icon-btn" aria-label={t('common.close')} onClick={() => setText(null)}><Icon name="close" size={16} /></button>
           </div>
         )}
       </div>

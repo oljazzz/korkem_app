@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? ''
 
 export class ApiError extends Error {
@@ -41,7 +42,7 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, 'Серверге қосылу мүмкін болмады')
+    throw new ApiError(0, t('api.offline'))
   }
 
   if (res.status === 401 && !AUTH_PATHS.includes(path)) {
@@ -51,7 +52,7 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    throw new ApiError(res.status, data?.message ?? `Қате (${res.status})`, data?.fields ?? {})
+    throw new ApiError(res.status, data?.message ?? t('api.error', { status: res.status }), data?.fields ?? {})
   }
   return data as T
 }

@@ -10,6 +10,7 @@ import { PageHeader } from '../components/Layout'
 import { SkeletonRows } from '../components/Skeleton'
 import { fmt, fmtDate, fmtMoney, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
+import { useTranslation } from 'react-i18next'
 
 type SortKey = 'total' | 'quantity' | 'productName'
 
@@ -20,6 +21,7 @@ type SortKey = 'total' | 'quantity' | 'productName'
 export function ReportsPage() {
   const [params, setParams] = useSearchParams()
   const invoiceIds = params.get('invoiceIds') ?? ''
+  const { t } = useTranslation()
   const today = isoDay(new Date())
   const [from, setFrom] = useState(params.get('from') ?? `${today.slice(0, 8)}01`)
   const [to, setTo] = useState(params.get('to') ?? today)
@@ -94,8 +96,8 @@ export function ReportsPage() {
     })
 
   const subtitle = invoiceIds
-    ? `Белгіленген жүкқұжаттар бойынша: ${report?.invoiceCount ?? '…'}`
-    : `Кезең: ${fmtDate(from)} — ${fmtDate(to)}${client ? ` · ${client.label}` : ''}${city ? ` · ${city}` : ''}`
+    ? t('reports.selectedSubtitle', { count: report?.invoiceCount ?? '…' })
+    : `${t('reports.periodSubtitle', { from: fmtDate(from), to: fmtDate(to) })}${client ? ` · ${client.label}` : ''}${city ? ` · ${city}` : ''}`
 
   const downloadCsv = () => {
     if (!report) return
@@ -106,50 +108,50 @@ export function ReportsPage() {
       return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
     const lines = [
-      ['Сатылған тауарлар есебі'],
+      [t('reports.csvTitle')],
       [company.name],
       [subtitle],
       [],
-      ['№', 'Тауар атауы', 'Санат', 'Бірлік бағасы', 'Саны', 'Барлығы', 'Жүкқұжаттар'],
+      [t('reports.colNo'), t('reports.colName'), t('reports.colCategory'), t('reports.colUnitPrice'), t('reports.colQuantity'), t('reports.colTotal'), t('reports.colInvoices')],
       ...rows.map((r, i) => [i + 1, r.productName, r.categoryName ?? '', r.avgPrice, r.quantity, r.total, r.invoices]),
       [],
-      ['', 'Жалпы саны мен сомасы', '', '', report.totalQuantity, report.total, report.invoiceCount],
+      ['', t('reports.totalRow'), '', '', report.totalQuantity, report.total, report.invoiceCount],
     ]
     const csv = '﻿' + lines.map((l) => l.map((c) => esc(c as string | number)).join(';')).join('\r\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    a.download = `Сатылған тауарлар ${invoiceIds ? 'таңдау' : `${from}_${to}`}.csv`
+    a.download = t('reports.csvFile', { suffix: invoiceIds ? t('reports.csvSelection') : `${from}_${to}` })
     a.click()
     URL.revokeObjectURL(a.href)
   }
 
   return (
     <section className="page report">
-      <PageHeader eyebrow="Есептер" title="Тауарлар бойынша сатылым">
+      <PageHeader eyebrow={t('reports.eyebrow')} title={t('reports.title')}>
         <button className="btn btn--ghost" onClick={downloadCsv} disabled={!report || rows.length === 0}
-          title="Excel-де ашылатын CSV файлы">
+          title={t('reports.csvHint')}>
           <Icon name="download" />
-          CSV жүктеу
+          {t('reports.csv')}
         </button>
         <button className="btn btn--primary" onClick={() => window.print()} disabled={!report}>
           <Icon name="print" />
-          Басып шығару
+          {t('reports.print')}
         </button>
       </PageHeader>
 
       <div className="filters no-print">
         {invoiceIds ? (
           <div className="selection-bar">
-            Белгіленген жүкқұжаттар бойынша есеп ({report?.invoiceCount ?? '…'})
-            <button className="link-btn" onClick={() => setParams({})}>Кезең есебіне өту</button>
+            {t('reports.selectedBar', { count: report?.invoiceCount ?? '…' })}
+            <button className="link-btn" onClick={() => setParams({})}>{t('reports.toPeriod')}</button>
           </div>
         ) : (
           <>
-            <PeriodPicker from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t) }} />
+            <PeriodPicker from={from} to={to} onChange={(f, until) => { setFrom(f); setTo(until) }} />
             <div className="filters__client">
               <AsyncSelect
                 value={client}
-                placeholder="Барлық клиенттер"
+                placeholder={t('reports.allClients')}
                 onChange={setClient}
                 load={(text) => api.clients.list({ q: text, size: 30 }).then((p) =>
                   p.items.map((c) => ({ id: c.id, label: c.label, hint: c.place ?? c.phone ?? undefined })))}
@@ -157,13 +159,13 @@ export function ReportsPage() {
             </div>
             <select
               className="input toolbar__select"
-              aria-label="Елді мекен / базар"
+              aria-label={t('reports.city')}
               value={city}
               onChange={(e) => setCity(e.target.value)}
               disabled={cities.length === 0}
-              title={cities.length === 0 ? 'Клиенттерге елді мекен енгізілгенде қолжетімді болады' : undefined}
+              title={cities.length === 0 ? t('reports.cityDisabled') : undefined}
             >
-              <option value="">{cities.length === 0 ? 'Елді мекен енгізілмеген' : 'Барлық елді мекендер'}</option>
+              <option value="">{cities.length === 0 ? t('reports.noCities') : t('reports.allCities')}</option>
               {cities.map((c) => <option key={c.city} value={c.city}>{c.city} ({c.clients})</option>)}
             </select>
           </>
@@ -174,31 +176,31 @@ export function ReportsPage() {
 
       {/* Print header, as in the legacy report template */}
       <div className="print-only report__print-head">
-        <h1>Сатылған тауарлар есебі</h1>
+        <h1>{t('reports.csvTitle')}</h1>
         <div>{company.name}</div>
         <div>{subtitle}</div>
       </div>
 
       <div className={`summary summary--three ${loading ? 'is-loading' : ''}`}>
         <div className="summary__item">
-          <span>Барлығы сатылды</span>
+          <span>{t('reports.sold')}</span>
           <b>{fmtMoney(report?.total)} ₸</b>
         </div>
         <div className="summary__item">
-          <span>Саны</span>
-          <b>{fmtMoney(report?.totalQuantity)} дана</b>
+          <span>{t('reports.quantity')}</span>
+          <b>{t('reports.pieces', { count: fmtMoney(report?.totalQuantity) })}</b>
         </div>
         <div className="summary__item">
-          <span>Жүкқұжаттар</span>
+          <span>{t('reports.invoices')}</span>
           <b>{fmt(report?.invoiceCount ?? 0)}</b>
-          <small className="summary__sub">{fmt(report?.rows.length ?? 0)} түрлі тауар</small>
+          <small className="summary__sub">{t('reports.kinds', { count: fmt(report?.rows.length ?? 0) })}</small>
         </div>
       </div>
 
       <div className="toolbar no-print">
         <label className="search toolbar__search">
           <Icon name="search" />
-          <input type="search" placeholder="Есептен тауар іздеу" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" placeholder={t('reports.searchPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <span className="muted">{subtitle}</span>
       </div>
@@ -208,18 +210,18 @@ export function ReportsPage() {
           <thead>
             <tr>
               <th style={{ width: 48 }}>№</th>
-              <SortTh k="productName" sort={sort} setSort={setSort}>Тауар атауы</SortTh>
-              <th>Санат</th>
-              <th className="num">Бірлік бағасы</th>
-              <SortTh k="quantity" sort={sort} setSort={setSort} num>Саны</SortTh>
-              <SortTh k="total" sort={sort} setSort={setSort} num>Барлығы, ₸</SortTh>
-              <th className="num">Жүкқ.</th>
+              <SortTh k="productName" sort={sort} setSort={setSort}>{t('reports.colName')}</SortTh>
+              <th>{t('reports.colCategory')}</th>
+              <th className="num">{t('reports.colUnitPrice')}</th>
+              <SortTh k="quantity" sort={sort} setSort={setSort} num>{t('reports.colQuantity')}</SortTh>
+              <SortTh k="total" sort={sort} setSort={setSort} num>{t('reports.colTotalTenge')}</SortTh>
+              <th className="num">{t('reports.colInvoicesShort')}</th>
             </tr>
           </thead>
           <tbody>
             {loading && rows.length === 0 && <SkeletonRows cols={7} />}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="table__msg">Таңдалған кезеңде сатылым жоқ</td></tr>
+              <tr><td colSpan={7} className="table__msg">{t('reports.empty')}</td></tr>
             )}
             {items.map((it, i) => (
               <Fragment key={it.name}>
@@ -230,7 +232,7 @@ export function ReportsPage() {
                       <button className="group-row__toggle" aria-expanded={expanded.has(it.name)} onClick={() => toggle(it.name)}>
                         <span className="group-row__icon" aria-hidden="true">{expanded.has(it.name) ? '▾' : '▸'}</span>
                         {it.name}
-                        <span className="report-group__count">{it.rows.length} түс</span>
+                        <span className="report-group__count">{t('reports.colours', { count: it.rows.length })}</span>
                       </button>
                     ) : it.name}
                   </td>
@@ -258,7 +260,7 @@ export function ReportsPage() {
             <tfoot>
               <tr>
                 <td />
-                <td colSpan={3}>Жалпы саны мен сомасы</td>
+                <td colSpan={3}>{t('reports.totalRow')}</td>
                 <td className="num">{fmtMoney(report.totalQuantity)}</td>
                 <td className="num">{fmtMoney(report.total)}</td>
                 <td className="num">{report.invoiceCount}</td>
@@ -268,7 +270,7 @@ export function ReportsPage() {
         </table>
       </div>
       <p className="muted report__note no-print">
-        «Бірлік бағасы» — жеңілдікті ескергендегі орташа нақты сату бағасы (барлығы ÷ саны).
+        {t('reports.note')}
       </p>
     </section>
   )

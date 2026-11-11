@@ -6,6 +6,7 @@ import { Alert } from './Alert'
 import { AsyncSelect, type Option } from './AsyncSelect'
 import { Field } from './Field'
 import { Modal } from './Modal'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Merges two client records. The server decides which one stays: the client whose latest invoice
@@ -19,6 +20,7 @@ export function MergeClientsModal({ clientId, otherId, onClose, onMerged }: {
   onMerged: (result: MergeResult) => void
 }) {
   const [other, setOther] = useState<Option | null>(null)
+  const { t } = useTranslation()
   const [plan, setPlan] = useState<MergePlan | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,23 +56,23 @@ export function MergeClientsModal({ clientId, otherId, onClose, onMerged }: {
 
   return (
     <Modal
-      title="Клиенттерді біріктіру"
+      title={t('merge.title')}
       width={640}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--danger-solid" onClick={merge} disabled={!current || busy}>Біріктіру</button>
-          <button className="btn btn--ghost" onClick={onClose} autoFocus={!!otherId}>Болдырмау</button>
+          <button className="btn btn--danger-solid" onClick={merge} disabled={!current || busy}>{t('merge.action')}</button>
+          <button className="btn btn--ghost" onClick={onClose} autoFocus={!!otherId}>{t('common.cancel')}</button>
         </>
       }
     >
       {!otherId && (
-        <Field label="Кіммен біріктіру">
+        <Field label={t('merge.with')}>
           <AsyncSelect
             value={other}
             autoFocus
-            placeholder="Аты немесе телефоны"
-            ariaLabel="Біріктірілетін клиент"
+            placeholder={t('merge.searchPlaceholder')}
+            ariaLabel={t('merge.searchLabel')}
             onChange={(o) => setOther(o)}
             load={(q) =>
               api.clients.list({ q, size: 30 }).then((p) =>
@@ -93,13 +95,12 @@ export function MergeClientsModal({ clientId, otherId, onClose, onMerged }: {
             <MergeCard side={current.secondary} kind="secondary" />
           </div>
           <ul className="merge__rules">
-            <li>Соңғы жүкқұжаты жаңа клиент басты болып қалады.</li>
+            <li>{t('merge.ruleNewest')}</li>
             <li>
-              «{current.secondary.client.name}» клиентінің {fmt(current.secondary.invoiceCount)} жүкқұжаты (төлемдерімен бірге)
-              «{current.primary.client.name}» клиентіне ауысады.
+              {t('merge.ruleMove', { from: current.secondary.client.name, count: fmt(current.secondary.invoiceCount), to: current.primary.client.name })}
             </li>
-            <li>Телефондар мен бастапқы қарыздар қосылады; бос өрістер екінші клиенттен толтырылады.</li>
-            <li><b>«{current.secondary.client.name}» жазбасы өшіріледі. Бұл әрекетті қайтару мүмкін емес.</b></li>
+            <li>{t('merge.ruleFields')}</li>
+            <li><b>{t('merge.ruleDelete', { name: current.secondary.client.name })}</b></li>
           </ul>
         </>
       )}
@@ -109,16 +110,17 @@ export function MergeClientsModal({ clientId, otherId, onClose, onMerged }: {
 
 function MergeCard({ side, kind }: { side: MergeSide; kind: 'primary' | 'secondary' }) {
   const c = side.client
+  const { t } = useTranslation()
   return (
     <div className={`merge__card merge__card--${kind}`}>
-      <span className="merge__tag">{kind === 'primary' ? 'Басты — қалады' : 'Біріктіріледі — өшіріледі'}</span>
+      <span className="merge__tag">{kind === 'primary' ? t('merge.primary') : t('merge.secondary')}</span>
       <div className="merge__name">{c.name}</div>
       {c.phone && <div className="merge__line">{c.phone}</div>}
       {(c.city || c.address) && <div className="merge__line muted">{[c.city, c.address].filter(Boolean).join(' · ')}</div>}
       <dl className="merge__stats">
-        <div><dt>Жүкқұжат</dt><dd>{fmt(side.invoiceCount)}</dd></div>
-        <div><dt>Соңғысы</dt><dd>{side.lastInvoiceAt ? fmtDate(side.lastInvoiceAt) : '—'}</dd></div>
-        <div><dt>Қарызы</dt><dd>{fmtMoney(c.debt)} ₸</dd></div>
+        <div><dt>{t('merge.invoices')}</dt><dd>{fmt(side.invoiceCount)}</dd></div>
+        <div><dt>{t('merge.last')}</dt><dd>{side.lastInvoiceAt ? fmtDate(side.lastInvoiceAt) : '—'}</dd></div>
+        <div><dt>{t('merge.debt')}</dt><dd>{fmtMoney(c.debt)} ₸</dd></div>
       </dl>
     </div>
   )

@@ -3,14 +3,9 @@ import { isoDay } from './format'
 /** The one set of period shortcuts used everywhere (dashboard, reports). */
 export type PeriodKey = 'today' | '7d' | '30d' | 'month' | 'year' | '12m' | 'all'
 
-export const PERIODS: { key: PeriodKey; label: string }[] = [
-  { key: 'today', label: 'Бүгін' },
-  { key: '7d', label: '7 күн' },
-  { key: '30d', label: '30 күн' },
-  { key: 'month', label: 'Осы ай' },
-  { key: 'year', label: 'Осы жыл' },
-  { key: '12m', label: '12 ай' },
-  { key: 'all', label: 'Барлық уақыт' },
+/** Labels are in kk.json under period.preset.<key>. */
+export const PERIODS: { key: PeriodKey }[] = [
+  { key: 'today' }, { key: '7d' }, { key: '30d' }, { key: 'month' }, { key: 'year' }, { key: '12m' }, { key: 'all' },
 ]
 
 /** First day with data in this system (legacy invoices start in 2022). */

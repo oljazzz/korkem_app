@@ -4,9 +4,11 @@ import { Alert } from '../components/Alert'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { Horns, Logo } from '../components/Ornament'
+import { useTranslation } from 'react-i18next'
 
 export function LoginPage() {
   const { user, login } = useAuth()
+  const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
@@ -37,23 +39,23 @@ export function LoginPage() {
         <div className="login__pattern" />
         <div className="login__brand">
           <Logo size={48} />
-          <span>Көркем</span>
+          <span>{t('app.name')}</span>
         </div>
         <div className="login__quote">
           <Horns width={88} strokeWidth={2.4} />
-          <p>Жүкқұжаттар, баға тізімі және есептер&nbsp;— бір кітапта.</p>
+          <p>{t('login.quote')}</p>
         </div>
       </section>
       <form className="login__card" onSubmit={submit}>
-        <div className="eyebrow">Жүйеге кіру</div>
-        <h1 className="login__title">Қош келдіңіз!</h1>
-        <p className="muted">Жалғастыру үшін логин мен құпиясөзді енгізіңіз.</p>
+        <div className="eyebrow">{t('login.eyebrow')}</div>
+        <h1 className="login__title">{t('login.title')}</h1>
+        <p className="muted">{t('login.intro')}</p>
         <label className="stack">
-          <span className="stack__label">Логин</span>
+          <span className="stack__label">{t('login.username')}</span>
           <input className="input" autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
         </label>
         <label className="stack">
-          <span className="stack__label">Құпиясөз</span>
+          <span className="stack__label">{t('login.password')}</span>
           <span className="password">
             <input
               className="input"
@@ -69,7 +71,7 @@ export function LoginPage() {
             <button
               type="button"
               className="password__toggle"
-              aria-label={showPassword ? 'Құпиясөзді жасыру' : 'Құпиясөзді көрсету'}
+              aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((v) => !v)}
             >
@@ -79,19 +81,19 @@ export function LoginPage() {
           {capsLock && (
             <span className="caps-warning" id="caps-warning" role="status">
               <Icon name="warning" size={16} />
-              Caps Lock қосулы
+              {t('login.capsLock')}
             </span>
           )}
         </label>
         <label className="checkbox">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          Мені есте сақтау
+          {t('login.remember')}
         </label>
         {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
         <button className="btn btn--primary btn--lg btn--block" disabled={busy || !username || !password}>
-          {busy ? 'Кіру…' : 'Кіру'}
+          {busy ? t('login.submitting') : t('login.submit')}
         </button>
-        <p className="app-version">Нұсқа {__APP_VERSION__}</p>
+        <p className="app-version">{t('login.version', { version: __APP_VERSION__ })}</p>
       </form>
     </div>
   )

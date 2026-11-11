@@ -12,12 +12,14 @@ import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../components/Toast'
 import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { ClientForm } from './ClientsPage'
+import { useTranslation } from 'react-i18next'
 
 /** Client card: contacts, debt, purchase history and favourite products, with "repeat last order". */
 export function ClientPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
+  const { t } = useTranslation()
   const [data, setData] = useState<ClientSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isAdmin = useIsAdmin()
@@ -40,11 +42,11 @@ export function ClientPage() {
   return (
     <section className="page client">
       <div className="breadcrumbs">
-        <Link to="/clients">Клиенттер</Link> › {c?.name ?? '…'}
+        <Link to="/clients">{t('client.breadcrumb')}</Link> › {c?.name ?? '…'}
       </div>
       <header className="client__head">
         <div className="client__who">
-          <h1 className="page-title">{c?.name ?? 'Жүктелуде…'}</h1>
+          <h1 className="page-title">{c?.name ?? t('common.loading')}</h1>
           {c && (
             <ul className="client__meta">
               {phones.map((p) => (
@@ -60,44 +62,44 @@ export function ClientPage() {
         </div>
         <div className="client__actions">
           <button className="btn btn--ghost" onClick={() => setEditing(true)} disabled={!c}>
-            <Icon name="edit" />Өзгерту
+            <Icon name="edit" />{t('client.edit')}
           </button>
           {isAdmin && (
             <button className="btn btn--ghost" onClick={() => setMerging(true)} disabled={!c}
-              title="Қайталанған клиентті осы клиентпен біріктіру">
-              <Icon name="merge" />Біріктіру
+              title={t('client.mergeTitle')}>
+              <Icon name="merge" />{t('client.merge')}
             </button>
           )}
           <button
             className="btn btn--outline"
             disabled={!data || data.invoiceCount === 0}
-            title="Соңғы жүкқұжаттың тауарларын жаңа жүкқұжатқа көшіру"
+            title={t('client.repeatTitle')}
             onClick={() => navigate(`/invoices/new?client=${id}&repeat=1`)}
           >
-            <Icon name="repeat" />Соңғыны қайталау
+            <Icon name="repeat" />{t('client.repeat')}
           </button>
           <button className="btn btn--primary" disabled={!c} onClick={() => navigate(`/invoices/new?client=${id}`)}>
-            <Icon name="plus" />Жаңа жүкқұжат
+            <Icon name="plus" />{t('client.newInvoice')}
           </button>
         </div>
       </header>
 
       <div className={`kpis ${data ? '' : 'is-loading'}`}>
         <div className={`stat ${c && c.debt > 0 ? 'stat--debt' : ''}`}>
-          <div className="stat__label">Қарызы</div>
+          <div className="stat__label">{t('client.debt')}</div>
           <div className="stat__value">{c ? fmtMoney(c.debt) : '—'}<span className="stat__unit">₸</span></div>
-          {c && c.openingDebt > 0 && <div className="stat__exact">оның ішінде бастапқы {fmtMoney(c.openingDebt)} ₸</div>}
+          {c && c.openingDebt > 0 && <div className="stat__exact">{t('client.openingDebt', { amount: fmtMoney(c.openingDebt) })}</div>}
         </div>
         <div className="stat stat--plain">
-          <div className="stat__label">Жүкқұжаттар</div>
+          <div className="stat__label">{t('client.invoices')}</div>
           <div className="stat__value">{data ? fmt(data.invoiceCount) : '—'}</div>
         </div>
         <div className="stat stat--plain">
-          <div className="stat__label">Жалпы сатып алу</div>
+          <div className="stat__label">{t('client.total')}</div>
           <div className="stat__value">{data ? fmtMoney(data.total) : '—'}<span className="stat__unit">₸</span></div>
         </div>
         <div className="stat stat--plain">
-          <div className="stat__label">Соңғы сатып алу</div>
+          <div className="stat__label">{t('client.last')}</div>
           <div className="stat__value stat__value--date">{data?.lastInvoiceAt ? fmtDate(data.lastInvoiceAt) : '—'}</div>
         </div>
       </div>
@@ -105,13 +107,13 @@ export function ClientPage() {
       <div className="grid-2 client__grid">
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Соңғы жүкқұжаттар</h2>
+            <h2 className="card__title">{t('client.recentInvoices')}</h2>
             {data && data.invoiceCount > data.recentInvoices.length && (
-              <Link className="text-link" to={`/invoices?client=${id}`}>Барлығы ({fmt(data.invoiceCount)})</Link>
+              <Link className="text-link" to={`/invoices?client=${id}`}>{t('client.all', { count: fmt(data.invoiceCount) })}</Link>
             )}
           </div>
           {!data ? <SkeletonList rows={5} /> : data.recentInvoices.length === 0 ? (
-            <p className="muted">Жүкқұжаттар әлі жоқ</p>
+            <p className="muted">{t('client.noInvoices')}</p>
           ) : (
             <table className="table table--compact">
               <tbody>
@@ -131,17 +133,17 @@ export function ClientPage() {
         </div>
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Жиі алатын тауарлары</h2>
-            <span className="card__sub">барлық уақыт, сома бойынша</span>
+            <h2 className="card__title">{t('client.topProducts')}</h2>
+            <span className="card__sub">{t('client.topProductsSub')}</span>
           </div>
           {!data ? <SkeletonList rows={5} /> : data.topProducts.length === 0 ? (
-            <p className="muted">Деректер жоқ</p>
+            <p className="muted">{t('common.noData')}</p>
           ) : (
             <ol className="top-products">
               {data.topProducts.map((p) => (
                 <li key={p.name}>
                   <span className="top-products__name">{p.name}</span>
-                  <span className="top-products__meta">{fmt(p.quantity)} дана · {p.invoices} рет</span>
+                  <span className="top-products__meta">{t('client.topProductMeta', { quantity: fmt(p.quantity), times: p.invoices })}</span>
                   <span className="top-products__sum">{fmtMoney(p.total)} ₸</span>
                 </li>
               ))}
@@ -156,7 +158,7 @@ export function ClientPage() {
           onClose={() => setMerging(false)}
           onMerged={(r) => {
             setMerging(false)
-            toast.show(`«${r.removedName}» біріктірілді: ${r.movedInvoices} жүкқұжат көшірілді`)
+            toast.show(t('client.merged', { name: r.removedName, count: r.movedInvoices }))
             if (r.primary.id === c.id) setVersion((v) => v + 1)
             else navigate(`/clients/${r.primary.id}`, { replace: true })
           }}
@@ -169,7 +171,7 @@ export function ClientPage() {
           onSaved={() => {
             setEditing(false)
             setVersion((v) => v + 1)
-            toast.show('Клиент сақталды')
+            toast.show(t('client.saved'))
           }}
         />
       )}

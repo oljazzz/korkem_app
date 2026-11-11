@@ -14,11 +14,13 @@ import { ProductGroupingPage } from './pages/ProductGroupingPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { UsersPage } from './pages/UsersPage'
+import { useTranslation } from 'react-i18next'
 
 export default function App() {
   const { user, loading } = useAuth()
+  const { t } = useTranslation()
 
-  if (loading) return <div className="splash">Жүктелуде…</div>
+  if (loading) return <div className="splash">{t('common.loading')}</div>
 
   return (
     <Routes>

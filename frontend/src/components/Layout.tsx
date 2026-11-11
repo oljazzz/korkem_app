@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Icon, type IconName } from './Icon'
 import { Logo } from './Ornament'
+import { useTranslation } from 'react-i18next'
 
 type Theme = 'light' | 'dark'
 
@@ -14,23 +15,25 @@ function readTheme(): Theme {
   }
 }
 
-type NavItem = { to: string; label: string; short?: string; icon: IconName; end?: boolean; adminOnly?: boolean; tab?: boolean }
+type NavItem = { to: string; label: NavKey; short?: NavKey; icon: IconName; end?: boolean; adminOnly?: boolean; tab?: boolean }
 
-// `tab` items sit in the phone tab bar; the rest go under «Тағы»
+type NavKey = 'nav.home' | 'nav.homeShort' | 'nav.invoices' | 'nav.invoicesShort' | 'nav.reports' | 'nav.products' | 'nav.clients' | 'nav.users' | 'nav.settings'
+
+// `tab` items sit in the phone tab bar; the rest go under «Тағы». Labels are kk.json keys.
 const NAV: NavItem[] = [
-  { to: '/', label: 'Басты бет', short: 'Басты', icon: 'home', end: true, tab: true },
-  { to: '/invoices', label: 'Жүкқұжаттар', short: 'Жүкқұжат', icon: 'invoice', tab: true },
-  { to: '/reports', label: 'Есептер', icon: 'report', tab: true },
-  { to: '/products', label: 'Баға тізімі', icon: 'tag' },
-  { to: '/clients', label: 'Клиенттер', icon: 'client', tab: true },
-  { to: '/users', label: 'Пайдаланушылар', icon: 'users', adminOnly: true },
-  { to: '/settings', label: 'Баптаулар', icon: 'settings', adminOnly: true },
+  { to: '/', label: 'nav.home', short: 'nav.homeShort', icon: 'home', end: true, tab: true },
+  { to: '/invoices', label: 'nav.invoices', short: 'nav.invoicesShort', icon: 'invoice', tab: true },
+  { to: '/reports', label: 'nav.reports', icon: 'report', tab: true },
+  { to: '/products', label: 'nav.products', icon: 'tag' },
+  { to: '/clients', label: 'nav.clients', icon: 'client', tab: true },
+  { to: '/users', label: 'nav.users', icon: 'users', adminOnly: true },
+  { to: '/settings', label: 'nav.settings', icon: 'settings', adminOnly: true },
 ]
 
-export const ROLE_LABEL = { ADMIN: 'Әкімші', MANAGER: 'Менеджер' } as const
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const { t } = useTranslation()
   const [theme, setTheme] = useState<Theme>(readTheme)
   const nav = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN')
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light')
@@ -47,15 +50,15 @@ export function Layout() {
   return (
     <div className="shell">
       <aside className="rail">
-        <NavLink to="/" className="rail__brand" aria-label="Көркем — басты бет">
+        <NavLink to="/" className="rail__brand" aria-label={t('app.homeLink')}>
           <Logo size={38} />
           <span className="rail__name">
-            Көркем
-            <small>сауда есебі</small>
+            {t('app.name')}
+            <small>{t('app.tagline')}</small>
           </span>
         </NavLink>
 
-        <nav className="rail__nav" aria-label="Бөлімдер">
+        <nav className="rail__nav" aria-label={t('nav.sections')}>
           {nav.map((n) => (
             <NavLink
               key={n.to}
@@ -64,7 +67,7 @@ export function Layout() {
               className={({ isActive }) => `rail__link ${isActive ? 'is-active' : ''}`}
             >
               <Icon name={n.icon} />
-              <span>{n.label}</span>
+              <span>{t(n.label)}</span>
             </NavLink>
           ))}
         </nav>
@@ -74,19 +77,19 @@ export function Layout() {
             <span className="avatar">{user?.username.slice(0, 1).toUpperCase()}</span>
             <span className="rail__who">
               {user?.firstName || user?.username}
-              <small>{user ? ROLE_LABEL[user.role] : ''} · Алматы</small>
+              <small>{user ? t(`role.${user.role}`) : ''} · {t('app.city')}</small>
             </span>
           </div>
           <div className="rail__actions">
             <button
               className="icon-btn"
-              title={theme === 'light' ? 'Қараңғы тақырып' : 'Ашық тақырып'}
-              aria-label="Тақырыпты ауыстыру"
+              title={theme === 'light' ? t('theme.dark') : t('theme.light')}
+              aria-label={t('theme.toggle')}
               onClick={toggleTheme}
             >
               <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             </button>
-            <button className="icon-btn" title="Шығу" aria-label="Шығу" onClick={logout}>
+            <button className="icon-btn" title={t('auth.logout')} aria-label={t('auth.logout')} onClick={logout}>
               <Icon name="logout" />
             </button>
           </div>
@@ -110,6 +113,7 @@ function TabBar({ items, theme, onToggleTheme, onLogout }: {
   onLogout: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const { t } = useTranslation()
   const { pathname } = useLocation()
   const sheetRef = useRef<HTMLDivElement>(null)
   const more = items.filter((n) => !n.tab)
@@ -133,28 +137,28 @@ function TabBar({ items, theme, onToggleTheme, onLogout }: {
   return (
     <>
       {open && (
-        <div ref={sheetRef} className="tabbar__sheet" id="tabbar-more" role="menu" aria-label="Басқа бөлімдер">
+        <div ref={sheetRef} className="tabbar__sheet" id="tabbar-more" role="menu" aria-label={t('nav.moreSections')}>
           {more.map((n) => (
             <NavLink key={n.to} to={n.to} role="menuitem" onClick={() => setOpen(false)} className={({ isActive }) => `tabbar__sheet-link ${isActive ? 'is-active' : ''}`}>
               <Icon name={n.icon} />
-              {n.label}
+              {t(n.label)}
             </NavLink>
           ))}
           <button type="button" role="menuitem" className="tabbar__sheet-link" onClick={onToggleTheme}>
             <Icon name={theme === 'light' ? 'moon' : 'sun'} />
-            {theme === 'light' ? 'Қараңғы тақырып' : 'Ашық тақырып'}
+            {theme === 'light' ? t('theme.dark') : t('theme.light')}
           </button>
           <button type="button" role="menuitem" className="tabbar__sheet-link" onClick={() => { setOpen(false); onLogout() }}>
             <Icon name="logout" />
-            Шығу
+            {t('auth.logout')}
           </button>
         </div>
       )}
-      <nav className="tabbar" aria-label="Бөлімдер">
+      <nav className="tabbar" aria-label={t('nav.sections')}>
         {items.filter((n) => n.tab).map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setOpen(false)} className={({ isActive }) => `tabbar__link ${isActive ? 'is-active' : ''}`}>
             <Icon name={n.icon} size={22} />
-            <span>{n.short ?? n.label}</span>
+            <span>{t(n.short ?? n.label)}</span>
           </NavLink>
         ))}
         <button
@@ -165,7 +169,7 @@ function TabBar({ items, theme, onToggleTheme, onLogout }: {
           onClick={() => setOpen((v) => !v)}
         >
           <Icon name="more" size={22} />
-          <span>Тағы</span>
+          <span>{t('nav.more')}</span>
         </button>
       </nav>
     </>

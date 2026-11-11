@@ -8,6 +8,7 @@ import { PageHeader } from '../components/Layout'
 import { SkeletonList } from '../components/Skeleton'
 import { useToast } from '../components/Toast'
 import { fmt, fmtPack } from '../lib/format'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Turns colour families (same price, category and pack; names differing by colour) into one product
@@ -15,6 +16,7 @@ import { fmt, fmtPack } from '../lib/format'
  */
 export function ProductGroupingPage() {
   const toast = useToast()
+  const { t } = useTranslation()
   const [groups, setGroups] = useState<GroupSuggestion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(0)
@@ -29,24 +31,22 @@ export function ProductGroupingPage() {
   return (
     <section className="page">
       <div className="breadcrumbs">
-        <Link to="/products">Баға тізімі</Link> › Түстерге топтастыру
+        <Link to="/products">{t('grouping.breadcrumb')}</Link> › {t('grouping.title')}
       </div>
-      <PageHeader title="Түстерге топтастыру" />
+      <PageHeader title={t('grouping.title')} />
       <p className="muted grouping-intro">
-        Бағасы, санаты мен қаптамасы бірдей, атаулары тек түсімен ерекшеленетін тауарлар бір тауарға біріктіріледі,
-        ал әрқайсысы оның түсі болады. Әр топты тексеріңіз: керек емес тауардың белгісін алып тастаңыз,
-        атаулар мен түстерді түзетіңіз. Ескі жүкқұжаттар өзгермейді.
+        {t('grouping.intro')}
       </p>
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       {groups && groups.length > 0 && (
         <div className="list-summary">
-          <span><b>{groups.length}</b> ұсыныс</span>
-          <span><b>{fmt(total)}</b> тауар</span>
-          {done > 0 && <span>біріктірілді: <b>{done}</b></span>}
+          <span><b>{groups.length}</b> {t('grouping.suggestions')}</span>
+          <span><b>{fmt(total)}</b> {t('grouping.products')}</span>
+          {done > 0 && <span>{t('grouping.done')} <b>{done}</b></span>}
         </div>
       )}
       {!groups ? <SkeletonList rows={6} /> : groups.length === 0 ? (
-        <div className="card"><p className="muted">Топтастыруға ұсыныс жоқ{done > 0 ? ' — бәрі дайын' : ''}.</p></div>
+        <div className="card"><p className="muted">{done > 0 ? t('grouping.noneDone') : t('grouping.none')}</p></div>
       ) : (
         <div className="grouping-list">
           {groups.map((g) => (
@@ -73,6 +73,7 @@ function GroupCard({ group, onSkip, onDone }: {
   onDone: (message: string) => void
 }) {
   const [name, setName] = useState(group.name)
+  const { t } = useTranslation()
   const [rows, setRows] = useState(() => group.members.map((m) => ({ ...m, include: true })))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,8 +97,8 @@ function GroupCard({ group, onSkip, onDone }: {
       )
       onDone(
         r.variants > 0
-          ? `«${r.product.name}»: ${r.variants} түс, ${r.removedProducts} тауар біріктірілді`
-          : `«${r.product.name}»: ${r.removedProducts + 1} бірдей тауар біреуге біріктірілді`,
+          ? t('grouping.mergedColours', { name: r.product.name, colours: r.variants, removed: r.removedProducts })
+          : t('grouping.mergedDuplicates', { name: r.product.name, count: r.removedProducts + 1 }),
       )
     } catch (e) {
       setError((e as Error).message)
@@ -108,9 +109,9 @@ function GroupCard({ group, onSkip, onDone }: {
   return (
     <div className="grouping card">
       <div className="grouping__head">
-        <input className="input grouping__name" value={name} aria-label="Тауардың атауы" onChange={(e) => setName(e.target.value)} />
+        <input className="input grouping__name" value={name} aria-label={t('grouping.nameLabel')} onChange={(e) => setName(e.target.value)} />
         <div className="grouping__meta">
-          {group.duplicates && <span className="status status--partial">Бірдей тауарлар</span>}
+          {group.duplicates && <span className="status status--partial">{t('grouping.duplicates')}</span>}
           {group.categoryName && <span>{group.categoryName}</span>}
           <span>{fmt(group.price)} ₸</span>
           {group.packAmount && <span>{fmtPack(group.packAmount, group.packUnit)}</span>}
@@ -119,35 +120,35 @@ function GroupCard({ group, onSkip, onDone }: {
       <ul className="grouping__members">
         {rows.map((m, i) => (
           <li key={m.productId} className={m.include ? '' : 'is-off'}>
-            <label className="check__hit" title={m.include ? 'Топтан алып тастау' : 'Топқа қосу'}>
-              <input type="checkbox" checked={m.include} aria-label={`«${m.name}» топқа қосу`}
+            <label className="check__hit" title={m.include ? t('grouping.exclude') : t('grouping.include')}>
+              <input type="checkbox" checked={m.include} aria-label={t('grouping.includeLabel', { name: m.name })}
                 onChange={(e) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, include: e.target.checked } : r)))} />
             </label>
             {!group.duplicates && (
               <input className={`input grouping__variant ${repeated.has(m.variantName.trim().toLowerCase()) && m.include ? 'is-repeated' : ''}`}
-                value={m.variantName} disabled={!m.include} aria-label="Түсі"
+                value={m.variantName} disabled={!m.include} aria-label={t('colour.label')}
                 onChange={(e) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, variantName: e.target.value } : r)))} />
             )}
             <span className="grouping__orig">
               {m.name}
               {m.price !== group.price && <b> · {fmt(m.price)} ₸</b>}
             </span>
-            <span className="grouping__lines">{m.invoiceLines > 0 ? `${fmt(m.invoiceLines)} жол` : 'сатылмаған'}</span>
+            <span className="grouping__lines">{m.invoiceLines > 0 ? t('grouping.lines', { count: fmt(m.invoiceLines) }) : t('grouping.unsold')}</span>
           </li>
         ))}
       </ul>
       {repeated.size > 0 && (
         <p className="grouping__note">
-          <Icon name="warning" size={14} /> Сары түспен белгіленген түстер бірдей жазылған — олар бір түске біріктіріледі.
+          <Icon name="warning" size={14} /> {t('grouping.repeatedNote')}
         </p>
       )}
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       <div className="grouping__actions">
         <button className="btn btn--primary" onClick={merge} disabled={busy || included.length < 2 || !name.trim()}>
           <Icon name="merge" />
-          {group.duplicates ? 'Біреуге біріктіру' : `Біріктіру · ${included.length} түс`}
+          {group.duplicates ? t('grouping.mergeOne') : t('grouping.mergeColours', { count: included.length })}
         </button>
-        <button className="btn btn--ghost" onClick={onSkip}>Өткізіп жіберу</button>
+        <button className="btn btn--ghost" onClick={onSkip}>{t('grouping.skip')}</button>
       </div>
     </div>
   )

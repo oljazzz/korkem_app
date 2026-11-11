@@ -9,10 +9,12 @@ import { Field } from './Field'
 import { Icon } from './Icon'
 import { ConfirmModal, Modal } from './Modal'
 import { useToast } from './Toast'
+import { useTranslation } from 'react-i18next'
 
 /** Category list inside the price list page: add, rename, reorder (sort number), delete. */
 export function CategoriesManager({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
   const isAdmin = useIsAdmin()
+  const { t } = useTranslation()
   const toast = useToast()
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [editing, setEditing] = useState<Category | 'new' | null>(null)
@@ -32,7 +34,7 @@ export function CategoriesManager({ onClose, onChanged }: { onClose: () => void;
       await api.categories.remove(c.id)
       load()
       onChanged()
-      toast.show(`«${c.name}» санаты жойылды`)
+      toast.show(t('categories.deleted', { name: c.name }))
     } catch (e) {
       setError((e as Error).message)
     }
@@ -41,29 +43,29 @@ export function CategoriesManager({ onClose, onChanged }: { onClose: () => void;
   return (
     <>
       <Modal
-        title="Санаттар"
+        title={t('categories.title')}
         width={520}
         onClose={onClose}
         footer={
           <>
-            <button className="btn btn--primary" onClick={() => setEditing('new')}><Icon name="plus" />Санат қосу</button>
-            <button className="btn btn--ghost" onClick={onClose}>Жабу</button>
+            <button className="btn btn--primary" onClick={() => setEditing('new')}><Icon name="plus" />{t('categories.add')}</button>
+            <button className="btn btn--ghost" onClick={onClose}>{t('common.close')}</button>
           </>
         }
       >
-        <p className="muted cat-intro">Баға тізімі санаттар бойынша топталады. «Реті» — тізімдегі орны.</p>
+        <p className="muted cat-intro">{t('categories.intro')}</p>
         {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
-        {!categories ? <p className="muted">Жүктелуде…</p> : (
+        {!categories ? <p className="muted">{t('common.loading')}</p> : (
           <ul className="cat-list">
             {categories.map((c) => (
               <li key={c.id}>
                 <span className="cat-list__order">{c.sortOrder ?? '—'}</span>
                 <span className="cat-list__name">{c.name}</span>
-                <button className="icon-btn" title="Өзгерту" aria-label={`«${c.name}» өзгерту`} onClick={() => setEditing(c)}>
+                <button className="icon-btn" title={t('common.edit')} aria-label={t('categories.editLabel', { name: c.name })} onClick={() => setEditing(c)}>
                   <Icon name="edit" />
                 </button>
                 {isAdmin && (
-                  <button className="icon-btn icon-btn--danger" title="Жою" aria-label={`«${c.name}» жою`} onClick={() => setDeleting(c)}>
+                  <button className="icon-btn icon-btn--danger" title={t('common.delete')} aria-label={t('categories.deleteLabel', { name: c.name })} onClick={() => setDeleting(c)}>
                     <Icon name="trash" />
                   </button>
                 )}
@@ -80,16 +82,16 @@ export function CategoriesManager({ onClose, onChanged }: { onClose: () => void;
             setEditing(null)
             load()
             onChanged()
-            toast.show('Санат сақталды')
+            toast.show(t('categories.saved'))
           }}
         />
       )}
       {deleting && (
         <ConfirmModal
-          title="Санатты жою"
-          text={`«${deleting.name}» санатын жою керек пе? Ондағы тауарлар «Санатсыз» болып қалады.`}
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('categories.deleteTitle')}
+          text={t('categories.deleteText', { name: deleting.name })}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
           onConfirm={remove}
           onClose={() => setDeleting(null)}
@@ -105,6 +107,7 @@ export function CategoryForm({ category, onClose, onSaved }: {
   onSaved: (c: Category) => void
 }) {
   const [name, setName] = useState(category?.name ?? '')
+  const { t } = useTranslation()
   const [sortOrder, setSortOrder] = useState(category?.sortOrder?.toString() ?? '')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -120,20 +123,20 @@ export function CategoryForm({ category, onClose, onSaved }: {
 
   return (
     <Modal
-      title={category ? 'Санатты өзгерту' : 'Жаңа санат'}
+      title={category ? t('categories.editTitle') : t('categories.newTitle')}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сақтау</button>
-          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
+          <button className="btn btn--primary" onClick={save}>{t('common.save')}</button>
+          <button className="btn btn--ghost" onClick={onClose}>{t('common.cancel')}</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Атауы" required error={errors.name}>
+        <Field label={t('common.name')} required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Реті" error={errors.sortOrder}>
+        <Field label={t('common.order')} error={errors.sortOrder}>
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export interface Option {
   id: number
@@ -31,6 +32,7 @@ export function AsyncSelect<T extends Option>({
   const boxRef = useRef<HTMLDivElement>(null)
   const loadRef = useRef(load)
   const listId = useId()
+  const { t } = useTranslation()
   useEffect(() => {
     loadRef.current = load
   })
@@ -113,14 +115,14 @@ export function AsyncSelect<T extends Option>({
           }}
         />
         {value && (
-          <button type="button" className="combo__clear" title="Тазалау" aria-label="Тазалау" onClick={() => onChange(null)}>×</button>
+          <button type="button" className="combo__clear" title={t('common.clear')} aria-label={t('common.clear')} onClick={() => onChange(null)}>×</button>
         )}
         <span className="combo__arrow" aria-hidden="true" onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}>▾</span>
       </div>
       {open && (
         <ul className="combo__list" role="listbox" id={listId}>
-          {loading && options.length === 0 && <li className="combo__empty">Жүктелуде…</li>}
-          {!loading && options.length === 0 && <li className="combo__empty">Ештеңе табылмады</li>}
+          {loading && options.length === 0 && <li className="combo__empty">{t('common.loading')}</li>}
+          {!loading && options.length === 0 && <li className="combo__empty">{t('common.nothingFound')}</li>}
           {options.map((o, i) => (
             <li
               key={o.id}

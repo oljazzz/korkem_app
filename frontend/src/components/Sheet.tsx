@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { createPortal } from 'react-dom'
 import { numericInput, parseNum } from '../lib/format'
 import { Icon } from './Icon'
+import { useTranslation } from 'react-i18next'
 
 /** The part of the page the user can see: on phones it shrinks when the on-screen keyboard opens. */
 function visibleBox() {
@@ -38,6 +39,7 @@ export function Sheet({ title, onClose, onBack, footer, children }: {
   children: ReactNode
 }) {
   const box = useVisibleBox()
+  const { t } = useTranslation()
   const onCloseRef = useRef(onClose)
   useEffect(() => {
     onCloseRef.current = onClose
@@ -56,7 +58,7 @@ export function Sheet({ title, onClose, onBack, footer, children }: {
   return createPortal(
     <div className="sheet" role="dialog" aria-modal="true" aria-label={title} style={{ top: box.top, height: box.height }}>
       <header className="sheet__head">
-        <button type="button" className="icon-btn sheet__close" onClick={onBack ?? onClose} aria-label={onBack ? 'Артқа' : 'Жабу'}>
+        <button type="button" className="icon-btn sheet__close" onClick={onBack ?? onClose} aria-label={onBack ? t('common.back') : t('common.close')}>
           <Icon name={onBack ? 'back' : 'close'} />
         </button>
         <h2 className="sheet__title">{title}</h2>
@@ -75,13 +77,14 @@ export function SheetSearch({ value, onChange, placeholder, autoFocus }: {
   placeholder: string
   autoFocus?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <label className="search sheet-search">
       <Icon name="search" />
       <input type="search" enterKeyHint="search" autoFocus={autoFocus} value={value}
         placeholder={placeholder} aria-label={placeholder} onChange={(e) => onChange(e.target.value)} />
       {value && (
-        <button type="button" className="sheet-search__clear" aria-label="Тазалау" onClick={() => onChange('')}>
+        <button type="button" className="sheet-search__clear" aria-label={t('common.clear')} onClick={() => onChange('')}>
           <Icon name="close" size={18} />
         </button>
       )}
@@ -90,7 +93,7 @@ export function SheetSearch({ value, onChange, placeholder, autoFocus }: {
 }
 
 /** Quantity with large − / + buttons; the number can still be typed. */
-export function Stepper({ value, onChange, inputRef, label = 'Саны', compact }: {
+export function Stepper({ value, onChange, inputRef, label: labelProp, compact }: {
   value: string
   onChange: (v: string) => void
   inputRef?: Ref<HTMLInputElement>
@@ -98,6 +101,8 @@ export function Stepper({ value, onChange, inputRef, label = 'Саны', compact
   compact?: boolean
 }) {
   const n = parseNum(value) ?? 0
+  const { t } = useTranslation()
+  const label = labelProp ?? t('stepper.quantity')
   // Whole steps; a typed fraction (2,5 kg) steps to the next whole number
   const step = (dir: 1 | -1) => {
     const next = dir > 0 ? Math.floor(n) + 1 : Math.ceil(n) - 1
@@ -105,10 +110,10 @@ export function Stepper({ value, onChange, inputRef, label = 'Саны', compact
   }
   return (
     <div className={`stepper ${compact ? 'stepper--compact' : ''}`}>
-      <button type="button" className="stepper__btn" aria-label={`${label}: азайту`} disabled={n <= 1} onClick={() => step(-1)}>−</button>
+      <button type="button" className="stepper__btn" aria-label={t('stepper.decrease', { label })} disabled={n <= 1} onClick={() => step(-1)}>−</button>
       <input ref={inputRef} className="input stepper__input" inputMode="decimal" enterKeyHint="done" aria-label={label}
         value={value} onChange={(e) => onChange(numericInput(e.target.value))} onFocus={(e) => e.target.select()} />
-      <button type="button" className="stepper__btn" aria-label={`${label}: көбейту`} onClick={() => step(1)}>+</button>
+      <button type="button" className="stepper__btn" aria-label={t('stepper.increase', { label })} onClick={() => step(1)}>+</button>
     </div>
   )
 }

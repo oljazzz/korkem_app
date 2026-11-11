@@ -12,18 +12,21 @@ import { PaymentBadge } from '../components/PaymentBadge'
 import { PeriodPicker } from '../components/PeriodPicker'
 import { rowProps } from '../components/RowActions'
 import { periodRange } from '../lib/periods'
-import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay, MONTHS_SHORT } from '../lib/format'
+import { fmtCompact, fmtDate, fmtDayLong, fmtMoney, isoDay, monthsShort } from '../lib/format'
+import { useTranslation } from 'react-i18next'
 
-function greeting() {
+/** Part of the day in Almaty; the greeting text is dashboard.greeting.<part>. */
+function greeting(): 'night' | 'morning' | 'day' | 'evening' {
   const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Almaty', hour: 'numeric', hour12: false }).format(new Date()))
-  if (h < 5) return 'Қайырлы түн'
-  if (h < 12) return 'Қайырлы таң'
-  if (h < 18) return 'Қайырлы күн'
-  return 'Қайырлы кеш'
+  if (h < 5) return 'night'
+  if (h < 12) return 'morning'
+  if (h < 18) return 'day'
+  return 'evening'
 }
 
 export function DashboardPage() {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [range, setRange] = useState<[string, string]>(() => periodRange('12m'))
   const [recent, setRecent] = useState<InvoiceListItem[] | null>(null)
@@ -61,10 +64,10 @@ export function DashboardPage() {
       (data?.series ?? []).map((p, i, all) => ({
         label: data?.granularity === 'month' ? monthLabel(p.start) : p.label,
         value: p.revenue,
-        hint: `${p.invoices} жүкқұжат`,
+        hint: t('dashboard.invoices', { count: p.invoices }),
         partial: data ? isPartial(p.start, i, all.length, data.granularity, range[0], range[1]) : false,
       })),
-    [data, range],
+    [data, range, t],
   )
 
   return (
@@ -73,24 +76,24 @@ export function DashboardPage() {
         <div>
           <div className="eyebrow">{fmtDayLong(isoDay(new Date()))}</div>
           <h1 className="page-title">
-            {greeting()}, {user?.firstName || user?.username}
+            {t(`dashboard.greeting.${greeting()}`)}, {user?.firstName || user?.username}
           </h1>
-          {data?.lastInvoiceAt && <p className="muted">Соңғы жүкқұжат — {fmtDate(data.lastInvoiceAt)}</p>}
+          {data?.lastInvoiceAt && <p className="muted">{t('dashboard.lastInvoice', { date: fmtDate(data.lastInvoiceAt) })}</p>}
         </div>
         <Horns width={120} className="dash__horns" strokeWidth={2} />
         <Link to="/invoices/new" className="btn btn--primary btn--lg dash__create">
           <Icon name="plus" />
-          Жаңа жүкқұжат
+          {t('dashboard.newInvoice')}
         </Link>
       </header>
 
       <div className="grid-2 dash__today">
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Соңғы жүкқұжаттар</h2>
-            <Link className="text-link" to="/invoices">Барлығы</Link>
+            <h2 className="card__title">{t('dashboard.recent')}</h2>
+            <Link className="text-link" to="/invoices">{t('dashboard.all')}</Link>
           </div>
-          {!recent ? <SkeletonList rows={5} /> : recent.length === 0 ? <p className="muted">Жүкқұжаттар әлі жоқ</p> : (
+          {!recent ? <SkeletonList rows={5} /> : recent.length === 0 ? <p className="muted">{t('dashboard.noInvoices')}</p> : (
             <table className="table table--compact">
               <tbody>
                 {recent.map((i) => (
@@ -114,12 +117,12 @@ export function DashboardPage() {
         <div className="card debts">
           <div className="card__head">
             <div>
-              <h2 className="card__title">Алынатын қарыз</h2>
-              <p className="card__sub">клиенттердің төленбеген сомасы, қазіргі күйі</p>
+              <h2 className="card__title">{t('dashboard.debts')}</h2>
+              <p className="card__sub">{t('dashboard.debtsSub')}</p>
             </div>
-            {debts && debts.total > 0 && <Link className="text-link" to="/clients?view=debtors">Барлығы</Link>}
+            {debts && debts.total > 0 && <Link className="text-link" to="/clients?view=debtors">{t('dashboard.all')}</Link>}
           </div>
-          {!debts ? <SkeletonList rows={4} /> : debts.total === 0 ? <p className="muted">Қарыз жоқ — барлық жүкқұжат төленген.</p> : (
+          {!debts ? <SkeletonList rows={4} /> : debts.total === 0 ? <p className="muted">{t('dashboard.noDebts')}</p> : (
             <>
               <div className="debts__total">
                 {fmtMoney(debts.total)}<span className="stat__unit">₸</span>
@@ -137,36 +140,36 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <h2 className="section-title">Сатылым талдауы</h2>
+      <h2 className="section-title">{t('dashboard.analysis')}</h2>
       <div className="filters">
-        <PeriodPicker from={range[0]} to={range[1]} onChange={(f, t) => setRange([f, t])} />
+        <PeriodPicker from={range[0]} to={range[1]} onChange={(f, until) => setRange([f, until])} />
       </div>
 
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
 
       {data && (
         <p className="kpis__note">
-          Өзгерістер алдыңғы осындай кезеңмен салыстырылған: {previousRange(data.from, data.to)}
+          {t('dashboard.compared', { range: previousRange(data.from, data.to) })}
         </p>
       )}
       <div className={`kpis ${loading ? 'is-loading' : ''}`}>
-        <Stat label="Түсім" value={data?.current.revenue} prev={data?.previous.revenue} money />
-        <Stat label="Жүкқұжаттар" value={data?.current.invoices} prev={data?.previous.invoices} />
-        <Stat label="Орташа чек" value={data?.current.avgCheck} prev={data?.previous.avgCheck} money />
-        <Stat label="Сатып алушылар" value={data?.current.clients} prev={data?.previous.clients} />
+        <Stat label={t('dashboard.revenue')} value={data?.current.revenue} prev={data?.previous.revenue} money />
+        <Stat label={t('dashboard.invoicesKpi')} value={data?.current.invoices} prev={data?.previous.invoices} />
+        <Stat label={t('dashboard.avgCheck')} value={data?.current.avgCheck} prev={data?.previous.avgCheck} money />
+        <Stat label={t('dashboard.buyers')} value={data?.current.clients} prev={data?.previous.clients} />
       </div>
 
       <div className="card">
         <div className="card__head">
           <div>
-            <h2 className="card__title">Түсім</h2>
+            <h2 className="card__title">{t('dashboard.revenue')}</h2>
             <p className="card__sub">
-              {data?.granularity === 'month' ? 'айлар' : 'күндер'} бойынша, ₸
+              {data?.granularity === 'month' ? t('dashboard.byMonths') : t('dashboard.byDays')}
             </p>
           </div>
           <Link className="btn btn--ghost" to={`/reports?from=${range[0]}&to=${range[1]}`}>
             <Icon name="report" />
-            Кезең есебі
+            {t('dashboard.periodReport')}
           </Link>
         </div>
         {data ? <ColumnChart data={series} /> : <div className="skeleton skeleton--chart" aria-hidden="true" />}
@@ -175,27 +178,27 @@ export function DashboardPage() {
       <div className="grid-2">
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Көп сатылатын тауарлар</h2>
-            <span className="card__sub">түсім бойынша, ₸</span>
+            <h2 className="card__title">{t('dashboard.topProducts')}</h2>
+            <span className="card__sub">{t('dashboard.byRevenue')}</span>
           </div>
           {!data ? <SkeletonList /> : <BarList
             items={(data?.topProducts ?? []).map((p) => ({
               name: p.name,
               value: p.revenue,
-              hint: `${fmtMoney(p.quantity)} дана · ${p.invoices} жүкқұжат`,
+              hint: t('dashboard.productHint', { quantity: fmtMoney(p.quantity), count: p.invoices }),
             }))}
           />}
         </div>
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Үздік сатып алушылар</h2>
-            <span className="card__sub">түсім бойынша, ₸</span>
+            <h2 className="card__title">{t('dashboard.topClients')}</h2>
+            <span className="card__sub">{t('dashboard.byRevenue')}</span>
           </div>
           {!data ? <SkeletonList /> : <BarList
             items={(data?.topClients ?? []).map((c) => ({
               name: c.name,
               value: c.revenue,
-              hint: `${c.invoices} жүкқұжат`,
+              hint: t('dashboard.invoices', { count: c.invoices }),
               to: c.id ? `/clients/${c.id}` : undefined,
             }))}
           />}
@@ -204,8 +207,8 @@ export function DashboardPage() {
 
       <div className="card">
         <div className="card__head">
-          <h2 className="card__title">Санаттар</h2>
-          <span className="card__sub">кезеңдегі түсім үлесі</span>
+          <h2 className="card__title">{t('dashboard.categories')}</h2>
+          <span className="card__sub">{t('dashboard.categoriesSub')}</span>
         </div>
         {!data ? <SkeletonList rows={8} /> : <CategoryShares data={data} />}
       </div>
@@ -216,16 +219,17 @@ export function DashboardPage() {
 /** Top categories scaled to the largest one; the long tail is summarised in one line, not drawn as a bar. */
 function CategoryShares({ data }: { data: Dashboard }) {
   const total = data.categories.reduce((s, c) => s + c.revenue, 0) || 1
+  const { t } = useTranslation()
   const top = data.categories.slice(0, 8)
   const rest = data.categories.slice(8)
   const restSum = rest.reduce((s, c) => s + c.revenue, 0)
   const pct = (v: number) => `${((v / total) * 100).toFixed(1)}%`
   return (
     <>
-      <BarList items={top.map((c) => ({ name: c.name, value: c.revenue, hint: `жалпы түсімнің ${pct(c.revenue)}` }))} />
+      <BarList items={top.map((c) => ({ name: c.name, value: c.revenue, hint: t('dashboard.share', { pct: pct(c.revenue) }) }))} />
       {rest.length > 0 && (
         <p className="barlist__rest">
-          Басқа {rest.length} санат: {fmtMoney(Math.round(restSum))} ₸ · {pct(restSum)}
+          {t('dashboard.otherCategories', { count: rest.length, sum: fmtMoney(Math.round(restSum)), pct: pct(restSum) })}
         </p>
       )}
     </>
@@ -252,7 +256,8 @@ function previousRange(from: string, to: string) {
 
 function monthLabel(iso: string) {
   const [y, m] = iso.split('-').map(Number)
-  return m === 1 ? `${MONTHS_SHORT[0]} ${String(y).slice(2)}` : MONTHS_SHORT[m - 1]
+  const names = monthsShort()
+  return m === 1 ? `${names[0]} ${String(y).slice(2)}` : names[m - 1]
 }
 
 function Stat({ label, value, prev, money }: { label: string; value?: number; prev?: number; money?: boolean }) {

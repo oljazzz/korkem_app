@@ -1,9 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Icon } from './Icon'
+import { useTranslation } from 'react-i18next'
 
-const MONTHS = ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан']
-const WEEKDAYS = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб', 'Жс'] // the week starts on Monday
-const WEEKDAYS_FULL = ['дүйсенбі', 'сейсенбі', 'сәрсенбі', 'бейсенбі', 'жұма', 'сенбі', 'жексенбі']
 
 interface Props {
   /** ISO date (yyyy-mm-dd) or '' */
@@ -42,6 +40,10 @@ function maskDigits(raw: string) {
  */
 export function DateInput({ value, onChange, min, max, ariaLabel, clearable = true }: Props) {
   const [text, setText] = useState(isoToText(value))
+  const { t } = useTranslation()
+  const MONTHS: string[] = t('date.months', { returnObjects: true })
+  const WEEKDAYS: string[] = t('date.weekdaysShort', { returnObjects: true }) // the week starts on Monday
+  const WEEKDAYS_FULL: string[] = t('date.weekdays', { returnObjects: true })
   const [open, setOpen] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const [cursor, setCursor] = useState(value || todayIso()) // focused day in the calendar
@@ -166,8 +168,8 @@ export function DateInput({ value, onChange, min, max, ariaLabel, clearable = tr
           ref={inputRef}
           className="date-input__text"
           inputMode="numeric"
-          placeholder="кк.аа.жжжж"
-          aria-label={`${ariaLabel} (күн.ай.жыл)`}
+          placeholder={t('dateInput.placeholder')}
+          aria-label={t('dateInput.format', { label: ariaLabel })}
           aria-invalid={invalid || undefined}
           value={text}
           onChange={(e) => onText(e.target.value)}
@@ -186,7 +188,7 @@ export function DateInput({ value, onChange, min, max, ariaLabel, clearable = tr
         <button
           type="button"
           className="date-input__btn"
-          aria-label={`${ariaLabel}: күнтізбені ашу`}
+          aria-label={t('dateInput.open', { label: ariaLabel })}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? dialogId : undefined}
@@ -200,13 +202,13 @@ export function DateInput({ value, onChange, min, max, ariaLabel, clearable = tr
       </div>
 
       {open && (
-        <div className="calendar" id={dialogId} role="dialog" aria-label={`${ariaLabel}: күнтізбе`}>
+        <div className="calendar" id={dialogId} role="dialog" aria-label={t('dateInput.calendar', { label: ariaLabel })}>
           <div className="calendar__head">
-            <button type="button" className="icon-btn" aria-label="Алдыңғы ай" onClick={() => moveMonth(-1)}>
+            <button type="button" className="icon-btn" aria-label={t('dateInput.prevMonth')} onClick={() => moveMonth(-1)}>
               <Icon name="chevronLeft" />
             </button>
             <span className="calendar__title" aria-live="polite">{MONTHS[m]} {y}</span>
-            <button type="button" className="icon-btn" aria-label="Келесі ай" onClick={() => moveMonth(1)}>
+            <button type="button" className="icon-btn" aria-label={t('dateInput.nextMonth')} onClick={() => moveMonth(1)}>
               <Icon name="chevronRight" />
             </button>
           </div>
@@ -227,7 +229,7 @@ export function DateInput({ value, onChange, min, max, ariaLabel, clearable = tr
                   tabIndex={iso === cursor ? 0 : -1}
                   aria-selected={iso === value}
                   aria-current={iso === today ? 'date' : undefined}
-                  aria-label={`${i + 1} ${MONTHS[m]} ${y}`}
+                  aria-label={t('dateInput.day', { day: i + 1, month: MONTHS[m], year: y })}
                   disabled={disabled}
                   className={`calendar__day ${iso === value ? 'is-selected' : ''} ${iso === today ? 'is-today' : ''}`}
                   onClick={() => pick(iso)}
@@ -238,9 +240,9 @@ export function DateInput({ value, onChange, min, max, ariaLabel, clearable = tr
             })}
           </div>
           <div className="calendar__foot">
-            <button type="button" className="link-btn" disabled={outOfRange(today)} onClick={() => pick(today)}>Бүгін</button>
+            <button type="button" className="link-btn" disabled={outOfRange(today)} onClick={() => pick(today)}>{t('dateInput.today')}</button>
             {clearable && value && (
-              <button type="button" className="link-btn" onClick={() => { onChange(''); setOpen(false) }}>Тазалау</button>
+              <button type="button" className="link-btn" onClick={() => { onChange(''); setOpen(false) }}>{t('common.clear')}</button>
             )}
           </div>
         </div>

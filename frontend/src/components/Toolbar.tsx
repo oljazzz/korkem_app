@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { SkeletonRows } from './Skeleton'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   onCreate: () => void
@@ -18,6 +19,7 @@ interface Props {
  */
 export function Toolbar(p: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const el = ref.current
@@ -33,7 +35,7 @@ export function Toolbar(p: Props) {
     }
   }, [])
 
-  const createLabel = p.createLabel ?? 'Қосу'
+  const createLabel = p.createLabel ?? t('common.add')
   return (
     <div className="toolbar toolbar--sticky" ref={ref}>
       {p.onSearch && (
@@ -41,8 +43,8 @@ export function Toolbar(p: Props) {
           <Icon name="search" />
           <input
             type="search"
-            aria-label={p.searchPlaceholder ?? 'Іздеу'}
-            placeholder={p.searchPlaceholder ?? 'Іздеу…'}
+            aria-label={p.searchPlaceholder ?? t('common.search')}
+            placeholder={p.searchPlaceholder ?? t('common.searchPlaceholder')}
             value={p.search}
             onChange={(e) => p.onSearch!(e.target.value)}
           />
@@ -58,15 +60,16 @@ export function Toolbar(p: Props) {
   )
 }
 
-export function TableState({ loading, error, empty, colSpan, emptyText = 'Деректер жоқ' }: {
+export function TableState({ loading, error, empty, colSpan, emptyText }: {
   loading: boolean
   error: string | null
   empty: boolean
   colSpan: number
   emptyText?: string
 }) {
+  const { t } = useTranslation()
   if (error) return <tr><td colSpan={colSpan} className="table__msg table__msg--error">{error}</td></tr>
   if (loading && empty) return <SkeletonRows cols={colSpan} />
-  if (empty) return <tr><td colSpan={colSpan} className="table__msg">{emptyText}</td></tr>
+  if (empty) return <tr><td colSpan={colSpan} className="table__msg">{emptyText ?? t('common.noData')}</td></tr>
   return null
 }

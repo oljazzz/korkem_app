@@ -20,6 +20,7 @@ import { useNarrow } from '../lib/useNarrow'
 import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, numericInput, parseNum } from '../lib/format'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
+import { useTranslation } from 'react-i18next'
 
 type Line = InvoiceLine & { key: number }
 let keySeq = 1
@@ -64,6 +65,7 @@ function lineToDraft(l: Line): LineDraft {
 export function InvoiceEditPage() {
   const { id } = useParams()
   const isNew = id === undefined
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -75,7 +77,7 @@ export function InvoiceEditPage() {
   const [editingLine, setEditingLine] = useState<Line | null>(null)
   const [deleting, setDeleting] = useState<Line | null>(null)
   const [newClient, setNewClient] = useState(false)
-  const [units, setUnits] = useState<Unit[]>([{ value: 'SHT', label: 'дана' }])
+  const [units, setUnits] = useState<Unit[]>([{ value: 'SHT', label: t('invoiceEdit.pieces') }])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
@@ -155,8 +157,10 @@ export function InvoiceEditPage() {
     })
     setLines(copied)
     setDirty(true)
-    toast.show(`№ ${lastInvoice.number} жүкқұжатынан ${copied.length} тауар көшірілді${changed ? `, ${changed} тауардың бағасы жаңарды` : ''}`)
-  }, [lastInvoice, toast])
+    toast.show(changed
+      ? t('invoiceEdit.repeatedPrices', { number: lastInvoice.number, count: copied.length, changed })
+      : t('invoiceEdit.repeated', { number: lastInvoice.number, count: copied.length }))
+  }, [lastInvoice, toast, t])
 
   useEffect(() => {
     if (autoRepeat.current && lastInvoice) {
@@ -177,7 +181,7 @@ export function InvoiceEditPage() {
   const nextSort = lines.reduce((m, l) => Math.max(m, l.sortOrder ?? 0), 0) + 1
   const unitLabel = (u: UnitCode) => units.find((x) => x.value === u)?.label ?? u
 
-  const missing = [!client && 'клиентті таңдаңыз', lines.length === 0 && 'кемінде бір тауар қосыңыз'].filter(Boolean)
+  const missing = [!client && t('invoiceEdit.missingClient'), lines.length === 0 && t('invoiceEdit.missingLines')].filter(Boolean)
   const canSave = missing.length === 0 && !busy
 
   const save = useCallback(async (): Promise<number | null> => {
@@ -217,9 +221,9 @@ export function InvoiceEditPage() {
     if ((await save()) !== null) {
       allowNextNavigation()
       navigate('/invoices')
-      toast.show('Жүкқұжат сақталды')
+      toast.show(t('invoiceEdit.saved'))
     }
-  }, [save, allowNextNavigation, navigate, toast])
+  }, [save, allowNextNavigation, navigate, toast, t])
 
   const report = async () => {
     const savedId = dirty || isNew ? await save() : Number(id)
@@ -258,22 +262,22 @@ export function InvoiceEditPage() {
     setDirty(true)
   }
 
-  if (loading) return <section className="page"><p className="muted">Жүктелуде…</p></section>
+  if (loading) return <section className="page"><p className="muted">{t('common.loading')}</p></section>
 
   return (
     <section className="page page--editor">
       <div className="breadcrumbs">
-        <Link to="/invoices">Жүкқұжаттар</Link> › {isNew ? 'Жаңа' : `№ ${number ?? ''}`}
+        <Link to="/invoices">{t('invoiceEdit.breadcrumb')}</Link> › {isNew ? t('invoiceEdit.newCrumb') : t('invoiceEdit.number', { number: number ?? '' })}
       </div>
-      <h1 className="page-title">{isNew ? 'Жаңа жүкқұжат' : `Жүкқұжат № ${number ?? ''}`}</h1>
+      <h1 className="page-title">{isNew ? t('invoiceEdit.newTitle') : t('invoiceEdit.title', { number: number ?? '' })}</h1>
 
       <div className="form-grid">
-        <Field label="Күні">
+        <Field label={t('invoiceEdit.date')}>
           <DateInput
             value={date}
             max={today}
             clearable={false}
-            ariaLabel="Жүкқұжат күні"
+            ariaLabel={t('invoiceEdit.dateLabel')}
             onChange={(v) => {
               if (!v) return
               setDate(v)
@@ -281,18 +285,18 @@ export function InvoiceEditPage() {
             }}
           />
         </Field>
-        <Field label="Клиент" required>
+        <Field label={t('invoiceEdit.client')} required>
           {phone ? (
             <button type="button" className={`client-card ${client ? '' : 'is-empty'}`} onClick={() => setClientSheet(true)}>
               <Icon name="client" />
-              <span className="client-card__name">{client?.label ?? 'Клиентті таңдаңыз'}</span>
+              <span className="client-card__name">{client?.label ?? t('invoiceEdit.pickClient')}</span>
               <Icon name="chevronRight" />
             </button>
           ) : (
           <div className="inline">
             <AsyncSelect
               value={client}
-              placeholder="Клиентті таңдаңыз"
+              placeholder={t('invoiceEdit.pickClient')}
               autoFocus={isNew && !searchParams.get('client')}
               onChange={(o) => {
                 setClient(o)
@@ -303,7 +307,7 @@ export function InvoiceEditPage() {
                   p.items.map((c) => ({ id: c.id, label: c.label, hint: [c.place, c.phone].filter(Boolean).join(' · ') || undefined })))
               }
             />
-            <button className="btn btn--outline btn--icon" title="Жаңа клиент" aria-label="Жаңа клиент" onClick={() => setNewClient(true)}>
+            <button className="btn btn--outline btn--icon" title={t('invoiceEdit.newClient')} aria-label={t('invoiceEdit.newClient')} onClick={() => setNewClient(true)}>
               <Icon name="plus" />
             </button>
           </div>
@@ -313,11 +317,11 @@ export function InvoiceEditPage() {
           <div className="repeat-bar">
             <Icon name="repeat" />
             <span>
-              Соңғы жүкқұжаты: <b>№ {lastInvoice.number}</b> · {fmtDate(lastInvoice.createdAt)} · {lastInvoice.lines.length} тауар ·{' '}
+              {t('invoiceEdit.lastInvoice')} <b>№ {lastInvoice.number}</b> · {t('invoiceEdit.lastInvoiceMeta', { date: fmtDate(lastInvoice.createdAt), count: lastInvoice.lines.length })}{' '}
               {fmtMoney(lastInvoice.total)} ₸
             </span>
             <button className="btn btn--outline btn--s" onClick={() => (lines.length ? setConfirmRepeat(true) : repeatLast())}>
-              Қайталау
+              {t('invoiceEdit.repeat')}
             </button>
           </div>
         )}
@@ -325,12 +329,12 @@ export function InvoiceEditPage() {
 
       <div className="panel">
         <div className="panel__head">
-          <h2 className="card__title">Тауарлар</h2>
-          <span className="card__sub">{lines.length} позиция</span>
+          <h2 className="card__title">{t('invoiceEdit.products')}</h2>
+          <span className="card__sub">{t('invoiceEdit.positions', { count: lines.length })}</span>
           {unpriced > 0 && (
             <span className="badge badge--warning">
               <Icon name="warning" size={14} />
-              {unpriced} жолда бағасы көрсетілмеген
+              {t('invoiceEdit.unpriced', { count: unpriced })}
             </span>
           )}
         </div>
@@ -338,7 +342,7 @@ export function InvoiceEditPage() {
         {phone ? (
           <SortableList items={lines} onMove={reorder}>
           <ul className="m-lines">
-            {lines.length === 0 && <li className="m-lines__empty">Әзірге тауар жоқ</li>}
+            {lines.length === 0 && <li className="m-lines__empty">{t('invoiceEdit.noLines')}</li>}
             {lines.map((l) => (
               <SortableCard key={l.key} id={l.key} className={`m-line ${l.price === 0 ? 'is-unpriced' : ''}`}>
                 {(handle) => (<>
@@ -347,12 +351,12 @@ export function InvoiceEditPage() {
                 <button type="button" className="m-line__main" onClick={() => setProductSheet(l)}>
                   <span className="m-line__name">{l.productName}</span>
                   <span className="m-line__calc">
-                    {l.price === 0 ? <span className="price-missing"><Icon name="warning" size={14} />бағасы жоқ</span> : `${fmtMoney(l.price)} ₸`}
+                    {l.price === 0 ? <span className="price-missing"><Icon name="warning" size={14} />{t('invoiceEdit.noPrice')}</span> : `${fmtMoney(l.price)} ₸`}
                     {` / ${unitLabel(l.unit)}`}{l.discount ? ` · −${fmt(l.discount)}%` : ''}
                   </span>
                 </button>
                 <div className="m-line__foot">
-                  <Stepper compact value={String(l.quantity)} label={`«${l.productName}» саны`}
+                  <Stepper compact value={String(l.quantity)} label={t('invoiceEdit.lineQuantity', { name: l.productName })}
                     onChange={(v) => {
                       const q = parseNum(v)
                       if (q !== null && q > 0) setQuantity(l, q)
@@ -372,18 +376,18 @@ export function InvoiceEditPage() {
             <thead>
               <tr>
                 <th className="num" style={{ width: 64 }}>№</th>
-                <th>Тауар</th>
-                <th className="num">Бағасы</th>
-                <th className="num">Саны</th>
-                <th>Бірлік</th>
-                <th className="num">Жеңілдік</th>
-                <th className="num">Сомасы</th>
-                <th aria-label="Әрекеттер" style={{ width: 96 }} />
+                <th>{t('invoiceEdit.colProduct')}</th>
+                <th className="num">{t('invoiceEdit.colPrice')}</th>
+                <th className="num">{t('invoiceEdit.colQuantity')}</th>
+                <th>{t('invoiceEdit.colUnit')}</th>
+                <th className="num">{t('invoiceEdit.colDiscount')}</th>
+                <th className="num">{t('invoiceEdit.colSum')}</th>
+                <th aria-label={t('invoiceEdit.colActions')} style={{ width: 96 }} />
               </tr>
             </thead>
             <tbody>
               {lines.length === 0 && (
-                <tr><td colSpan={8} className="table__msg">Төмендегі жолақтан тауар қосыңыз: атауын жазып, санын енгізіп, Enter басыңыз</td></tr>
+                <tr><td colSpan={8} className="table__msg">{t('invoiceEdit.emptyHint')}</td></tr>
               )}
               {lines.map((l, i) => (
                 <SortableRow key={l.key} id={l.key} className={l.price === 0 ? 'is-unpriced' : undefined} onDoubleClick={() => setEditingLine(l)}>
@@ -397,7 +401,7 @@ export function InvoiceEditPage() {
                   </td>
                   <td className="num line-col">
                     {l.price === 0 ? (
-                      <span className="price-missing" title="Бағасы көрсетілмеген">
+                      <span className="price-missing" title={t('invoiceEdit.priceMissing')}>
                         <Icon name="warning" size={14} />0
                       </span>
                     ) : fmtMoney(l.price)}
@@ -407,10 +411,10 @@ export function InvoiceEditPage() {
                   <td className="num line-col">{l.discount ? `${fmt(l.discount)}%` : ''}</td>
                   <td className="num strong line-total">{fmtMoney(l.total)}</td>
                   <td className="row-actions">
-                    <button className="icon-btn" title="Өзгерту" aria-label={`«${l.productName}» өзгерту`} onClick={() => setEditingLine(l)}>
+                    <button className="icon-btn" title={t('common.edit')} aria-label={t('invoiceEdit.editLine', { name: l.productName })} onClick={() => setEditingLine(l)}>
                       <Icon name="edit" />
                     </button>
-                    <button className="icon-btn icon-btn--danger" title="Жою" aria-label={`«${l.productName}» жою`} onClick={() => setDeleting(l)}>
+                    <button className="icon-btn icon-btn--danger" title={t('common.delete')} aria-label={t('invoiceEdit.deleteLine', { name: l.productName })} onClick={() => setDeleting(l)}>
                       <Icon name="trash" />
                     </button>
                   </td>
@@ -421,7 +425,7 @@ export function InvoiceEditPage() {
             {lines.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={6} className="line-foot-label">Барлығы</td>
+                  <td colSpan={6} className="line-foot-label">{t('invoiceEdit.total')}</td>
                   <td className="num line-foot-total">{fmtMoney(totals.total)}</td>
                   <td className="line-col" />
                 </tr>
@@ -434,7 +438,7 @@ export function InvoiceEditPage() {
 
         {phone ? (
           <button type="button" className="btn btn--outline btn--lg m-add" onClick={() => setProductSheet('new')}>
-            <Icon name="plus" />Тауар қосу
+            <Icon name="plus" />{t('invoiceEdit.addProduct')}
           </button>
         ) : (
         <QuickAdd
@@ -461,21 +465,21 @@ export function InvoiceEditPage() {
 
       <div className="editor-actions">
         {phone && (
-          <button className="btn btn--outline editor-actions__add" onClick={() => setProductSheet('new')} aria-label="Тауар қосу">
-            <Icon name="plus" />Тауар
+          <button className="btn btn--outline editor-actions__add" onClick={() => setProductSheet('new')} aria-label={t('invoiceEdit.addProduct')}>
+            <Icon name="plus" />{t('invoiceEdit.addShort')}
           </button>
         )}
-        <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">Сақтау</button>
-        <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>Жабу</button>
+        <button className="btn btn--primary" onClick={ok} disabled={!canSave} title="Ctrl+S">{t('common.save')}</button>
+        <button className="btn btn--ghost" onClick={() => navigate('/invoices')}>{t('common.close')}</button>
         <button className="btn btn--outline editor-actions__print" onClick={report} disabled={!canSave && (dirty || isNew)}
-          title="Басып шығару" aria-label="Басып шығару">
-          <Icon name="print" /><span className="btn__label">Басып шығару</span>
+          title={t('invoiceEdit.print')} aria-label={t('invoiceEdit.print')}>
+          <Icon name="print" /><span className="btn__label">{t('invoiceEdit.print')}</span>
         </button>
         <span className="muted editor-actions__status" role="status">
-          {missing.length > 0 ? `Сақтау үшін ${missing.join(' және ')}` : dirty ? 'Сақталмаған өзгерістер бар' : ''}
+          {missing.length > 0 ? t('invoiceEdit.toSave', { list: missing.join(t('invoiceEdit.and')) }) : dirty ? t('invoiceEdit.unsaved') : ''}
         </span>
         <div className="editor-total" aria-live="polite">
-          <span className="editor-total__label">Барлығы</span>
+          <span className="editor-total__label">{t('invoiceEdit.total')}</span>
           <span className="editor-total__value">{fmtMoney(totals.total)} ₸</span>
         </div>
       </div>
@@ -509,7 +513,7 @@ export function InvoiceEditPage() {
               setLines((ls) => [...ls, draftToLine(d, { key: keySeq++, id: null, sortOrder: nextSort })])
               setDirty(true)
               // The sheet stays open for the next product, so say the last one went in
-              if (again) toast.show('Тауар қосылды')
+              if (again) toast.show(t('invoiceEdit.productAdded'))
             } else {
               upsertLine(draftToLine(d, productSheet))
             }
@@ -529,10 +533,10 @@ export function InvoiceEditPage() {
       )}
       {deleting && (
         <ConfirmModal
-          title="Жолды жою"
-          text={`«${deleting.productName}» жүкқұжаттан жойылсын ба?`}
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('invoiceEdit.deleteLineTitle')}
+          text={t('invoiceEdit.deleteLineText', { name: deleting.productName })}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
           onClose={() => setDeleting(null)}
           onConfirm={() => {
@@ -544,10 +548,10 @@ export function InvoiceEditPage() {
       )}
       {confirmRepeat && lastInvoice && (
         <ConfirmModal
-          title="Соңғы жүкқұжатты қайталау"
-          text={`Қазіргі ${lines.length} тауар № ${lastInvoice.number} жүкқұжатының тауарларымен ауыстырылсын ба?`}
-          confirmLabel="Ауыстыру"
-          cancelLabel="Болдырмау"
+          title={t('invoiceEdit.repeatTitle')}
+          text={t('invoiceEdit.repeatText', { count: lines.length, number: lastInvoice.number })}
+          confirmLabel={t('invoiceEdit.replace')}
+          cancelLabel={t('common.cancel')}
           onConfirm={repeatLast}
           onClose={() => setConfirmRepeat(false)}
         />
@@ -565,10 +569,10 @@ export function InvoiceEditPage() {
       )}
       {blocker.state === 'blocked' && (
         <ConfirmModal
-          title="Сақталмаған өзгерістер"
-          text="Жүкқұжатқа енгізген өзгерістер сақталмаған. Сақтамай шығасыз ба?"
-          confirmLabel="Сақтамай шығу"
-          cancelLabel="Қалу"
+          title={t('invoiceEdit.unsavedTitle')}
+          text={t('invoiceEdit.unsavedText')}
+          confirmLabel={t('invoiceEdit.leave')}
+          cancelLabel={t('invoiceEdit.stay')}
           danger
           onConfirm={() => blocker.proceed()}
           onClose={() => blocker.reset()}
@@ -589,6 +593,7 @@ function QuickAdd({ units, nextSort, onAdd }: {
   onAdd: (line: Line) => void
 }) {
   const [product, setProduct] = useState<PickOption | null>(null)
+  const { t } = useTranslation()
   const [price, setPrice] = useState('')
   const [quantity, setQuantity] = useState('')
   const [discount, setDiscount] = useState('')
@@ -646,15 +651,15 @@ function QuickAdd({ units, nextSort, onAdd }: {
   }
 
   return (
-    <div className="quick-add" role="group" aria-label="Тауар қосу">
+    <div className="quick-add" role="group" aria-label={t('invoiceEdit.addProduct')}>
       <label className="quick-add__product stack">
-        <span className="stack__label">Тауар</span>
+        <span className="stack__label">{t('invoiceEdit.colProduct')}</span>
         <AsyncSelect<PickOption>
           value={product}
           inputRef={productRef}
           invalid={errors.product}
-          placeholder="Атауы немесе түсі: «статус ақ»"
-          ariaLabel="Тауар"
+          placeholder={t('invoiceEdit.productSearch')}
+          ariaLabel={t('invoiceEdit.colProduct')}
           onChange={(o) => {
             setProduct(o)
             if (o) {
@@ -667,18 +672,18 @@ function QuickAdd({ units, nextSort, onAdd }: {
         />
       </label>
       <label className="stack">
-        <span className="stack__label">Бағасы</span>
+        <span className="stack__label">{t('invoiceEdit.colPrice')}</span>
         <input className={`input num-input ${errors.price ? 'is-invalid' : ''}`} inputMode="decimal" value={price}
           onChange={(e) => setPrice(e.target.value)} onKeyDown={onEnter} />
       </label>
       <label className="stack">
-        <span className="stack__label">Саны</span>
+        <span className="stack__label">{t('invoiceEdit.colQuantity')}</span>
         <input ref={qtyRef} className={`input num-input ${errors.quantity ? 'is-invalid' : ''}`} inputMode="decimal"
           value={quantity} onChange={(e) => setQuantity(numericInput(e.target.value))} onKeyDown={onEnter}
           onFocus={(e) => e.target.select()} />
       </label>
       <label className="stack">
-        <span className="stack__label">Бірлік</span>
+        <span className="stack__label">{t('invoiceEdit.colUnit')}</span>
         <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as UnitCode)}>
           {units.map((u) => (
             <option key={u.value} value={u.value}>{u.label}</option>
@@ -686,16 +691,16 @@ function QuickAdd({ units, nextSort, onAdd }: {
         </select>
       </label>
       <label className="stack">
-        <span className="stack__label">Жеңілдік, %</span>
+        <span className="stack__label">{t('invoiceEdit.discount')}</span>
         <input className={`input num-input ${errors.discount ? 'is-invalid' : ''}`} inputMode="decimal" value={discount}
           onChange={(e) => setDiscount(e.target.value)} onKeyDown={onEnter} placeholder="0" />
       </label>
       <div className="stack quick-add__sum">
-        <span className="stack__label">Сомасы</span>
+        <span className="stack__label">{t('invoiceEdit.colSum')}</span>
         <span className="quick-add__total">{calc ? `${fmt2(calc.total)} ₸` : '—'}</span>
       </div>
       <button className="btn btn--primary quick-add__btn" onClick={add}>
-        <Icon name="plus" />Қосу
+        <Icon name="plus" />{t('invoiceEdit.add')}
       </button>
       {/* Own full-width row: in the product cell a long colour list stretched the whole bar */}
       {product?.opt.variantId && (
@@ -725,6 +730,7 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
   onSave: (l: Line) => void
 }) {
   const [categoryId, setCategoryId] = useState<number | null>(line.categoryId ?? null)
+  const { t } = useTranslation()
   const [product, setProduct] = useState<Option | null>({ id: line.variantId ? -line.variantId : line.productId ?? -1, label: line.productName })
   const [productId, setProductId] = useState<number | null>(line.productId ?? null)
   const [variantId, setVariantId] = useState<number | null>(line.variantId ?? null)
@@ -743,10 +749,10 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
 
   const submit = () => {
     const errs: Record<string, string> = {}
-    if (!product) errs.product = 'Тауарды таңдаңыз'
-    if (p === null || p < 0) errs.price = 'Бағасын көрсетіңіз'
-    if (q === null || q <= 0) errs.quantity = 'Санын көрсетіңіз'
-    if (d !== null && (d < 0 || d > 100)) errs.discount = '0–100 аралығында'
+    if (!product) errs.product = t('invoiceEdit.pickProduct')
+    if (p === null || p < 0) errs.price = t('invoiceEdit.priceRequired')
+    if (q === null || q <= 0) errs.quantity = t('invoiceEdit.quantityRequired')
+    if (d !== null && (d < 0 || d > 100)) errs.discount = t('invoiceEdit.discountRange')
     setErrors(errs)
     if (Object.keys(errs).length || !calc || !product) return
     onSave({
@@ -767,22 +773,22 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
 
   return (
     <Modal
-      title="Тауар жолы"
+      title={t('invoiceEdit.lineTitle')}
       width={520}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={submit}>Сақтау</button>
-          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
+          <button className="btn btn--primary" onClick={submit}>{t('common.save')}</button>
+          <button className="btn btn--ghost" onClick={onClose}>{t('common.cancel')}</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); submit() }}>
-        <Field label="Тауар" required error={errors.product}>
+        <Field label={t('invoiceEdit.colProduct')} required error={errors.product}>
           <AsyncSelect<PickOption>
             value={product}
             invalid={!!errors.product}
-            placeholder="Атауы немесе түсі"
+            placeholder={t('invoiceEdit.productSearchShort')}
             onChange={(o) => {
               setProduct(o)
               setProductId(o?.opt.productId ?? null)
@@ -807,24 +813,24 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
             />
           )}
         </Field>
-        <Field label="Саны" required error={errors.quantity}>
+        <Field label={t('invoiceEdit.colQuantity')} required error={errors.quantity}>
           <input ref={qtyRef} className="input" inputMode="decimal" autoFocus value={quantity}
             onChange={(e) => setQuantity(numericInput(e.target.value))} onFocus={(e) => e.target.select()} />
         </Field>
-        <Field label="Бағасы" required error={errors.price}>
+        <Field label={t('invoiceEdit.colPrice')} required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
         </Field>
-        <Field label="Өлшем бірлігі">
+        <Field label={t('invoiceEdit.unitOfMeasure')}>
           <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as UnitCode)}>
             {units.map((u) => (
               <option key={u.value} value={u.value}>{u.label}</option>
             ))}
           </select>
         </Field>
-        <Field label="Жеңілдік (%)" error={errors.discount}>
+        <Field label={t('invoiceEdit.discountPercent')} error={errors.discount}>
           <input className="input" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
         </Field>
-        <Field label="Санат">
+        <Field label={t('invoiceEdit.category')}>
           <select className="input" value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">—</option>
             {categories.map((c) => (
@@ -832,11 +838,11 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
             ))}
           </select>
         </Field>
-        <Field label="Реті">
+        <Field label={t('common.order')}>
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         <div className="line-summary">
-          <span>Сомасы: <b>{calc ? `${fmt2(calc.total)} ₸` : '—'}</b></span>
+          <span>{t('invoiceEdit.sumLabel')} <b>{calc ? `${fmt2(calc.total)} ₸` : '—'}</b></span>
         </div>
         <button hidden />
       </form>

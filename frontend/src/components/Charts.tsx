@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fmtCompact, fmtMoney } from '../lib/format'
+import { useTranslation } from 'react-i18next'
 
 // Single-series charts: one color (--chart), thin marks, hairline grid, hover tooltip.
 
@@ -23,6 +24,7 @@ function niceStep(v: number) {
 /** Column chart (revenue over time). */
 export function ColumnChart({ data, height = 240, unit = '₸' }: { data: ColumnPoint[]; height?: number; unit?: string }) {
   const [hover, setHover] = useState<number | null>(null)
+  const { t } = useTranslation()
   const boxRef = useRef<HTMLDivElement>(null)
   const width = 720
   const pad = { l: 52, r: 8, t: 16, b: 28 }
@@ -54,7 +56,7 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
 
   return (
     <div className="chart" ref={boxRef} onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Кезеңдер бойынша түсім" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={t('chart.revenueByPeriod')} preserveAspectRatio="none">
         <defs>
           <pattern id="chart-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="6" height="6" className="chart__hatch-bg" />
@@ -105,13 +107,13 @@ export function ColumnChart({ data, height = 240, unit = '₸' }: { data: Column
           <div className="chart__tip-label">{h.label}</div>
           <div className="chart__tip-value">{fmtMoney(h.value)} {unit}</div>
           {h.hint && <div className="chart__tip-hint">{h.hint}</div>}
-          {h.partial && <div className="chart__tip-hint">Толық емес кезең</div>}
+          {h.partial && <div className="chart__tip-hint">{t('chart.partial')}</div>}
         </div>
       )}
       {hasPartial && (
         <div className="chart__legend">
           <span className="chart__legend-swatch" aria-hidden="true" />
-          Штрихталған баған — толық емес кезең
+          {t('chart.partialLegend')}
         </div>
       )}
     </div>
@@ -127,9 +129,10 @@ interface BarItem {
 }
 
 /** Horizontal ranking: name, thin bar, value. */
-export function BarList({ items, emptyText = 'Деректер жоқ' }: { items: BarItem[]; emptyText?: string }) {
+export function BarList({ items, emptyText }: { items: BarItem[]; emptyText?: string }) {
+  const { t } = useTranslation()
   const max = useMemo(() => Math.max(1, ...items.map((i) => i.value)), [items])
-  if (items.length === 0) return <p className="muted">{emptyText}</p>
+  if (items.length === 0) return <p className="muted">{emptyText ?? t('common.noData')}</p>
   return (
     <ol className="barlist">
       {items.map((it, i) => (

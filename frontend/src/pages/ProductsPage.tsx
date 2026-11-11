@@ -16,10 +16,12 @@ import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
 import { fmt, fmtPack, fmtPricePerBase, packFromName, parseNum, type PackUnit } from '../lib/format'
 import { useList } from '../lib/useList'
+import { useTranslation } from 'react-i18next'
 
 export function ProductsPage() {
   const isAdmin = useIsAdmin()
   const toast = useToast()
+  const { t } = useTranslation()
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const list = useList<Product>((p) => api.products.list({ ...p, categoryId }))
@@ -44,11 +46,11 @@ export function ProductsPage() {
   const groups = useMemo(() => {
     const map = new Map<string, Product[]>()
     list.data.items.forEach((p) => {
-      const key = p.categoryName ?? '— Санатсыз —'
+      const key = p.categoryName ?? t('products.noCategory')
       map.set(key, [...(map.get(key) ?? []), p])
     })
     return [...map.entries()]
-  }, [list.data.items])
+  }, [list.data.items, t])
 
   const toggle = (key: string) =>
     setCollapsed((s) => {
@@ -65,7 +67,7 @@ export function ProductsPage() {
     try {
       await api.products.remove(p.id)
       list.reload()
-      toast.show(`«${p.name}» жойылды`)
+      toast.show(t('products.deleted', { name: p.name }))
     } catch (e) {
       setError((e as Error).message)
     }
@@ -73,28 +75,28 @@ export function ProductsPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Анықтамалық" title="Баға тізімі">
+      <PageHeader eyebrow={t('products.eyebrow')} title={t('products.title')}>
         {isAdmin && (
           <Link className="btn btn--ghost" to="/products/grouping">
-            <Icon name="merge" />Түстерге топтастыру
+            <Icon name="merge" />{t('products.grouping')}
           </Link>
         )}
         <Link className="btn btn--outline" to={`/products/print${categoryId ? `?category=${categoryId}` : ''}`}>
-          <Icon name="print" />Басып шығару / PDF
+          <Icon name="print" />{t('products.print')}
         </Link>
       </PageHeader>
       <Toolbar
         onCreate={() => setEditing('new')}
         search={list.q}
         onSearch={list.search}
-        searchPlaceholder="Атауы бойынша іздеу"
+        searchPlaceholder={t('products.searchPlaceholder')}
       >
         <button className="btn btn--ghost" onClick={() => setManaging(true)}>
-          <Icon name="folder" />Санаттар
+          <Icon name="folder" />{t('products.categories')}
         </button>
         <select
           className="input toolbar__select"
-          aria-label="Санат бойынша сүзу"
+          aria-label={t('products.categoryFilter')}
           value={categoryId ?? ''}
           onChange={(e) => {
             setCategoryId(e.target.value ? Number(e.target.value) : null)
@@ -102,7 +104,7 @@ export function ProductsPage() {
             list.reload()
           }}
         >
-          <option value="">Барлық санаттар</option>
+          <option value="">{t('products.allCategories')}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -113,10 +115,10 @@ export function ProductsPage() {
         <table className="table table--cards">
           <thead>
             <tr>
-              <th>Атауы</th>
-              <th className="num" style={{ width: 130 }}>Қаптама</th>
-              <th className="num" style={{ width: 160 }}>Бағасы</th>
-              <th aria-label="Әрекеттер" style={{ width: 96 }} />
+              <th>{t('products.colName')}</th>
+              <th className="num" style={{ width: 130 }}>{t('products.colPack')}</th>
+              <th className="num" style={{ width: 160 }}>{t('products.colPrice')}</th>
+              <th aria-label={t('products.colActions')} style={{ width: 96 }} />
             </tr>
           </thead>
           <tbody>
@@ -158,7 +160,7 @@ export function ProductsPage() {
           onSaved={() => {
             setEditingCategory(null)
             categoriesChanged()
-            toast.show('Санат сақталды')
+            toast.show(t('products.categorySaved'))
           }}
         />
       )}
@@ -172,17 +174,17 @@ export function ProductsPage() {
             setEditing(null)
             list.setSelectedId(p.id)
             list.reload()
-            toast.show('Тауар сақталды')
+            toast.show(t('products.saved'))
           }}
         />
       )}
       {deleting && (
         <ConfirmModal
-          title="Тауарды жою"
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('products.deleteTitle')}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
-          text={`«${deleting.name}» тауарын жою керек пе? Бұрынғы жүкқұжаттарда атауы сақталады.`}
+          text={t('products.deleteText', { name: deleting.name })}
           onConfirm={remove}
           onClose={() => setDeleting(null)}
         />
@@ -201,6 +203,7 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
   onOpen: (p: Product) => void
   onDelete?: (p: Product) => void
 }) {
+  const { t } = useTranslation()
   return (
     <>
       <tr className="group-row">
@@ -211,7 +214,7 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
         </td>
         <td className="row-actions">
           {onEditGroup && (
-            <button className="icon-btn" title="Санатты өзгерту" aria-label={`«${title}» санатын өзгерту`} onClick={onEditGroup}>
+            <button className="icon-btn" title={t('products.editCategory')} aria-label={t('products.editCategoryLabel', { name: title })} onClick={onEditGroup}>
               <Icon name="edit" />
             </button>
           )}
@@ -224,7 +227,7 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
               <span className="strong">{p.name}</span>
               {p.variants.length > 0 && <VariantPills product={p} />}
             </td>
-            <td className={`num ${p.packAmount ? '' : 'muted-cell'}`} data-label="Қаптама">{p.packAmount ? fmtPack(p.packAmount, p.packUnit) : '—'}</td>
+            <td className={`num ${p.packAmount ? '' : 'muted-cell'}`} data-label={t('products.colPack')}>{p.packAmount ? fmtPack(p.packAmount, p.packUnit) : '—'}</td>
             <td className="num cell-amount">
               {fmt(p.price)} ₸
               {p.packAmount && p.price > 0 && <span className="cell-sub">{fmtPricePerBase(p.price, p.packAmount, p.packUnit)}</span>}
@@ -239,18 +242,19 @@ function GroupRows({ title, items, collapsed, onToggle, onEditGroup, selectedId,
 /** Colour names under a product row; long lists collapse to the first few. */
 function VariantPills({ product }: { product: Product }) {
   const [open, setOpen] = useState(false)
+  const { t } = useTranslation()
   const shown = open ? product.variants : product.variants.slice(0, 8)
   const hidden = product.variants.length - shown.length
   return (
     <span className="variant-pills" onClick={(e) => e.stopPropagation()}>
-      <span className="variant-pills__count">{product.variants.length} түс:</span>
+      <span className="variant-pills__count">{t('products.colours', { count: product.variants.length })}</span>
       {shown.map((v) => (
         <span key={v.id} className={`variant-pill ${v.active ? '' : 'is-off'}`}
           title={v.price !== null ? `${fmt(v.price)} ₸` : undefined}>
           {v.name}{v.price !== null && <b> · {fmt(v.price)} ₸</b>}
         </span>
       ))}
-      {hidden > 0 && <button type="button" className="link-btn variant-pills__more" onClick={() => setOpen(true)}>тағы {hidden}</button>}
+      {hidden > 0 && <button type="button" className="link-btn variant-pills__more" onClick={() => setOpen(true)}>{t('products.more', { count: hidden })}</button>}
     </span>
   )
 }
@@ -266,6 +270,7 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
   onSaved: (p: Product) => void
 }) {
   const [categoryId, setCategoryId] = useState<number | null>(product ? product.categoryId : defaultCategoryId)
+  const { t } = useTranslation()
   const [name, setName] = useState(product?.name ?? '')
   const [price, setPrice] = useState(product?.price?.toString() ?? '')
   const [sortOrder, setSortOrder] = useState(product?.sortOrder?.toString() ?? '')
@@ -300,7 +305,7 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
     const priceNum = parseNum(price)
     const packNum = parseNum(packValue)
     if (packValue.trim() && (packNum === null || packNum <= 0)) {
-      setErrors({ packAmount: '0-ден үлкен сан енгізіңіз' })
+      setErrors({ packAmount: t('products.packPositive') })
       return
     }
     const pack = packNum === null ? null : fromInput(packNum, packInputUnit)
@@ -328,21 +333,21 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
 
   return (
     <Modal
-      title={product ? 'Тауарды өзгерту' : 'Жаңа тауар'}
+      title={product ? t('products.editTitle') : t('products.newTitle')}
       width={600}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сақтау</button>
-          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
+          <button className="btn btn--primary" onClick={save}>{t('common.save')}</button>
+          <button className="btn btn--ghost" onClick={onClose}>{t('common.cancel')}</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Атауы" required error={errors.name}>
+        <Field label={t('products.name')} required error={errors.name}>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Санат">
+        <Field label={t('products.category')}>
           <select
             className="input"
             value={categoryId ?? ''}
@@ -354,47 +359,47 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
             ))}
           </select>
         </Field>
-        <Field label="Бағасы, ₸" required error={errors.price}>
+        <Field label={t('products.price')} required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
         </Field>
-        <Field label="Қаптама" error={errors.packAmount}>
+        <Field label={t('products.pack')} error={errors.packAmount}>
           <div className="inline pack-input">
-            <input className="input num-input" inputMode="decimal" value={packValue} placeholder="мысалы, 20"
-              aria-label="Қаптама мөлшері" onChange={(e) => setPackValue(e.target.value)} />
-            <select className="input" aria-label="Қаптама бірлігі" value={packInputUnit}
+            <input className="input num-input" inputMode="decimal" value={packValue} placeholder={t('products.packPlaceholder')}
+              aria-label={t('products.packAmount')} onChange={(e) => setPackValue(e.target.value)} />
+            <select className="input" aria-label={t('products.packUnit')} value={packInputUnit}
               onChange={(e) => setPackInputUnit(e.target.value as InputUnit)}>
-              {INPUT_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+              {INPUT_UNITS.map((u) => <option key={u} value={u}>{t(UNIT_KEY[u])}</option>)}
             </select>
           </div>
           {suggested ? (
             <span className="field__hint">
-              Атауында {fmtPack(suggested.amount, suggested.unit)} деп жазылған —{' '}
+              {t('products.packInName', { pack: fmtPack(suggested.amount, suggested.unit) })}{' '}
               <button type="button" className="link-btn" onClick={() => {
                 const v = toInput(suggested.amount, suggested.unit)
                 setPackValue(v.value)
                 setPackInputUnit(v.unit)
-              }}>қолдану</button>
+              }}>{t('products.packApply')}</button>
             </span>
           ) : (
-            <span className="field__hint">Бір дананың ішіндегі мөлшері: массасы (кг, г) немесе көлемі (л, мл).</span>
+            <span className="field__hint">{t('products.packHint')}</span>
           )}
         </Field>
-        <Field label="Түстер">
+        <Field label={t('products.colourSection')}>
           <div className="variants-edit">
             {variants.length > 0 && (
               <ul className="variants-edit__list">
                 {variants.map((v) => (
                   <li key={v.key} className={v.active ? '' : 'is-off'}>
-                    <input className="input" value={v.name} aria-label="Түстің атауы"
+                    <input className="input" value={v.name} aria-label={t('products.colourName')}
                       onChange={(e) => updateVariant(v.key, { name: e.target.value })} />
                     <input className="input num-input variants-edit__price" inputMode="decimal" value={v.price}
-                      placeholder={price || 'баға'} aria-label={`«${v.name}» бағасы`} title="Бос болса — тауардың бағасы"
+                      placeholder={price || t('products.colourPricePlaceholder')} aria-label={t('products.colourPrice', { name: v.name })} title={t('products.colourPriceHint')}
                       onChange={(e) => updateVariant(v.key, { price: e.target.value })} />
-                    <label className="checkbox" title="Жүкқұжатта таңдауға болады">
+                    <label className="checkbox" title={t('products.colourActiveHint')}>
                       <input type="checkbox" checked={v.active} onChange={(e) => updateVariant(v.key, { active: e.target.checked })} />
-                      бар
+                      {t('products.colourActive')}
                     </label>
-                    <button type="button" className="icon-btn icon-btn--danger" aria-label={`«${v.name}» түсін алып тастау`}
+                    <button type="button" className="icon-btn icon-btn--danger" aria-label={t('products.colourRemove', { name: v.name })}
                       onClick={() => setVariants((vs) => vs.filter((x) => x.key !== v.key))}>
                       <Icon name="close" />
                     </button>
@@ -403,8 +408,8 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
               </ul>
             )}
             <div className="inline">
-              <input className="input" value={newVariant} placeholder="Ақ, Қара, Қызыл…"
-                aria-label="Жаңа түстер"
+              <input className="input" value={newVariant} placeholder={t('products.newColoursPlaceholder')}
+                aria-label={t('products.newColours')}
                 onChange={(e) => setNewVariant(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -412,16 +417,16 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
                     addVariants()
                   }
                 }} />
-              <button type="button" className="btn btn--outline" onClick={addVariants}><Icon name="plus" />Қосу</button>
+              <button type="button" className="btn btn--outline" onClick={addVariants}><Icon name="plus" />{t('products.addColours')}</button>
             </div>
             <span className="field__hint">
               {variants.length === 0
-                ? 'Түсі жоқ тауар болса, бос қалдырыңыз. Бірнеше түсті үтір арқылы жазуға болады.'
-                : 'Түстің бағасы бос болса, тауардың бағасы алынады. «бар» белгісі алынған түс жүкқұжатта шықпайды.'}
+                ? t('products.coloursHintEmpty')
+                : t('products.coloursHint')}
             </span>
           </div>
         </Field>
-        <Field label="Реті">
+        <Field label={t('common.order')}>
           <input className="input" inputMode="numeric" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
         </Field>
         {errors._ && <Alert>{errors._}</Alert>}
@@ -433,12 +438,8 @@ function ProductForm({ product, categories, defaultCategoryId, onClose, onSaved 
 
 type InputUnit = 'KG' | 'G' | 'L' | 'ML'
 
-const INPUT_UNITS: { value: InputUnit; label: string }[] = [
-  { value: 'KG', label: 'кг' },
-  { value: 'G', label: 'г' },
-  { value: 'L', label: 'л' },
-  { value: 'ML', label: 'мл' },
-]
+const INPUT_UNITS: InputUnit[] = ['KG', 'G', 'L', 'ML']
+const UNIT_KEY = { KG: 'unit.kg', G: 'unit.g', L: 'unit.l', ML: 'unit.ml' } as const
 
 /** Stored pack (kg / l) → form value in a friendly unit: 0.8 kg shows as 800 г. */
 function toInput(amount: number | null, unit: PackUnit | null): { value: string; unit: InputUnit } {

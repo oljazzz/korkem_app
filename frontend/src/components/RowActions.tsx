@@ -1,5 +1,6 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { Icon } from './Icon'
+import { useTranslation } from 'react-i18next'
 
 const INTERACTIVE = 'button, a, input, select, textarea, label'
 
@@ -43,16 +44,17 @@ export function RowActions({ name, onEdit, onDelete, children }: {
   onDelete?: () => void
   children?: ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <td className="row-actions">
       {children}
       {onEdit && (
-        <button className="icon-btn" title="Өзгерту" aria-label={`${name} — өзгерту`} onClick={onEdit}>
+        <button className="icon-btn" title={t('common.edit')} aria-label={t('rowActions.edit', { name })} onClick={onEdit}>
           <Icon name="edit" />
         </button>
       )}
       {onDelete && (
-        <button className="icon-btn icon-btn--danger" title="Жою" aria-label={`${name} — жою`} onClick={onDelete}>
+        <button className="icon-btn icon-btn--danger" title={t('common.delete')} aria-label={t('rowActions.delete', { name })} onClick={onDelete}>
           <Icon name="trash" />
         </button>
       )}

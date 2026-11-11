@@ -6,6 +6,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from './Icon'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Drag-and-drop ordering for a list of items with a numeric {@code key}. Items are moved by their
@@ -17,6 +18,7 @@ export function SortableList<T extends { key: number }>({ items, onMove, childre
   onMove: (next: T[]) => void
   children: ReactNode
 }) {
+  const { t } = useTranslation()
   const sensors = useSensors(
     // A few pixels of movement before a drag starts, so a tap on the handle stays a tap
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -38,13 +40,13 @@ export function SortableList<T extends { key: number }>({ items, onMove, childre
       onDragEnd={end}
       accessibility={{
         screenReaderInstructions: {
-          draggable: 'Жолды жылжыту үшін бос орынды басыңыз, жоғары не төмен көрсеткімен жылжытып, қайта бос орынды басыңыз. Болдырмау — Escape.',
+          draggable: t('sortable.instructions'),
         },
         announcements: {
-          onDragStart: ({ active }) => `${place(active.id)}-жол алынды`,
-          onDragOver: ({ over }) => (over ? `${place(over.id)}-орын` : 'Тізімнен тыс'),
-          onDragEnd: ({ over }) => (over ? `Жол ${place(over.id)}-орынға қойылды` : 'Жол орнында қалды'),
-          onDragCancel: () => 'Жылжыту тоқтатылды, жол орнында қалды',
+          onDragStart: ({ active }) => t('sortable.pickedUp', { n: place(active.id) }),
+          onDragOver: ({ over }) => (over ? t('sortable.over', { n: place(over.id) }) : t('sortable.outside')),
+          onDragEnd: ({ over }) => (over ? t('sortable.dropped', { n: place(over.id) }) : t('sortable.stayed')),
+          onDragCancel: () => t('sortable.cancelled'),
         },
       }}
     >
@@ -56,9 +58,10 @@ export function SortableList<T extends { key: number }>({ items, onMove, childre
 }
 
 function useSortableItem(id: number) {
+  const { t } = useTranslation()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
-    attributes: { roleDescription: 'жылжытылатын жол' },
+    attributes: { roleDescription: t('sortable.roleDescription') },
   })
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -67,8 +70,8 @@ function useSortableItem(id: number) {
     zIndex: isDragging ? 2 : undefined,
   }
   const handle = (
-    <button type="button" ref={setActivatorNodeRef} className="drag-handle" title="Сүйреп орнын ауыстыру"
-      aria-label="Жылжыту" {...attributes} {...listeners}>
+    <button type="button" ref={setActivatorNodeRef} className="drag-handle" title={t('sortable.handleTitle')}
+      aria-label={t('sortable.handleLabel')} {...attributes} {...listeners}>
       <Icon name="grip" />
     </button>
   )

@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // Browsers often ship without kk-KZ locale data, so format numbers by hand in the Kazakh
 // convention: a space between thousands and a comma before decimals (1 234 567,50).
 function makeFormat(min: number, max: number) {
@@ -22,14 +23,14 @@ export type PackUnit = 'KG' | 'L'
 /** Pack size for display: 20 кг, 2,7 кг, 800 г, 5 л, 500 мл (small packs in grams/millilitres). */
 export function fmtPack(amount: number | null | undefined, unit: PackUnit | null | undefined) {
   if (amount === null || amount === undefined || !unit) return ''
-  if (amount < 1) return `${Math.round(amount * 1000)} ${unit === 'KG' ? 'г' : 'мл'}`
-  return `${amount3.format(amount)} ${unit === 'KG' ? 'кг' : 'л'}`
+  if (amount < 1) return `${Math.round(amount * 1000)} ${unit === 'KG' ? t('unit.g') : t('unit.ml')}`
+  return `${amount3.format(amount)} ${unit === 'KG' ? t('unit.kg') : t('unit.l')}`
 }
 
 /** Price of one kilogram or litre: "900 ₸/кг". */
 export function fmtPricePerBase(price: number, amount: number | null | undefined, unit: PackUnit | null | undefined) {
   if (!amount || !unit || price <= 0) return ''
-  return `${fmtMoney(Math.round((price / amount) * 100) / 100)} ₸/${unit === 'KG' ? 'кг' : 'л'}`
+  return `${fmtMoney(Math.round((price / amount) * 100) / 100)} ₸/${unit === 'KG' ? t('unit.kg') : t('unit.l')}`
 }
 
 /** The single size written in a product name ("20кг", "800гр", "5Л", "500мл"), in a base unit. */
@@ -47,9 +48,9 @@ export function packFromName(name: string): { amount: number; unit: PackUnit } |
 /** Compact number with Kazakh unit words: 145,4 мың · 19,3 млн · 1,2 млрд. */
 export function fmtCompact(v: number) {
   const a = Math.abs(v)
-  if (a >= 1e9) return `${short.format(v / 1e9)} млрд`
-  if (a >= 1e6) return `${short.format(v / 1e6)} млн`
-  if (a >= 1e4) return `${short.format(v / 1e3)} мың`
+  if (a >= 1e9) return t('number.billion', { value: short.format(v / 1e9) })
+  if (a >= 1e6) return t('number.million', { value: short.format(v / 1e6) })
+  if (a >= 1e4) return t('number.thousand', { value: short.format(v / 1e3) })
   return short.format(v)
 }
 
@@ -64,13 +65,13 @@ export function isoDay(d: Date) {
   return p.format(d)
 }
 
-const MONTHS_GEN = ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан']
-export const MONTHS_SHORT = ['қаң', 'ақп', 'нау', 'сәу', 'мам', 'мау', 'шіл', 'там', 'қыр', 'қаз', 'қар', 'жел']
+/** Short month names (қаң, ақп…), index 0 = January. */
+export const monthsShort = (): string[] => t('date.monthsShort', { returnObjects: true })
 
 /** Long date in Kazakh order: 2026 жылғы 8 қараша. */
 export function fmtDayLong(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
-  return `${y} жылғы ${d} ${MONTHS_GEN[m - 1]}`
+  return t('date.longDay', { year: y, day: d, month: t('date.months', { returnObjects: true })[m - 1] })
 }
 
 /** Parses user input into a number; blank → null; accepts "1 234,5". */

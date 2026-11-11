@@ -5,16 +5,18 @@ import type { Role, User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Alert } from '../components/Alert'
 import { Field } from '../components/Field'
-import { PageHeader, ROLE_LABEL } from '../components/Layout'
+import { PageHeader } from '../components/Layout'
 import { ConfirmModal, Modal } from '../components/Modal'
 import { RowActions, rowProps } from '../components/RowActions'
 import { useToast } from '../components/Toast'
 import { TableState, Toolbar } from '../components/Toolbar'
+import { useTranslation } from 'react-i18next'
 
 /** User management (ADMIN only; the route and the API both enforce it). */
 export function UsersPage() {
   const { user: me } = useAuth()
   const toast = useToast()
+  const { t } = useTranslation()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +44,7 @@ export function UsersPage() {
     try {
       await api.users.remove(u.id)
       load()
-      toast.show(`«${u.username}» жойылды`)
+      toast.show(t('users.deleted', { name: u.username }))
     } catch (e) {
       setError((e as Error).message)
     }
@@ -50,20 +52,20 @@ export function UsersPage() {
 
   return (
     <section className="page">
-      <PageHeader eyebrow="Баптаулар" title="Пайдаланушылар" />
+      <PageHeader eyebrow={t('users.eyebrow')} title={t('users.title')} />
       <Toolbar onCreate={() => setEditing('new')} />
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
       <div className={`table-wrap ${loading ? 'is-loading' : ''}`} aria-busy={loading}>
         <table className="table table--cards">
           <thead>
             <tr>
-              <th>Логин</th>
-              <th>Аты</th>
-              <th>Тегі</th>
-              <th>Рөлі</th>
+              <th>{t('users.username')}</th>
+              <th>{t('users.firstName')}</th>
+              <th>{t('users.lastName')}</th>
+              <th>{t('users.role')}</th>
               <th>Email</th>
-              <th>Күйі</th>
-              <th aria-label="Әрекеттер" />
+              <th>{t('users.status')}</th>
+              <th aria-label={t('users.actions')} />
             </tr>
           </thead>
           <tbody>
@@ -73,12 +75,12 @@ export function UsersPage() {
               const del = self ? undefined : () => setDeleting(u)
               return (
                 <tr key={u.id} {...rowProps(() => setEditing(u), del, highlight === u.id)}>
-                  <td className="strong" data-title>{u.username}{self ? ' (сіз)' : ''}</td>
-                  <td data-label="Аты">{u.firstName}</td>
-                  <td data-label="Тегі">{u.lastName}</td>
-                  <td data-label="Рөлі">{ROLE_LABEL[u.role]}</td>
+                  <td className="strong" data-title>{u.username}{self ? t('users.you') : ''}</td>
+                  <td data-label={t('users.firstName')}>{u.firstName}</td>
+                  <td data-label={t('users.lastName')}>{u.lastName}</td>
+                  <td data-label={t('users.role')}>{t(`role.${u.role}`)}</td>
                   <td data-label="Email">{u.email}</td>
-                  <td className={u.active ? '' : 'muted-cell'} data-label="Күйі">{u.active ? 'Белсенді' : 'Бұғатталған'}</td>
+                  <td className={u.active ? '' : 'muted-cell'} data-label={t('users.status')}>{u.active ? t('users.active') : t('users.blocked')}</td>
                   <RowActions name={u.username} onEdit={() => setEditing(u)} onDelete={del} />
                 </tr>
               )
@@ -95,16 +97,16 @@ export function UsersPage() {
             setEditing(null)
             setHighlight(u.id)
             load()
-            toast.show('Пайдаланушы сақталды')
+            toast.show(t('users.saved'))
           }}
         />
       )}
       {deleting && (
         <ConfirmModal
-          title="Пайдаланушыны жою"
-          text={`«${deleting.username}» пайдаланушысын жою керек пе?`}
-          confirmLabel="Жою"
-          cancelLabel="Болдырмау"
+          title={t('users.deleteTitle')}
+          text={t('users.deleteText', { name: deleting.username })}
+          confirmLabel={t('common.delete')}
+          cancelLabel={t('common.cancel')}
           danger
           onConfirm={remove}
           onClose={() => setDeleting(null)}
@@ -120,6 +122,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
   onClose: () => void
   onSaved: (u: User) => void
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     username: user?.username ?? '',
     firstName: user?.firstName ?? '',
@@ -152,39 +155,39 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
 
   return (
     <Modal
-      title={user ? 'Пайдаланушы' : 'Жаңа пайдаланушы'}
+      title={user ? t('users.editTitle') : t('users.newTitle')}
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn--primary" onClick={save}>Сақтау</button>
-          <button className="btn btn--ghost" onClick={onClose}>Болдырмау</button>
+          <button className="btn btn--primary" onClick={save}>{t('common.save')}</button>
+          <button className="btn btn--ghost" onClick={onClose}>{t('common.cancel')}</button>
         </>
       }
     >
       <form onSubmit={(e) => { e.preventDefault(); save() }}>
-        <Field label="Логин" required error={errors.username}>
+        <Field label={t('users.username')} required error={errors.username}>
           <input className="input" autoFocus value={form.username} onChange={(e) => set('username', e.target.value)} />
         </Field>
-        <Field label={user ? 'Жаңа құпиясөз' : 'Құпиясөз'} required={!user} error={errors.password}>
+        <Field label={user ? t('users.newPassword') : t('users.password')} required={!user} error={errors.password}>
           <input
             className="input"
             type="password"
             autoComplete="new-password"
-            placeholder={user ? 'өзгертпеу үшін бос қалдырыңыз' : 'кемінде 8 таңба'}
+            placeholder={user ? t('users.keepPassword') : t('users.minPassword')}
             value={form.password}
             onChange={(e) => set('password', e.target.value)}
           />
         </Field>
-        <Field label="Рөлі" required error={errors.role}>
+        <Field label={t('users.role')} required error={errors.role}>
           <select className="input" value={form.role} disabled={isSelf} onChange={(e) => set('role', e.target.value as Role)}>
-            <option value="MANAGER">{ROLE_LABEL.MANAGER} — жүкқұжаттар, баға тізімі, есептер</option>
-            <option value="ADMIN">{ROLE_LABEL.ADMIN} — бәрі, пайдаланушыларды басқару және жою</option>
+            <option value="MANAGER">{t('users.managerRole', { role: t('role.MANAGER') })}</option>
+            <option value="ADMIN">{t('users.adminRole', { role: t('role.ADMIN') })}</option>
           </select>
         </Field>
-        <Field label="Аты">
+        <Field label={t('users.firstName')}>
           <input className="input" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
         </Field>
-        <Field label="Тегі">
+        <Field label={t('users.lastName')}>
           <input className="input" value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
         </Field>
         <Field label="Email" error={errors.email}>
@@ -192,7 +195,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
         </Field>
         <label className="checkbox field__offset">
           <input type="checkbox" checked={form.active} disabled={isSelf} onChange={(e) => set('active', e.target.checked)} />
-          Белсенді (бұғатталған пайдаланушы бірден жүйеден шығарылады)
+          {t('users.activeHint')}
         </label>
         {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />

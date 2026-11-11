@@ -6,6 +6,7 @@ import { Icon } from './Icon'
 import { ColourChips } from './ColourChips'
 import { loadProducts, type PickOption } from '../lib/productPick'
 import { Sheet, SheetSearch, Stepper } from './Sheet'
+import { useTranslation } from 'react-i18next'
 
 /** Results of a search typed into a sheet; waits a moment after typing before asking the server. */
 function useSearch<T>(query: string, load: (q: string) => Promise<T[]>) {
@@ -36,14 +37,15 @@ export function ClientSheet({ onPick, onNew, onClose }: {
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
+  const { t } = useTranslation()
   const { items, stale } = useSearch(query, (q) => api.clients.list({ q, size: 40 }).then((p) => p.items))
   return (
-    <Sheet title="Клиентті таңдау" onClose={onClose}>
-      <SheetSearch value={query} onChange={setQuery} placeholder="Аты, телефоны немесе елді мекені" />
+    <Sheet title={t('sheet.pickClient')} onClose={onClose}>
+      <SheetSearch value={query} onChange={setQuery} placeholder={t('sheet.clientSearch')} />
       <button type="button" className="sheet-new" onClick={onNew}>
-        <Icon name="plus" />Жаңа клиент
+        <Icon name="plus" />{t('sheet.newClient')}
       </button>
-      <PickList loading={!items} stale={stale} empty={items?.length === 0 ? 'Клиент табылмады' : null}>
+      <PickList loading={!items} stale={stale} empty={items?.length === 0 ? t('sheet.clientNotFound') : null}>
         {items?.map((c) => (
           <li key={c.id}>
             <button type="button" className="pick-row" onClick={() => onPick(c)}>
@@ -63,7 +65,8 @@ function PickList({ loading, stale, empty, children }: {
   empty: string | null
   children: ReactNode
 }) {
-  if (loading) return <p className="muted sheet-msg">Жүктелуде…</p>
+  const { t } = useTranslation()
+  if (loading) return <p className="muted sheet-msg">{t('common.loading')}</p>
   if (empty) return <p className="muted sheet-msg">{empty}</p>
   return <ul className={`pick-list ${stale ? 'is-stale' : ''}`}>{children}</ul>
 }
@@ -95,6 +98,7 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
   const [discount, setDiscount] = useState(initial?.discount ? String(initial.discount) : '')
   const [unit, setUnit] = useState<UnitCode>(initial?.unit ?? 'SHT')
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
   const extrasChanged = !!initial && (!!initial.discount || initial.unit !== 'SHT' || initial.price !== initial.pick.opt.price)
 
   const choose = (o: PickOption) => {
@@ -110,9 +114,9 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
 
   const submit = (again: boolean) => {
     if (!pick) return
-    if (q === null || q <= 0) return setError('Санын көрсетіңіз')
-    if (p === null || p < 0) return setError('Бағасын көрсетіңіз')
-    if (d !== null && (d < 0 || d > 100)) return setError('Жеңілдік 0–100 аралығында болуы керек')
+    if (q === null || q <= 0) return setError(t('sheet.quantityRequired'))
+    if (p === null || p < 0) return setError(t('sheet.priceRequired'))
+    if (d !== null && (d < 0 || d > 100)) return setError(t('sheet.discountRange'))
     onSubmit({ pick, price: p, quantity: q, discount: d, unit }, again)
     if (again) {
       setPick(null)
@@ -128,17 +132,17 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
 
   return (
     <Sheet
-      title={initial ? 'Тауар жолы' : 'Тауар қосу'}
+      title={initial ? t('sheet.lineTitle') : t('sheet.addProduct')}
       onClose={onClose}
       onBack={initial ? undefined : () => setPick(null)}
       footer={
         <>
           <button type="button" className="btn btn--primary btn--lg" onClick={() => submit(false)}>
-            {initial ? 'Сақтау' : <><Icon name="plus" />Қосу{calc ? ` · ${fmt2(calc.total)} ₸` : ''}</>}
+            {initial ? t('common.save') : <><Icon name="plus" />{t('sheet.add')}{calc ? ` · ${fmt2(calc.total)} ₸` : ''}</>}
           </button>
           {!initial && (
-            <button type="button" className="btn btn--outline btn--lg" onClick={() => submit(true)} aria-label="Қосып, тағы тауар таңдау">
-              Тағы
+            <button type="button" className="btn btn--outline btn--lg" onClick={() => submit(true)} aria-label={t('sheet.addAgainLabel')}>
+              {t('sheet.again')}
             </button>
           )}
         </>
@@ -152,10 +156,10 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
               {[`${fmtMoney(pick.opt.price)} ₸`, fmtPack(pick.opt.packAmount, pick.opt.packUnit), pick.opt.categoryName].filter(Boolean).join(' · ')}
             </div>
           </div>
-          <button type="button" className="btn btn--ghost btn--s" onClick={() => setPick(null)}>Ауыстыру</button>
+          <button type="button" className="btn btn--ghost btn--s" onClick={() => setPick(null)}>{t('sheet.change')}</button>
         </div>
         <div className="pick-detail__qty">
-          <span className="stack__label">Саны, {units.find((u) => u.value === unit)?.label ?? unit}</span>
+          <span className="stack__label">{t('sheet.quantityIn', { unit: units.find((u) => u.value === unit)?.label ?? unit })}</span>
           <Stepper value={quantity} onChange={(v) => { setQuantity(v); setError(null) }} />
         </div>
         {error && <p className="field__error" role="alert">{error}</p>}
@@ -165,20 +169,20 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
         )}
 
         <details className="pick-more" open={extrasChanged}>
-          <summary>Бағасы, бірлігі, жеңілдік</summary>
+          <summary>{t('sheet.extras')}</summary>
           <div className="pick-more__grid">
             <label className="stack">
-              <span className="stack__label">Бағасы, ₸</span>
+              <span className="stack__label">{t('sheet.price')}</span>
               <input className="input num-input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
             </label>
             <label className="stack">
-              <span className="stack__label">Бірлігі</span>
+              <span className="stack__label">{t('sheet.unit')}</span>
               <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as UnitCode)}>
                 {units.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
               </select>
             </label>
             <label className="stack">
-              <span className="stack__label">Жеңілдік, %</span>
+              <span className="stack__label">{t('sheet.discount')}</span>
               <input className="input num-input" inputMode="decimal" placeholder="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
             </label>
           </div>
@@ -186,7 +190,7 @@ export function ProductSheet({ units, initial, onSubmit, onDelete, onClose }: {
 
         {onDelete && (
           <button type="button" className="btn btn--ghost pick-detail__delete" onClick={onDelete}>
-            <Icon name="trash" />Жолды жою
+            <Icon name="trash" />{t('sheet.deleteLine')}
           </button>
         )}
       </div>
@@ -200,11 +204,12 @@ function ProductSearch({ onChoose, onClose, onBack }: {
   onBack?: () => void
 }) {
   const [query, setQuery] = useState('')
+  const { t } = useTranslation()
   const { items, stale } = useSearch(query, loadProducts)
   return (
-    <Sheet title="Тауар таңдау" onClose={onClose} onBack={onBack}>
-      <SheetSearch value={query} onChange={setQuery} placeholder="Атауы немесе түсі: «статус ақ»" autoFocus />
-      <PickList loading={!items} stale={stale} empty={items?.length === 0 ? 'Тауар табылмады' : null}>
+    <Sheet title={t('sheet.pickProduct')} onClose={onClose} onBack={onBack}>
+      <SheetSearch value={query} onChange={setQuery} placeholder={t('sheet.productSearch')} autoFocus />
+      <PickList loading={!items} stale={stale} empty={items?.length === 0 ? t('sheet.productNotFound') : null}>
         {items?.map((o) => (
           <li key={o.id}>
             <button type="button" className="pick-row" onClick={() => onChoose(o)}>
