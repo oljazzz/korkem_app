@@ -188,6 +188,9 @@ export interface InvoiceLine {
   /** Sent by the server; not shown in the UI. */
   vat?: number
   sortOrder: number | null
+  /** Pack size of the product, for the weight on the printed invoice (sent by the server). */
+  packAmount?: number | null
+  packUnit?: 'KG' | 'L' | null
 }
 
 export interface Invoice {

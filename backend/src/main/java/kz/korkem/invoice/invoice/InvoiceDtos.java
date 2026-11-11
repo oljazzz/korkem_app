@@ -20,7 +20,9 @@ public final class InvoiceDtos {
 
     public record LineDto(Long id, Long categoryId, String categoryName, Long productId, Long variantId, String productName,
                           Unit unit, String unitLabel, BigDecimal price, BigDecimal quantity,
-                          BigDecimal discount, BigDecimal total, BigDecimal vat, Integer sortOrder) {}
+                          BigDecimal discount, BigDecimal total, BigDecimal vat, Integer sortOrder,
+                          /** Pack size of the product (2.6 kg, 0.9 l), for the weight on the printed invoice. */
+                          BigDecimal packAmount, kz.korkem.invoice.product.PackUnit packUnit) {}
 
     /** {@code clientName} is the full "name - address" printed on documents; {@code clientLabel} the short one. */
     public record InvoiceDto(Long id, Long number, Long clientId, String clientName, String clientLabel, Instant createdAt,

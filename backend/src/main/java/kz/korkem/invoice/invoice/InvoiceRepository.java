@@ -42,7 +42,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     java.util.Optional<Invoice> findFirstByClientIdOrderByCreatedAtDescIdDesc(Long clientId);
 
-    @EntityGraph(attributePaths = {"client", "lines"})
+    @EntityGraph(attributePaths = {"client", "lines", "lines.product"})
     @Query("select i from Invoice i where i.id = :id")
     Optional<Invoice> findWithLines(@Param("id") Long id);
 

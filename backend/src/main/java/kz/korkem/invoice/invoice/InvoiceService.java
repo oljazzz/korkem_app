@@ -206,7 +206,9 @@ public class InvoiceService {
                 l.getProduct() == null ? null : l.getProduct().getId(),
                 l.getVariant() == null ? null : l.getVariant().getId(),
                 l.getProductName(), l.getUnit(), l.getUnit().getLabel(), l.getPrice(), l.getQuantity(),
-                l.getDiscount(), l.getTotal(), l.getVat(), l.getSortOrder())).toList();
+                l.getDiscount(), l.getTotal(), l.getVat(), l.getSortOrder(),
+                l.getProduct() == null ? null : l.getProduct().getPackAmount(),
+                l.getProduct() == null ? null : l.getProduct().getPackUnit())).toList();
         BigDecimal total = lines.stream().map(LineDto::total).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal vat = lines.stream().map(LineDto::vat).reduce(BigDecimal.ZERO, BigDecimal::add);
         var c = inv.getClient();
