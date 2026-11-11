@@ -665,17 +665,6 @@ function QuickAdd({ units, nextSort, onAdd }: {
           }}
           load={(text) => loadProducts(text)}
         />
-        {product?.opt.variantId && (
-          <ColourChips
-            productId={product.opt.productId}
-            selectedVariantId={product.opt.variantId}
-            onPick={(o) => {
-              setProduct(o)
-              setPrice(String(o.opt.price))
-              requestAnimationFrame(() => qtyRef.current?.focus())
-            }}
-          />
-        )}
       </label>
       <label className="stack">
         <span className="stack__label">Бағасы</span>
@@ -708,6 +697,20 @@ function QuickAdd({ units, nextSort, onAdd }: {
       <button className="btn btn--primary quick-add__btn" onClick={add}>
         <Icon name="plus" />Қосу
       </button>
+      {/* Own full-width row: in the product cell a long colour list stretched the whole bar */}
+      {product?.opt.variantId && (
+        <div className="quick-add__colours">
+          <ColourChips
+            productId={product.opt.productId}
+            selectedVariantId={product.opt.variantId}
+            onPick={(o) => {
+              setProduct(o)
+              setPrice(String(o.opt.price))
+              requestAnimationFrame(() => qtyRef.current?.focus())
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

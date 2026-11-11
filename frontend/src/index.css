@@ -489,6 +489,8 @@ input[type='checkbox']:checked {
   box-shadow: var(--kr-shadow-s);
 }
 .quick-add__product { min-width: 0; }
+.quick-add__colours { grid-column: 1 / -1; }
+.quick-add__colours .colour-chips { margin-top: 0; }
 .quick-add__total { display: flex; align-items: center; min-height: var(--kr-control-m); font-weight: var(--kr-weight-bold); white-space: nowrap; }
 .line-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--kr-mu050); padding-top: var(--kr-mu075); border-top: 1px solid var(--border); }
 
