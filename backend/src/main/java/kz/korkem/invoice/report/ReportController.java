@@ -1,214 +1,51 @@
 package kz.korkem.invoice.report;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Timestamp;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.time.LocalDate;
+import java.util.List;
 import kz.korkem.invoice.common.BadRequestException;
+import kz.korkem.invoice.report.ReportDtos.Dashboard;
+import kz.korkem.invoice.report.ReportDtos.SalesReport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+/** Report endpoints: checks the request and hands it to the report services. */
 @RestController
 @RequestMapping("/api/reports")
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ReportController {
-
-    public static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
-
-    /** {@code groupName} is the product a colour belongs to (equals productName for products without colours). */
-    public record SalesRow(String productName, String groupName, String categoryName, BigDecimal quantity,
-                           BigDecimal avgPrice, BigDecimal total, BigDecimal vat, long invoices) {}
-
-    public record SalesReport(LocalDate from, LocalDate to, int invoiceCount, List<SalesRow> rows,
-                              BigDecimal totalQuantity, BigDecimal total, BigDecimal vat) {}
-
-    public record Kpi(BigDecimal revenue, long invoices, BigDecimal avgCheck, BigDecimal vat, long clients) {}
-
-    public record Point(String label, LocalDate start, BigDecimal revenue, long invoices) {}
-
-    /** {@code id} is the client id in the top-clients list, null elsewhere. */
-    public record Ranked(Long id, String name, BigDecimal revenue, BigDecimal quantity, long invoices) {}
-
-    public record Dashboard(LocalDate from, LocalDate to, String granularity, Kpi current, Kpi previous,
-                            List<Point> series, List<Ranked> topProducts, List<Ranked> topClients,
-                            List<Ranked> categories, Instant lastInvoiceAt) {}
-
-    private record Inv(LocalDate day, Long clientId, BigDecimal total, BigDecimal vat) {}
 
     /** Upper bound for an explicit invoice selection in the sales report. */
     private static final int MAX_INVOICE_IDS = 1000;
 
-    private final NamedParameterJdbcTemplate jdbc;
+    private final SalesReportService sales;
+    private final DashboardService dashboards;
 
     /**
      * "Sold products" report: total quantity and amount per product.
-     * Filter by period, client or an explicit list of invoices (same as the legacy report).
+     * Filter by period, client, town or an explicit list of invoices (same as the legacy report).
      */
     @GetMapping("/sales")
-    public SalesReport sales(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+    public SalesReport sales(@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+                             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to,
                              @RequestParam(required = false) Long clientId,
                              @RequestParam(required = false) String city,
                              @RequestParam(required = false) List<Long> invoiceIds) {
         if (invoiceIds != null && invoiceIds.size() > MAX_INVOICE_IDS) {
             throw new BadRequestException("error.report.tooManyInvoices", String.valueOf(MAX_INVOICE_IDS));
         }
-        MapSqlParameterSource p = new MapSqlParameterSource();
-        String where = filter(from, to, clientId, city, invoiceIds, p);
-        List<SalesRow> rows = jdbc.query("""
-                select l.product_name, max(case when l.variant_id is not null then pr.name end) as group_name,
-                       max(c.name) as category, sum(l.quantity) as qty, sum(l.total) as total,
-                       sum(l.vat) as vat, count(distinct l.invoice_id) as invoices
-                from invoice_line l
-                join invoice i on i.id = l.invoice_id
-                left join category c on c.id = l.category_id
-                left join product pr on pr.id = l.product_id
-                """ + where + """
-                 group by l.product_name
-                 order by sum(l.total) desc, l.product_name
-                """, p, (rs, n) -> {
-            BigDecimal qty = rs.getBigDecimal("qty");
-            BigDecimal total = rs.getBigDecimal("total");
-            String group = rs.getString("group_name");
-            return new SalesRow(rs.getString("product_name"), group == null ? rs.getString("product_name") : group,
-                    rs.getString("category"), qty,
-                    qty.signum() == 0 ? BigDecimal.ZERO : total.divide(qty, 2, RoundingMode.HALF_UP),
-                    total, rs.getBigDecimal("vat"), rs.getLong("invoices"));
-        });
-        Integer invoiceCount = jdbc.queryForObject("select count(*) from invoice i " + where, p, Integer.class);
-        return new SalesReport(from, to, invoiceCount == null ? 0 : invoiceCount, rows,
-                sum(rows, SalesRow::quantity), sum(rows, SalesRow::total), sum(rows, SalesRow::vat));
+        return sales.report(new SalesReportService.Filter(from, to, clientId, city, invoiceIds));
     }
 
     /** Dashboard figures: revenue for a period, comparison with the previous period, trend and top lists. */
     @GetMapping("/dashboard")
-    public Dashboard dashboard(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    public Dashboard dashboard(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+                               @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
         if (to.isBefore(from)) throw new BadRequestException("error.report.badPeriod");
-        long days = ChronoUnit.DAYS.between(from, to) + 1;
-        LocalDate prevFrom = from.minusDays(days);
-        String granularity = days <= 62 ? "day" : "month";
-
-        // Per-invoice totals (current + previous period); aggregated in Java so days follow the Almaty time zone
-        MapSqlParameterSource p = new MapSqlParameterSource()
-                .addValue("from", start(prevFrom)).addValue("to", start(to.plusDays(1)));
-        List<Inv> invs = jdbc.query("""
-                select i.created_at, i.client_id, coalesce(sum(l.total), 0) as total, coalesce(sum(l.vat), 0) as vat
-                from invoice i left join invoice_line l on l.invoice_id = i.id
-                where i.created_at >= :from and i.created_at < :to
-                group by i.id, i.created_at, i.client_id
-                """, p, (rs, n) -> new Inv(
-                rs.getTimestamp("created_at").toInstant().atZone(ZONE).toLocalDate(),
-                rs.getObject("client_id", Long.class), rs.getBigDecimal("total"), rs.getBigDecimal("vat")));
-
-        List<Inv> cur = invs.stream().filter(i -> !i.day().isBefore(from)).toList();
-        List<Inv> prev = invs.stream().filter(i -> i.day().isBefore(from)).toList();
-
-        Map<LocalDate, BigDecimal[]> buckets = new LinkedHashMap<>();
-        for (LocalDate d = bucket(from, granularity); !d.isAfter(to); d = granularity.equals("day") ? d.plusDays(1) : d.plusMonths(1)) {
-            buckets.put(d, new BigDecimal[] {BigDecimal.ZERO, BigDecimal.ZERO});
-        }
-        for (Inv i : cur) {
-            BigDecimal[] b = buckets.get(bucket(i.day(), granularity));
-            if (b != null) {
-                b[0] = b[0].add(i.total());
-                b[1] = b[1].add(BigDecimal.ONE);
-            }
-        }
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern(granularity.equals("day") ? "dd.MM" : "MM.yyyy");
-        List<Point> series = buckets.entrySet().stream()
-                .map(e -> new Point(e.getKey().format(fmt), e.getKey(), e.getValue()[0], e.getValue()[1].longValue()))
-                .toList();
-
-        MapSqlParameterSource range = new MapSqlParameterSource()
-                .addValue("from", start(from)).addValue("to", start(to.plusDays(1)));
-        List<Ranked> topProducts = jdbc.query("""
-                select l.product_name as name, sum(l.total) as revenue, sum(l.quantity) as qty,
-                       count(distinct l.invoice_id) as invoices
-                from invoice_line l join invoice i on i.id = l.invoice_id
-                where i.created_at >= :from and i.created_at < :to
-                group by l.product_name order by sum(l.total) desc limit 8
-                """, range, this::ranked);
-        List<Ranked> topClients = jdbc.query("""
-                select c.id as id, c.name as name, sum(l.total) as revenue, sum(l.quantity) as qty,
-                       count(distinct i.id) as invoices
-                from invoice i join client c on c.id = i.client_id
-                join invoice_line l on l.invoice_id = i.id
-                where i.created_at >= :from and i.created_at < :to
-                group by c.id, c.name order by sum(l.total) desc limit 8
-                """, range, (rs, n) -> new Ranked(rs.getLong("id"), rs.getString("name"), rs.getBigDecimal("revenue"),
-                        rs.getBigDecimal("qty"), rs.getLong("invoices")));
-        List<Ranked> categories = jdbc.query("""
-                select coalesce(c.name, 'Санатсыз') as name, sum(l.total) as revenue, sum(l.quantity) as qty,
-                       count(distinct l.invoice_id) as invoices
-                from invoice_line l join invoice i on i.id = l.invoice_id
-                left join category c on c.id = l.category_id
-                where i.created_at >= :from and i.created_at < :to
-                group by coalesce(c.name, 'Санатсыз') order by sum(l.total) desc
-                """, range, this::ranked);
-
-        Timestamp last = jdbc.queryForObject("select max(created_at) from invoice", new MapSqlParameterSource(), Timestamp.class);
-        return new Dashboard(from, to, granularity, kpi(cur), kpi(prev), series, topProducts, topClients,
-                categories, last == null ? null : last.toInstant());
-    }
-
-    private Ranked ranked(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
-        return new Ranked(null, rs.getString("name"), rs.getBigDecimal("revenue"), rs.getBigDecimal("qty"), rs.getLong("invoices"));
-    }
-
-    private static Kpi kpi(List<Inv> invs) {
-        BigDecimal revenue = invs.stream().map(Inv::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vat = invs.stream().map(Inv::vat).reduce(BigDecimal.ZERO, BigDecimal::add);
-        long clients = invs.stream().map(Inv::clientId).filter(Objects::nonNull).distinct().count();
-        long count = invs.size();
-        return new Kpi(revenue, count,
-                count == 0 ? BigDecimal.ZERO : revenue.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP),
-                vat, clients);
-    }
-
-    private static LocalDate bucket(LocalDate d, String granularity) {
-        return granularity.equals("day") ? d : d.withDayOfMonth(1);
-    }
-
-    private static Timestamp start(LocalDate d) {
-        return Timestamp.from(d.atStartOfDay(ZONE).toInstant());
-    }
-
-    private static String filter(LocalDate from, LocalDate to, Long clientId, String city, List<Long> ids,
-                                 MapSqlParameterSource p) {
-        List<String> cond = new ArrayList<>();
-        if (from != null) {
-            cond.add("i.created_at >= :from");
-            p.addValue("from", start(from));
-        }
-        if (to != null) {
-            cond.add("i.created_at < :to");
-            p.addValue("to", start(to.plusDays(1)));
-        }
-        if (clientId != null) {
-            cond.add("i.client_id = :clientId");
-            p.addValue("clientId", clientId);
-        }
-        if (city != null && !city.isBlank()) {
-            cond.add("i.client_id in (select cl.id from client cl where lower(cl.city) = lower(:city))");
-            p.addValue("city", city.trim());
-        }
-        if (ids != null && !ids.isEmpty()) {
-            cond.add("i.id in (:ids)");
-            p.addValue("ids", ids);
-        }
-        return cond.isEmpty() ? "" : " where " + String.join(" and ", cond);
-    }
-
-    private static <T> BigDecimal sum(List<T> rows, java.util.function.Function<T, BigDecimal> f) {
-        return rows.stream().map(f).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return dashboards.dashboard(from, to);
     }
 }
