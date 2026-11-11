@@ -243,7 +243,7 @@ input[type='checkbox']:checked {
 .pager__label b { color: var(--text); }
 
 /* ---------- Modal ---------- */
-.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: var(--kr-mu100); background: rgb(23 27 38 / 0.6); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: var(--kr-mu100); background: rgb(23 27 38 / 0.6); }
 .modal {
   position: relative; max-width: 100%; max-height: calc(100vh - 32px); overflow: auto;
   padding: var(--kr-mu150) var(--kr-mu200); border-radius: var(--kr-radius-l); background: var(--surface); box-shadow: var(--kr-shadow-l);
@@ -1168,3 +1168,16 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
 .m-line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--kr-mu025); align-items: start; background: var(--surface-page); }
 .m-line .drag-handle { width: 36px; height: 44px; margin-left: -8px; }
 .m-line.is-dragging { background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 0.16); border-radius: var(--kr-radius-m); }
+
+/* ---------- Dialogs on phones: a full-width panel rising from the bottom ---------- */
+@media (max-width: 760px) {
+  .modal-backdrop { place-items: end stretch; padding: env(safe-area-inset-top, 0px) 0 0; }
+  .modal {
+    width: 100% !important; max-width: none; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    padding: var(--kr-mu125) var(--kr-mu100) max(var(--kr-mu125), env(safe-area-inset-bottom, 0px));
+    border-radius: var(--kr-radius-l) var(--kr-radius-l) 0 0;
+  }
+  .modal__close { top: var(--kr-mu050); right: var(--kr-mu050); }
+  .modal__title { font-size: var(--kr-font-06); margin-bottom: var(--kr-mu100); }
+  .modal__footer .btn { flex: 1 1 0; }
+}
