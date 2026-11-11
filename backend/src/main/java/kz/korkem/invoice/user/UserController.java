@@ -25,14 +25,14 @@ public class UserController {
     public static final int MIN_PASSWORD_LENGTH = 8;
 
     public record UserRequest(
-            @NotBlank(message = "Логинді енгізіңіз") @Size(max = 100, message = "Логин тым ұзын") String username,
+            @NotBlank(message = "{validation.username.required}") @Size(max = 100, message = "{validation.username.tooLong}") String username,
             String firstName, String lastName,
-            @Email(message = "Email қате") String email,
+            @Email(message = "{validation.email.format}") String email,
             String timeZone,
-            @NotNull(message = "Рөлді таңдаңыз") Role role,
+            @NotNull(message = "{validation.role.required}") Role role,
             boolean active,
             /** Required for a new user; blank on update keeps the current password. */
-            @Size(min = MIN_PASSWORD_LENGTH, max = 100, message = "Құпиясөз кемінде 8 таңба") String password) {}
+            @Size(min = MIN_PASSWORD_LENGTH, max = 100, message = "{validation.password.short}") String password) {}
 
     private final AppUserRepository repo;
     private final PasswordEncoder encoder;
@@ -52,10 +52,10 @@ public class UserController {
     @Transactional
     public UserDto create(@Valid @RequestBody UserRequest req) {
         if (req.password() == null || req.password().isBlank()) {
-            throw new BadRequestException("Құпиясөзді енгізіңіз");
+            throw new BadRequestException("error.user.passwordRequired");
         }
         if (repo.existsByUsernameIgnoreCase(req.username().trim())) {
-            throw new BadRequestException("Мұндай логин бар");
+            throw new BadRequestException("error.user.usernameTaken");
         }
         AppUser u = new AppUser();
         apply(u, req);
@@ -68,19 +68,19 @@ public class UserController {
         AppUser u = find(id);
         if (!u.getUsername().equalsIgnoreCase(req.username().trim())
                 && repo.existsByUsernameIgnoreCase(req.username().trim())) {
-            throw new BadRequestException("Мұндай логин бар");
+            throw new BadRequestException("error.user.usernameTaken");
         }
         boolean self = u.getUsername().equalsIgnoreCase(principal.getName());
         if (self && !req.active()) {
-            throw new BadRequestException("Өз аккаунтыңызды өшіре алмайсыз");
+            throw new BadRequestException("error.user.cannotDisableSelf");
         }
         if (self && req.role() != u.getRole()) {
-            throw new BadRequestException("Өз рөліңізді өзгерте алмайсыз");
+            throw new BadRequestException("error.user.cannotChangeOwnRole");
         }
         boolean losesAdmin = u.getRole() == Role.ADMIN && u.isActive()
                 && (req.role() != Role.ADMIN || !req.active());
         if (losesAdmin && repo.countByRoleAndActiveTrue(Role.ADMIN) <= 1) {
-            throw new BadRequestException("Кемінде бір белсенді әкімші қалуы керек");
+            throw new BadRequestException("error.user.lastAdmin");
         }
         apply(u, req);
         return UserDto.of(u);
@@ -92,10 +92,10 @@ public class UserController {
     public void delete(@PathVariable Long id, Principal principal) {
         AppUser u = find(id);
         if (u.getUsername().equalsIgnoreCase(principal.getName())) {
-            throw new BadRequestException("Өз аккаунтыңызды жоя алмайсыз");
+            throw new BadRequestException("error.user.cannotDeleteSelf");
         }
         if (u.getRole() == Role.ADMIN && u.isActive() && repo.countByRoleAndActiveTrue(Role.ADMIN) <= 1) {
-            throw new BadRequestException("Кемінде бір белсенді әкімші қалуы керек");
+            throw new BadRequestException("error.user.lastAdmin");
         }
         repo.delete(u);
     }
@@ -114,6 +114,6 @@ public class UserController {
     }
 
     private AppUser find(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Пайдаланушы табылмады"));
+        return repo.findById(id).orElseThrow(() -> new NotFoundException("error.user.notFound"));
     }
 }

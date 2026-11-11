@@ -166,23 +166,23 @@ public class ProductGroupingService {
      */
     @Transactional
     public Result group(String name, List<MemberRequest> members) {
-        if (name == null || name.isBlank()) throw new BadRequestException("Тауардың атауын енгізіңіз");
-        if (members == null || members.size() < 2) throw new BadRequestException("Кемінде екі тауар таңдаңыз");
+        if (name == null || name.isBlank()) throw new BadRequestException("validation.product.name.required");
+        if (members == null || members.size() < 2) throw new BadRequestException("error.grouping.twoProducts");
         Set<Long> ids = new LinkedHashSet<>();
         members.forEach(m -> {
-            if (m.productId() == null || !ids.add(m.productId())) throw new BadRequestException("Тауар екі рет таңдалған");
+            if (m.productId() == null || !ids.add(m.productId())) throw new BadRequestException("error.grouping.duplicateProduct");
         });
         // All colours blank = the same product entered several times: merge without colours
         boolean plainMerge = members.stream().allMatch(m -> m.variantName() == null || m.variantName().isBlank());
         if (!plainMerge && members.stream().anyMatch(m -> m.variantName() == null || m.variantName().isBlank())) {
-            throw new BadRequestException("Әр түстің атауын енгізіңіз");
+            throw new BadRequestException("error.grouping.colourNames");
         }
         Map<Long, Product> byId = new HashMap<>();
         products.findAllById(ids).forEach(p -> byId.put(p.getId(), p));
         for (Long id : ids) {
             Product p = byId.get(id);
-            if (p == null) throw new NotFoundException("Тауар табылмады");
-            if (p.hasVariants()) throw new BadRequestException("«" + p.getName() + "» тауарының түстері бар, оны топтастыруға болмайды");
+            if (p == null) throw new NotFoundException("error.product.notFound");
+            if (p.hasVariants()) throw new BadRequestException("error.grouping.hasColours", p.getName());
         }
 
         Product base = byId.get(members.get(0).productId());

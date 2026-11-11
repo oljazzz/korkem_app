@@ -31,12 +31,12 @@ public class SettingsController {
     public record Settings(Company company, BigDecimal vatRate) {}
 
     public record CompanyRequest(
-            @NotBlank(message = "Атауын енгізіңіз") @Size(max = 255, message = "Тым ұзын") String name,
-            @Pattern(regexp = "^$|^\\d{12}$", message = "БСН/ЖСН 12 цифрдан тұрады") String bin,
-            @Size(max = 500, message = "Тым ұзын") String address,
-            @Size(max = 100, message = "Тым ұзын") String phone,
-            @Size(max = 255, message = "Тым ұзын") String chiefAccountant,
-            @Size(max = 255, message = "Тым ұзын") String releaseAllowedBy) {}
+            @NotBlank(message = "{validation.name.required}") @Size(max = 255, message = "{validation.tooLong}") String name,
+            @Pattern(regexp = "^$|^\\d{12}$", message = "{validation.bin.format}") String bin,
+            @Size(max = 500, message = "{validation.tooLong}") String address,
+            @Size(max = 100, message = "{validation.tooLong}") String phone,
+            @Size(max = 255, message = "{validation.tooLong}") String chiefAccountant,
+            @Size(max = 255, message = "{validation.tooLong}") String releaseAllowedBy) {}
 
     private final CompanyProperties defaults;
     private final CompanySettingsRepository repo;

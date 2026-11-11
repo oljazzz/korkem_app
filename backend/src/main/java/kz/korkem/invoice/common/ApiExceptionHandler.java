@@ -2,6 +2,7 @@ package kz.korkem.invoice.common;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,45 +12,52 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** Maps exceptions to a uniform {message, fields} error body. Messages are user-facing (Kazakh). */
+/**
+ * Maps exceptions to a uniform {message, fields} error body. Exceptions carry a key of
+ * messages.properties; the user-facing (Kazakh) text is looked up here.
+ */
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class ApiExceptionHandler {
 
     public record ApiError(String message, Map<String, String> fields) {}
 
+    private final Messages messages;
+
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ApiError> notFound(NotFoundException e) {
-        return error(HttpStatus.NOT_FOUND, e.getMessage(), null);
+        return error(HttpStatus.NOT_FOUND, messages.get(e.getMessage(), e.getArgs()), null);
     }
 
     @ExceptionHandler(BadRequestException.class)
     ResponseEntity<ApiError> badRequest(BadRequestException e) {
-        return error(HttpStatus.BAD_REQUEST, e.getMessage(), null);
+        return error(HttpStatus.BAD_REQUEST, messages.get(e.getMessage(), e.getArgs()), null);
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
     ResponseEntity<ApiError> tooMany(TooManyRequestsException e) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
-                .body(new ApiError(e.getMessage(), null));
+                .body(new ApiError(messages.get(e.getMessage(), e.getArgs()), null));
     }
 
+    /** Field texts come already resolved: annotations name their key as message = "{key}". */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> validation(MethodArgumentNotValidException e) {
         Map<String, String> fields = new LinkedHashMap<>();
         e.getBindingResult().getFieldErrors()
                 .forEach(f -> fields.putIfAbsent(f.getField(), f.getDefaultMessage()));
-        return error(HttpStatus.BAD_REQUEST, "Деректер қате толтырылған", fields);
+        return error(HttpStatus.BAD_REQUEST, messages.get("error.validation"), fields);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> conflict(DataIntegrityViolationException e) {
-        return error(HttpStatus.CONFLICT, "Жазба басқа деректерде қолданылады немесе қайталанады", null);
+        return error(HttpStatus.CONFLICT, messages.get("error.conflict"), null);
     }
 
     @ExceptionHandler({BadCredentialsException.class, DisabledException.class})
     ResponseEntity<ApiError> badCredentials(RuntimeException e) {
-        return error(HttpStatus.UNAUTHORIZED, "Логин немесе құпиясөз қате", null);
+        return error(HttpStatus.UNAUTHORIZED, messages.get("error.badCredentials"), null);
     }
 
     private ResponseEntity<ApiError> error(HttpStatus status, String message, Map<String, String> fields) {

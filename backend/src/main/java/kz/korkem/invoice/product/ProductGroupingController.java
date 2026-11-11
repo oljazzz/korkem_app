@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProductGroupingController {
 
-    public record GroupRequest(@NotBlank(message = "Тауардың атауын енгізіңіз") String name,
-                               @NotEmpty(message = "Тауарларды таңдаңыз") List<MemberRequest> members) {}
+    public record GroupRequest(@NotBlank(message = "{validation.product.name.required}") String name,
+                               @NotEmpty(message = "{validation.products.required}") List<MemberRequest> members) {}
 
     public record GroupResult(ProductDto product, int variants, int removedProducts, int movedLines) {}
 

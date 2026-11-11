@@ -5,6 +5,7 @@ import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import kz.korkem.invoice.common.Messages;
 import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class InvoiceController {
     public record UnitDto(Unit value, String label) {}
 
     private final InvoiceService service;
+    private final Messages messages;
 
     @GetMapping
     public PageResponse<InvoiceListItem> list(@RequestParam(defaultValue = "") String q,
@@ -44,7 +46,7 @@ public class InvoiceController {
 
     @GetMapping("/units")
     public List<UnitDto> units() {
-        return Arrays.stream(Unit.values()).map(u -> new UnitDto(u, u.getLabel())).toList();
+        return Arrays.stream(Unit.values()).map(u -> new UnitDto(u, messages.label("unit", u))).toList();
     }
 
     @GetMapping("/{id}")

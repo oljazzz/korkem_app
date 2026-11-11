@@ -36,14 +36,14 @@ public final class InvoiceDtos {
             Long variantId,
             String productName,
             Unit unit,
-            @NotNull(message = "Бағасын енгізіңіз") @DecimalMin(value = "0", message = "Баға теріс болмауы керек") BigDecimal price,
-            @NotNull(message = "Санын енгізіңіз") @DecimalMin(value = "0", inclusive = false, message = "Саны 0-ден көп болуы керек") BigDecimal quantity,
-            @DecimalMin(value = "0", message = "Жеңілдік 0..100") @DecimalMax(value = "100", message = "Жеңілдік 0..100") BigDecimal discount,
+            @NotNull(message = "{validation.price.required}") @DecimalMin(value = "0", message = "{validation.price.negative}") BigDecimal price,
+            @NotNull(message = "{validation.quantity.required}") @DecimalMin(value = "0", inclusive = false, message = "{validation.quantity.positive}") BigDecimal quantity,
+            @DecimalMin(value = "0", message = "{validation.discount.range}") @DecimalMax(value = "100", message = "{validation.discount.range}") BigDecimal discount,
             Integer sortOrder) {}
 
     /** {@code date} is the document date (Almaty calendar day); null keeps the current one, or today for a new invoice. */
     public record InvoiceRequest(
-            @NotNull(message = "Клиентті таңдаңыз") Long clientId,
+            @NotNull(message = "{validation.client.required}") Long clientId,
             LocalDate date,
-            @NotEmpty(message = "Кемінде бір тауар қосыңыз") List<@Valid LineRequest> lines) {}
+            @NotEmpty(message = "{validation.lines.required}") List<@Valid LineRequest> lines) {}
 }

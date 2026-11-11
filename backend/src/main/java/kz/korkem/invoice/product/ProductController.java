@@ -54,17 +54,17 @@ public class ProductController {
     /** {@code id} null for a new colour; colours left out of the list are removed. */
     public record VariantRequest(
             Long id,
-            @NotBlank(message = "Түстің атауын енгізіңіз") @Size(max = 255, message = "Тым ұзын") String name,
-            @DecimalMin(value = "0", message = "Баға теріс болмауы керек") BigDecimal price,
+            @NotBlank(message = "{validation.colour.name.required}") @Size(max = 255, message = "{validation.tooLong}") String name,
+            @DecimalMin(value = "0", message = "{validation.price.negative}") BigDecimal price,
             Boolean active) {}
 
     public record ProductRequest(
             Long categoryId,
-            @NotBlank(message = "Атауын енгізіңіз") @Size(max = 255, message = "Атауы тым ұзын (255 таңбадан аспасын)") String name,
-            @NotNull(message = "Бағасын енгізіңіз") @DecimalMin(value = "0", message = "Баға теріс болмауы керек") BigDecimal price,
+            @NotBlank(message = "{validation.name.required}") @Size(max = 255, message = "{validation.name.tooLong}") String name,
+            @NotNull(message = "{validation.price.required}") @DecimalMin(value = "0", message = "{validation.price.negative}") BigDecimal price,
             Integer sortOrder,
-            @DecimalMin(value = "0.001", message = "Қаптама 0-ден көп болуы керек")
-            @DecimalMax(value = "999999", message = "Қаптама тым үлкен") BigDecimal packAmount,
+            @DecimalMin(value = "0.001", message = "{validation.pack.positive}")
+            @DecimalMax(value = "999999", message = "{validation.pack.tooLarge}") BigDecimal packAmount,
             PackUnit packUnit,
             List<@Valid VariantRequest> variants) {}
 
@@ -103,7 +103,7 @@ public class ProductController {
     public List<ProductOption> options(@RequestParam(defaultValue = "") String q,
                                        @RequestParam(required = false) Long categoryId,
                                        @RequestParam(defaultValue = "30") int limit) {
-        MapSqlParameterSource p = new MapSqlParameterSource("limit", Math.max(1, Math.min(limit, 100)));
+        MapSqlParameterSource p = new MapSqlParameterSource("limit", Math.clamp(limit, 1, 100));
         List<String> cond = new ArrayList<>();
         String[] words = q.trim().toLowerCase().split("\\s+");
         for (int i = 0; i < words.length; i++) {
@@ -185,10 +185,10 @@ public class ProductController {
         p.setPrice(req.price());
         p.setSortOrder(req.sortOrder());
         p.setCategory(req.categoryId() == null ? null : categories.findById(req.categoryId())
-                .orElseThrow(() -> new NotFoundException("Санат табылмады")));
+                .orElseThrow(() -> new NotFoundException("error.category.notFound")));
         // Pack size is amount + unit together; one without the other is meaningless
         if (req.packAmount() != null && req.packUnit() == null) {
-            throw new BadRequestException("Қаптаманың бірлігін таңдаңыз (кг немесе л)");
+            throw new BadRequestException("error.product.packUnitRequired");
         }
         p.setPackAmount(req.packAmount() == null ? null : req.packAmount().setScale(3, RoundingMode.HALF_UP));
         p.setPackUnit(req.packAmount() == null ? null : req.packUnit());
@@ -205,10 +205,10 @@ public class ProductController {
         for (VariantRequest r : requested) {
             String name = r.name().trim();
             if (!names.add(name.toLowerCase())) {
-                throw new BadRequestException("«" + name + "» түсі екі рет жазылған");
+                throw new BadRequestException("error.colour.duplicate", name);
             }
             ProductVariant v = r.id() == null ? null : existing.get(r.id());
-            if (r.id() != null && v == null) throw new NotFoundException("Түс табылмады");
+            if (r.id() != null && v == null) throw new NotFoundException("error.colour.notFound");
             if (v == null) {
                 v = new ProductVariant();
                 v.setProduct(p);
@@ -224,6 +224,6 @@ public class ProductController {
     }
 
     private Product find(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Тауар табылмады"));
+        return repo.findById(id).orElseThrow(() -> new NotFoundException("error.product.notFound"));
     }
 }

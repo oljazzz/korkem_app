@@ -59,7 +59,7 @@ public class ReportController {
                              @RequestParam(required = false) String city,
                              @RequestParam(required = false) List<Long> invoiceIds) {
         if (invoiceIds != null && invoiceIds.size() > MAX_INVOICE_IDS) {
-            throw new BadRequestException("Бір есепке " + MAX_INVOICE_IDS + "-нан артық жүкқұжат таңдауға болмайды");
+            throw new BadRequestException("error.report.tooManyInvoices", String.valueOf(MAX_INVOICE_IDS));
         }
         MapSqlParameterSource p = new MapSqlParameterSource();
         String where = filter(from, to, clientId, city, invoiceIds, p);
@@ -92,7 +92,7 @@ public class ReportController {
     @GetMapping("/dashboard")
     public Dashboard dashboard(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        if (to.isBefore(from)) throw new BadRequestException("Кезең қате таңдалған");
+        if (to.isBefore(from)) throw new BadRequestException("error.report.badPeriod");
         long days = ChronoUnit.DAYS.between(from, to) + 1;
         LocalDate prevFrom = from.minusDays(days);
         String granularity = days <= 62 ? "day" : "month";
@@ -107,7 +107,7 @@ public class ReportController {
                 group by i.id, i.created_at, i.client_id
                 """, p, (rs, n) -> new Inv(
                 rs.getTimestamp("created_at").toInstant().atZone(ZONE).toLocalDate(),
-                (Long) rs.getObject("client_id", Long.class), rs.getBigDecimal("total"), rs.getBigDecimal("vat")));
+                rs.getObject("client_id", Long.class), rs.getBigDecimal("total"), rs.getBigDecimal("vat")));
 
         List<Inv> cur = invs.stream().filter(i -> !i.day().isBefore(from)).toList();
         List<Inv> prev = invs.stream().filter(i -> i.day().isBefore(from)).toList();

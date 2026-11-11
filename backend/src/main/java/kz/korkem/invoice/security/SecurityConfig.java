@@ -37,7 +37,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import java.util.Map;
+import kz.korkem.invoice.common.Messages;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 @EnableConfigurationProperties({JwtProperties.class, AuthProperties.class})
@@ -50,7 +53,10 @@ public class SecurityConfig {
             + "form-action 'self'; frame-ancestors 'none'";
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps,
+                                    Messages messages) throws Exception {
+        String forbidden = JsonMapper.builder().build().writeValueAsString(
+                Map.of("message", messages.get("error.forbidden")));
         http
                 // CSRF tokens are not needed: the auth cookie is SameSite=Strict, so cross-site requests carry no credentials
                 .csrf(AbstractHttpConfigurer::disable)
@@ -77,7 +83,7 @@ public class SecurityConfig {
                     res.setStatus(403);
                     res.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     res.setCharacterEncoding(StandardCharsets.UTF_8.name());
-                    res.getWriter().write("{\"message\":\"Бұл әрекетке рұқсатыңыз жоқ\"}");
+                    res.getWriter().write(forbidden);
                 }))
                 .headers(h -> h
                         // Same policy as frontend/security-headers.conf, for when Spring serves the frontend itself

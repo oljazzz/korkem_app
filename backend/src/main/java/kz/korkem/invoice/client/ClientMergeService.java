@@ -46,7 +46,7 @@ public class ClientMergeService {
     @Transactional(readOnly = true)
     public Plan plan(Long a, Long b) {
         if (Objects.equals(a, b)) {
-            throw new BadRequestException("Екі түрлі клиентті таңдаңыз");
+            throw new BadRequestException("error.merge.sameClient");
         }
         List<Side> sides = new ArrayList<>(List.of(side(a), side(b)));
         sides.sort(PRIMARY_FIRST);
@@ -105,7 +105,7 @@ public class ClientMergeService {
     }
 
     private Side side(Long id) {
-        Client c = clients.findById(id).orElseThrow(() -> new NotFoundException("Клиент табылмады"));
+        Client c = clients.findById(id).orElseThrow(() -> new NotFoundException("error.client.notFound"));
         var s = balances.stats(id);
         return new Side(c, s.invoiceCount(), s.lastInvoiceAt());
     }

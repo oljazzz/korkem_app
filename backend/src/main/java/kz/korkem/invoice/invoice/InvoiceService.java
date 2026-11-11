@@ -12,6 +12,7 @@ import kz.korkem.invoice.category.Category;
 import kz.korkem.invoice.category.CategoryRepository;
 import kz.korkem.invoice.client.ClientRepository;
 import kz.korkem.invoice.common.BadRequestException;
+import kz.korkem.invoice.common.Messages;
 import kz.korkem.invoice.common.NotFoundException;
 import kz.korkem.invoice.common.PageResponse;
 import kz.korkem.invoice.invoice.InvoiceDtos.*;
@@ -37,6 +38,7 @@ public class InvoiceService {
     private final InvoiceCalculator calculator;
     private final PaymentRepository payments;
     private final InvoiceStats stats;
+    private final Messages messages;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Almaty");
 
@@ -47,16 +49,8 @@ public class InvoiceService {
      */
     public PageResponse<InvoiceListItem> list(String q, Long clientId, LocalDate from,
                                               LocalDate to, boolean dueOnly, int page, int size) {
-        Instant fromTs = from == null ? null : from.atStartOfDay(ZONE).toInstant();
-        Instant toTs = to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant();
-        String query = q == null ? "" : q.trim();
-        Long number = null;
-        String digits = query.replaceAll("\\s", "");
-        if (!digits.isEmpty() && digits.chars().allMatch(Character::isDigit) && digits.length() < 18) {
-            number = Long.parseLong(digits);
-            query = "";
-        }
-        var result = invoices.search(number, query, clientId, fromTs, toTs, dueOnly,
+        Search s = Search.of(q);
+        var result = invoices.search(s.number(), s.text(), clientId, startOf(from), endOf(to), dueOnly,
                 PageRequest.of(page, PageResponse.clampSize(size), Sort.by(Sort.Direction.DESC, "number")));
         Map<Long, BigDecimal> totals = new HashMap<>();
         Map<Long, BigDecimal> paid = new HashMap<>();
@@ -78,16 +72,33 @@ public class InvoiceService {
     /** Count, amount and amount still owed over all invoices matching the list filters. */
     @Transactional(readOnly = true)
     public InvoiceSummary summary(String q, Long clientId, LocalDate from, LocalDate to, boolean dueOnly) {
-        String query = q == null ? "" : q.trim();
-        Long number = null;
-        String digits = query.replaceAll("\\s", "");
-        if (!digits.isEmpty() && digits.chars().allMatch(Character::isDigit) && digits.length() < 18) {
-            number = Long.parseLong(digits);
-            query = "";
+        Search s = Search.of(q);
+        return stats.summary(s.number(), s.text(), clientId, startOf(from), endOf(to), dueOnly);
+    }
+
+    /**
+     * What the user typed in the invoice search: digits only ("7 283" too) look up an invoice number,
+     * anything else is matched against the client.
+     */
+    record Search(Long number, String text) {
+        static Search of(String q) {
+            String query = q == null ? "" : q.trim();
+            String digits = query.replaceAll("\\s", "");
+            if (!digits.isEmpty() && digits.chars().allMatch(Character::isDigit) && digits.length() < 18) {
+                return new Search(Long.parseLong(digits), "");
+            }
+            return new Search(null, query);
         }
-        return stats.summary(number, query, clientId,
-                from == null ? null : from.atStartOfDay(ZONE).toInstant(),
-                to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant(), dueOnly);
+    }
+
+    /** Start of the day {@code from} in Almaty time; null when no lower bound. */
+    private static Instant startOf(LocalDate from) {
+        return from == null ? null : from.atStartOfDay(ZONE).toInstant();
+    }
+
+    /** End of the day {@code to} (start of the next one) in Almaty time; null when no upper bound. */
+    private static Instant endOf(LocalDate to) {
+        return to == null ? null : to.plusDays(1).atStartOfDay(ZONE).toInstant();
     }
 
     /** The client's most recent invoice, used to repeat an order. */
@@ -95,7 +106,7 @@ public class InvoiceService {
     public InvoiceDto lastForClient(Long clientId) {
         return invoices.findFirstByClientIdOrderByCreatedAtDescIdDesc(clientId)
                 .map(i -> toDto(find(i.getId())))
-                .orElseThrow(() -> new NotFoundException("Клиенттің жүкқұжаттары жоқ"));
+                .orElseThrow(() -> new NotFoundException("error.client.noInvoices"));
     }
 
     @Transactional(readOnly = true)
@@ -123,7 +134,7 @@ public class InvoiceService {
         BigDecimal paid = payments.paidFor(id);
         BigDecimal total = inv.getLines().stream().map(InvoiceLine::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (total.compareTo(paid) < 0) {
-            throw new BadRequestException("Жүкқұжат сомасы төленген сомадан (" + paid.toPlainString() + " ₸) аз болмауы керек");
+            throw new BadRequestException("error.invoice.belowPaid", paid.toPlainString());
         }
         invoices.flush();
         return toDto(inv);
@@ -132,7 +143,7 @@ public class InvoiceService {
     @Transactional
     public void delete(Long id) {
         if (payments.existsByInvoiceId(id)) {
-            throw new BadRequestException("Төлемдері бар жүкқұжатты жоюға болмайды: алдымен төлемдерді жойыңыз");
+            throw new BadRequestException("error.invoice.hasPayments");
         }
         invoices.delete(find(id));
     }
@@ -144,14 +155,14 @@ public class InvoiceService {
             return Instant.now();
         }
         if (date.isAfter(today)) {
-            throw new BadRequestException("Жүкқұжат күні болашақта болмауы керек");
+            throw new BadRequestException("error.invoice.futureDate");
         }
         return date.atTime(12, 0).atZone(ZONE).toInstant();
     }
 
     private void apply(Invoice inv, InvoiceRequest req) {
         inv.setClient(req.clientId() == null ? null : clients.findById(req.clientId())
-                .orElseThrow(() -> new NotFoundException("Клиент табылмады")));
+                .orElseThrow(() -> new NotFoundException("error.client.notFound")));
 
         List<InvoiceLine> lines = new ArrayList<>();
         int index = 0;
@@ -159,14 +170,14 @@ public class InvoiceService {
             index++;
             InvoiceLine line = new InvoiceLine();
             Product product = lr.productId() == null ? null : products.findById(lr.productId())
-                    .orElseThrow(() -> new NotFoundException("Тауар табылмады"));
+                    .orElseThrow(() -> new NotFoundException("error.product.notFound"));
             final int lineNo = index;
             ProductVariant variant = null;
             if (product != null && lr.variantId() != null) {
                 variant = product.getVariants().stream().filter(v -> v.getId().equals(lr.variantId())).findFirst()
-                        .orElseThrow(() -> new BadRequestException(lineNo + "-жолдағы түс бұл тауарға жатпайды"));
+                        .orElseThrow(() -> new BadRequestException("error.invoice.line.colourMismatch", String.valueOf(lineNo)));
             } else if (product != null && product.hasVariants()) {
-                throw new BadRequestException(index + "-жолда «" + product.getName() + "» тауарының түсін таңдаңыз");
+                throw new BadRequestException("error.invoice.line.colourRequired", String.valueOf(index), product.getName());
             }
             Category category = lr.categoryId() != null
                     ? categories.findById(lr.categoryId()).orElse(null)
@@ -175,7 +186,7 @@ public class InvoiceService {
             String name = product != null ? ProductController.lineName(product, variant)
                     : lr.productName() == null ? "" : lr.productName().trim();
             if (name.isEmpty()) {
-                throw new BadRequestException(index + "-жолда тауар таңдалмаған");
+                throw new BadRequestException("error.invoice.line.productMissing", String.valueOf(index));
             }
 
             line.setProduct(product);
@@ -195,7 +206,7 @@ public class InvoiceService {
     }
 
     private Invoice find(Long id) {
-        return invoices.findWithLines(id).orElseThrow(() -> new NotFoundException("Жүкқұжат табылмады"));
+        return invoices.findWithLines(id).orElseThrow(() -> new NotFoundException("error.invoice.notFound"));
     }
 
     private InvoiceDto toDto(Invoice inv) {
@@ -205,7 +216,7 @@ public class InvoiceService {
                 l.getCategory() == null ? null : l.getCategory().getName(),
                 l.getProduct() == null ? null : l.getProduct().getId(),
                 l.getVariant() == null ? null : l.getVariant().getId(),
-                l.getProductName(), l.getUnit(), l.getUnit().getLabel(), l.getPrice(), l.getQuantity(),
+                l.getProductName(), l.getUnit(), messages.label("unit", l.getUnit()), l.getPrice(), l.getQuantity(),
                 l.getDiscount(), l.getTotal(), l.getVat(), l.getSortOrder(),
                 l.getProduct() == null ? null : l.getProduct().getPackAmount(),
                 l.getProduct() == null ? null : l.getProduct().getPackUnit())).toList();

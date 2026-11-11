@@ -49,8 +49,7 @@ public class AuthController {
         String ip = http.getRemoteAddr();
         long wait = attempts.blockedForSeconds(username, ip);
         if (wait > 0) {
-            throw new TooManyRequestsException(
-                    "Тым көп сәтсіз әрекет. " + Math.max(1, (wait + 59) / 60) + " минуттан кейін қайталаңыз", wait);
+            throw new TooManyRequestsException(wait, "error.auth.tooManyAttempts", String.valueOf(Math.max(1, (wait + 59) / 60)));
         }
         Authentication auth;
         try {
@@ -90,7 +89,7 @@ public class AuthController {
     public UserDto me(Principal principal) {
         return users.findByUsernameIgnoreCase(principal.getName())
                 .map(UserDto::of)
-                .orElseThrow(() -> new NotFoundException("Пайдаланушы табылмады"));
+                .orElseThrow(() -> new NotFoundException("error.user.notFound"));
     }
 
     private ResponseCookie cookie(String value, Duration maxAge) {

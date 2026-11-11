@@ -638,4 +638,29 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/invoices/" + invId).header("Authorization", auth))
                 .andExpect(jsonPath("$.lines[*].productName").value(contains("Ретті Б", "Ретті В", "Ретті А")));
     }
+
+    @Test
+    void textsComeFromMessagesProperties() throws Exception {
+        String auth = login();
+        // Validation annotation: message = "{validation.name.required}"
+        mvc.perform(post("/api/categories").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Деректер қате толтырылған"))
+                .andExpect(jsonPath("$.fields.name").value("Атауын енгізіңіз"));
+        // Not found
+        mvc.perform(get("/api/clients/999999999").header("Authorization", auth))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Клиент табылмады"));
+        // A text with an argument: the line number
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"ип.Мәтін\"}")).andReturn().getResponse().getContentAsString(), "id");
+        mvc.perform(post("/api/invoices").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"price\":100,\"quantity\":1}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("1-жолда тауар таңдалмаған"));
+        // Labels of units and payment methods
+        mvc.perform(get("/api/invoices/units").header("Authorization", auth))
+                .andExpect(jsonPath("$[?(@.value == 'PACK')].label").value(hasItem("орам")));
+    }
 }

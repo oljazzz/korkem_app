@@ -38,12 +38,12 @@ public class ClientController {
     public record CityCount(String city, long clients) {}
 
     public record ClientRequest(
-            @NotBlank(message = "Атын енгізіңіз") @Size(max = 255, message = "Аты тым ұзын") String name,
-            @Size(max = 1000, message = "Мекенжайы тым ұзын") String address,
-            @Size(max = 100, message = "Телефон тым ұзын") String phone,
-            @Size(max = 255, message = "Тым ұзын") String city,
-            @Size(max = 1000, message = "Ескертпе тым ұзын") String note,
-            @DecimalMin(value = "0", message = "Бастапқы қарыз теріс болмауы керек") BigDecimal openingDebt) {}
+            @NotBlank(message = "{validation.client.name.required}") @Size(max = 255, message = "{validation.client.name.tooLong}") String name,
+            @Size(max = 1000, message = "{validation.address.tooLong}") String address,
+            @Size(max = 100, message = "{validation.phone.tooLong}") String phone,
+            @Size(max = 255, message = "{validation.tooLong}") String city,
+            @Size(max = 1000, message = "{validation.note.tooLong}") String note,
+            @DecimalMin(value = "0", message = "{validation.openingDebt.negative}") BigDecimal openingDebt) {}
 
     /** Client card: details, purchase figures, debt, recent invoices and favourite products. */
     public record ClientSummary(ClientDto client, long invoiceCount, BigDecimal total, Instant lastInvoiceAt,
@@ -58,8 +58,8 @@ public class ClientController {
 
     public record MergePlan(MergeSide primary, MergeSide secondary) {}
 
-    public record MergeRequest(@jakarta.validation.constraints.NotNull(message = "Клиентті таңдаңыз") Long clientId,
-                               @jakarta.validation.constraints.NotNull(message = "Клиентті таңдаңыз") Long otherId) {}
+    public record MergeRequest(@jakarta.validation.constraints.NotNull(message = "{validation.client.required}") Long clientId,
+                               @jakarta.validation.constraints.NotNull(message = "{validation.client.required}") Long otherId) {}
 
     public record MergeResult(ClientDto primary, int movedInvoices, String removedName) {}
 
@@ -187,6 +187,6 @@ public class ClientController {
     }
 
     private Client find(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Клиент табылмады"));
+        return repo.findById(id).orElseThrow(() -> new NotFoundException("error.client.notFound"));
     }
 }

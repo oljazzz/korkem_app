@@ -1,18 +1,12 @@
 package kz.korkem.invoice.invoice;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
-/** Unit of measure. The legacy system only had "pieces"; add more here when needed. */
-@Getter
-@RequiredArgsConstructor
+/** Unit of measure; its label is "unit.NAME" in messages.properties. Add more here when needed. */
 public enum Unit {
-    SHT("дана"),
-    KG("кг"),
-    M("м"),
-    L("л"),
-    PACK("орам");
+    SHT,
+    KG,
+    M,
+    L,
+    PACK;
 
-    /** Label shown in the UI and on printed documents. */
-    private final String label;
 }

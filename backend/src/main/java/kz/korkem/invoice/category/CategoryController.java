@@ -23,7 +23,7 @@ public class CategoryController {
         }
     }
 
-    public record CategoryRequest(@NotBlank(message = "Атауын енгізіңіз") String name, Integer sortOrder) {}
+    public record CategoryRequest(@NotBlank(message = "{validation.name.required}") String name, Integer sortOrder) {}
 
     private static final Sort SORT = Sort.by(Sort.Order.asc("sortOrder").nullsLast(), Sort.Order.asc("name"));
 
@@ -78,6 +78,6 @@ public class CategoryController {
     }
 
     private Category find(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Санат табылмады"));
+        return repo.findById(id).orElseThrow(() -> new NotFoundException("error.category.notFound"));
     }
 }
