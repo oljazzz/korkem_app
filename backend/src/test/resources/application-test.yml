@@ -1,8 +1,4 @@
-spring:
-  datasource:
-    url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    username: sa
-    password:
+# The datasource comes from PostgresTestConfig (Testcontainers), not from here.
 app:
   vat:
     # Tests assert legacy figures computed at 12%, independent of the configured default

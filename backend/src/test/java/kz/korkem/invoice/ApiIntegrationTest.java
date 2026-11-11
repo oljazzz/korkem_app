@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +22,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import(PostgresTestConfig.class)
 class ApiIntegrationTest {
 
     @Autowired
@@ -662,5 +664,22 @@ class ApiIntegrationTest {
         // Labels of units and payment methods
         mvc.perform(get("/api/invoices/units").header("Authorization", auth))
                 .andExpect(jsonPath("$[?(@.value == 'PACK')].label").value(hasItem("орам")));
+    }
+
+    @Test
+    void dashboardCountsLinesWithoutCategory() throws Exception {
+        String auth = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"ип.Санатсыз\"}")).andReturn().getResponse().getContentAsString(), "id");
+        String productId = extract(mvc.perform(post("/api/products").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Санатсыз тауар\",\"price\":500}")).andReturn().getResponse().getContentAsString(), "id");
+        mvc.perform(post("/api/invoices").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productId\":" + productId + ",\"price\":500,\"quantity\":2}]}"))
+                .andExpect(status().isCreated());
+        // Once returned 500 on PostgreSQL (the category name and its fallback grouped as two expressions)
+        String today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty")).toString();
+        mvc.perform(get("/api/reports/dashboard").param("from", today).param("to", today).header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories[?(@.name == 'Санатсыз')].revenue").value(hasItem(greaterThanOrEqualTo(1000.0))));
     }
 }

@@ -122,6 +122,8 @@ docker compose up --build
 
 ## Тесттер
 
+Интеграциялық тесттер Docker-дегі нақты PostgreSQL-де (Testcontainers, `postgres:18-alpine`) жүреді, сондықтан алдымен Docker іске қосулы болуы керек.
+
 ```bash
 cd backend && ./mvnw test
 ```
