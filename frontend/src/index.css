@@ -1150,3 +1150,6 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
   .page--editor .editor-actions { padding-bottom: max(var(--kr-mu075), env(safe-area-inset-bottom, 0px)); }
   .page--editor .editor-actions .btn--ghost { display: none; } /* «Жабу»: the breadcrumb goes back */
 }
+
+/* App version under the sign-in button */
+.app-version { margin: var(--kr-mu150) 0 0; text-align: center; font-size: var(--kr-font-03); color: var(--text-muted); }

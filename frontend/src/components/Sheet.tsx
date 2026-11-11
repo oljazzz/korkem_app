@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { createPortal } from 'react-dom'
-import { parseNum } from '../lib/format'
+import { numericInput, parseNum } from '../lib/format'
 import { Icon } from './Icon'
 
 /** The part of the page the user can see: on phones it shrinks when the on-screen keyboard opens. */
@@ -107,7 +107,7 @@ export function Stepper({ value, onChange, inputRef, label = 'Саны', compact
     <div className={`stepper ${compact ? 'stepper--compact' : ''}`}>
       <button type="button" className="stepper__btn" aria-label={`${label}: азайту`} disabled={n <= 1} onClick={() => step(-1)}>−</button>
       <input ref={inputRef} className="input stepper__input" inputMode="decimal" enterKeyHint="done" aria-label={label}
-        value={value} onChange={(e) => onChange(e.target.value)} onFocus={(e) => e.target.select()} />
+        value={value} onChange={(e) => onChange(numericInput(e.target.value))} onFocus={(e) => e.target.select()} />
       <button type="button" className="stepper__btn" aria-label={`${label}: көбейту`} onClick={() => step(1)}>+</button>
     </div>
   )

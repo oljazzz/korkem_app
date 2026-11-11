@@ -91,6 +91,7 @@ export function LoginPage() {
         <button className="btn btn--primary btn--lg btn--block" disabled={busy || !username || !password}>
           {busy ? 'Кіру…' : 'Кіру'}
         </button>
+        <p className="app-version">Нұсқа {__APP_VERSION__}</p>
       </form>
     </div>
   )

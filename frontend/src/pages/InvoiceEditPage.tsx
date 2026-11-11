@@ -16,7 +16,7 @@ import { loadProducts, type PickOption } from '../lib/productPick'
 import { ClientSheet, ProductSheet, type LineDraft } from '../components/InvoiceSheets'
 import { Stepper } from '../components/Sheet'
 import { useNarrow } from '../lib/useNarrow'
-import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, parseNum } from '../lib/format'
+import { calcLine, fmt, fmt2, fmtDate, fmtMoney, isoDay, numericInput, parseNum } from '../lib/format'
 import { useUnsavedGuard } from '../lib/useUnsavedGuard'
 import { ClientForm } from './ClientsPage'
 
@@ -667,7 +667,7 @@ function QuickAdd({ units, nextSort, onAdd }: {
       <label className="stack">
         <span className="stack__label">Саны</span>
         <input ref={qtyRef} className={`input num-input ${errors.quantity ? 'is-invalid' : ''}`} inputMode="decimal"
-          value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={onEnter}
+          value={quantity} onChange={(e) => setQuantity(numericInput(e.target.value))} onKeyDown={onEnter}
           onFocus={(e) => e.target.select()} />
       </label>
       <label className="stack">
@@ -788,7 +788,7 @@ function LineForm({ line, nextSort, units, categories, onClose, onSave }: {
         </Field>
         <Field label="Саны" required error={errors.quantity}>
           <input ref={qtyRef} className="input" inputMode="decimal" autoFocus value={quantity}
-            onChange={(e) => setQuantity(e.target.value)} onFocus={(e) => e.target.select()} />
+            onChange={(e) => setQuantity(numericInput(e.target.value))} onFocus={(e) => e.target.select()} />
         </Field>
         <Field label="Бағасы" required error={errors.price}>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />

@@ -88,3 +88,13 @@ export function calcLine(price: number, quantity: number, discount: number | nul
   total = Math.round(total * 100) / 100
   return { total }
 }
+
+/**
+ * What a number field keeps while typing: digits and a single decimal separator (, or .).
+ * Letters, spaces and a second separator are dropped as they are typed or pasted.
+ */
+export function numericInput(v: string): string {
+  const cleaned = v.replace(/[^\d.,]/g, '')
+  const sep = cleaned.search(/[.,]/)
+  return sep < 0 ? cleaned : cleaned.slice(0, sep + 1) + cleaned.slice(sep + 1).replace(/[.,]/g, '')
+}
