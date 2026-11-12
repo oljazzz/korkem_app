@@ -50,6 +50,11 @@ public class ClientBalanceQuery {
     }
 
     /** Clients that owe money, largest debt first. */
+    /** One client's debt; zero when nothing is owed. */
+    public BigDecimal debt(Long clientId) {
+        return debts(List.of(clientId)).getOrDefault(clientId, BigDecimal.ZERO);
+    }
+
     public List<Debtor> debtors(int limit) {
         return jdbc.query("""
                 select c.id, c.opening_debt + coalesce(d.unpaid, 0) as debt

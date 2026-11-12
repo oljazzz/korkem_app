@@ -11,7 +11,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import kz.korkem.invoice.dto.ClientDtos.MergePlan;
+import kz.korkem.invoice.dto.ClientDtos.MergeResult;
+import kz.korkem.invoice.dto.ClientDtos.MergeSide;
 import kz.korkem.invoice.entities.Client;
+import kz.korkem.invoice.mapper.ClientMapper;
 import kz.korkem.invoice.repository.query.ClientBalanceQuery;
 import kz.korkem.invoice.exception.BadRequestException;
 import kz.korkem.invoice.exception.NotFoundException;
@@ -30,15 +34,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ClientMergeService {
 
     /** One side of a merge, with the figures that decide which one stays. */
-    public record Side(Client client, long invoiceCount, Instant lastInvoiceAt) {}
+    record Side(Client client, long invoiceCount, Instant lastInvoiceAt) {}
 
-    public record Plan(Side primary, Side secondary) {}
-
-    public record Result(Client primary, int movedInvoices, String removedName) {}
+    private record Plan(Side primary, Side secondary) {}
 
     private final ClientRepository clients;
     private final ClientBalanceQuery balances;
     private final InvoiceRepository invoices;
+    private final ClientMapper mapper;
 
     /** Primary = newer last invoice; then more invoices; then the older record. */
     static final Comparator<Side> PRIMARY_FIRST = Comparator
@@ -46,8 +49,14 @@ public class ClientMergeService {
             .thenComparing(Side::invoiceCount, Comparator.reverseOrder())
             .thenComparing(s -> s.client().getId());
 
+    /** Which of the two clients would stay and which would be removed. */
     @Transactional(readOnly = true)
-    public Plan plan(Long a, Long b) {
+    public MergePlan plan(Long a, Long b) {
+        Plan plan = order(a, b);
+        return new MergePlan(toDto(plan.primary()), toDto(plan.secondary()));
+    }
+
+    private Plan order(Long a, Long b) {
         if (Objects.equals(a, b)) {
             throw new BadRequestException("error.merge.sameClient");
         }
@@ -57,8 +66,8 @@ public class ClientMergeService {
     }
 
     @Transactional
-    public Result merge(Long a, Long b) {
-        Plan plan = plan(a, b);
+    public MergeResult merge(Long a, Long b) {
+        Plan plan = order(a, b);
         Client primary = plan.primary().client();
         Client secondary = plan.secondary().client();
 
@@ -75,12 +84,16 @@ public class ClientMergeService {
         String removedName = secondary.getName();
         clients.delete(secondary);
         clients.flush();
-        return new Result(primary, moved, removedName);
+        return new MergeResult(mapper.toDto(primary, balances.debt(primary.getId())), moved, removedName);
     }
 
-    /** Groups of clients that share a phone number, the most active group first. */
+    /** Clients sharing a phone number, the most active group first; in each group the first one would stay. */
     @Transactional(readOnly = true)
-    public List<List<Side>> duplicatesByPhone() {
+    public List<List<MergeSide>> duplicates() {
+        return duplicatesByPhone().stream().map(g -> g.stream().map(this::toDto).toList()).toList();
+    }
+
+    private List<List<Side>> duplicatesByPhone() {
         Map<String, Set<Client>> byPhone = new LinkedHashMap<>();
         for (Client c : clients.findAll()) {
             for (String phone : phones(c.getPhone())) {
@@ -104,6 +117,10 @@ public class ClientMergeService {
         groups.sort(Comparator.comparing((List<Side> g) -> g.get(0).lastInvoiceAt(),
                 Comparator.nullsLast(Comparator.<Instant>reverseOrder())));
         return groups;
+    }
+
+    private MergeSide toDto(Side s) {
+        return new MergeSide(mapper.toDto(s.client(), balances.debt(s.client().getId())), s.invoiceCount(), s.lastInvoiceAt());
     }
 
     private Side side(Long id) {

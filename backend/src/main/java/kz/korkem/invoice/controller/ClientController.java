@@ -5,19 +5,13 @@ import java.util.List;
 import kz.korkem.invoice.dto.ClientDtos.CityCount;
 import kz.korkem.invoice.dto.ClientDtos.ClientDto;
 import kz.korkem.invoice.dto.ClientDtos.ClientRequest;
-import kz.korkem.invoice.dto.ClientDtos.ClientSummary;
-import kz.korkem.invoice.dto.ClientDtos.Debts;
-import kz.korkem.invoice.dto.ClientDtos.MergePlan;
-import kz.korkem.invoice.dto.ClientDtos.MergeRequest;
-import kz.korkem.invoice.dto.ClientDtos.MergeResult;
-import kz.korkem.invoice.dto.ClientDtos.MergeSide;
-import kz.korkem.invoice.dto.InvoiceDtos.InvoiceDto;
 import kz.korkem.invoice.dto.PageResponse;
 import kz.korkem.invoice.service.ClientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+/** The client directory: search and editing. */
 @RestController
 @RequestMapping("/api/clients")
 @RequiredArgsConstructor
@@ -38,42 +32,9 @@ public class ClientController {
         return clients.cities();
     }
 
-    @GetMapping("/debtors")
-    public Debts debtors(@RequestParam(defaultValue = "50") int limit) {
-        return clients.debtors(limit);
-    }
-
-    @GetMapping("/duplicates")
-    public List<List<MergeSide>> duplicates() {
-        return clients.duplicates();
-    }
-
-    /** Which of the two clients would stay (newer last invoice) and which would be removed. */
-    @GetMapping("/merge-plan")
-    public MergePlan mergePlan(@RequestParam Long clientId, @RequestParam Long otherId) {
-        return clients.mergePlan(clientId, otherId);
-    }
-
-    /** Admin only (SecurityConfig): invoices move to the primary client, the other is deleted. */
-    @PostMapping("/merge")
-    public MergeResult merge(@Valid @RequestBody MergeRequest req) {
-        return clients.merge(req.clientId(), req.otherId());
-    }
-
     @GetMapping("/{id}")
     public ClientDto get(@PathVariable Long id) {
         return clients.get(id);
-    }
-
-    @GetMapping("/{id}/summary")
-    public ClientSummary summary(@PathVariable Long id) {
-        return clients.summary(id);
-    }
-
-    /** 404 when the client has no invoices yet. */
-    @GetMapping("/{id}/last-invoice")
-    public InvoiceDto lastInvoice(@PathVariable Long id) {
-        return clients.lastInvoice(id);
     }
 
     @PostMapping
