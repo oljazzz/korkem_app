@@ -3,7 +3,7 @@ package kz.korkem.invoice.entities;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-import kz.korkem.invoice.client.ClientText;
+import kz.korkem.invoice.util.ClientText;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

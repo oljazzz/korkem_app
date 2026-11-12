@@ -15,7 +15,6 @@ import kz.korkem.invoice.properties.JwtProperties;
 import kz.korkem.invoice.service.UserJwtConverter;
 import kz.korkem.invoice.enums.Role;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -49,7 +48,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class})
 public class SecurityConfig {
 
     private static final String ADMIN = Role.ADMIN.name();

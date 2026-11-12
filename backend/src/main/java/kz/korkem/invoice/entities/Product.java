@@ -50,4 +50,9 @@ public class Product {
     public boolean hasVariants() {
         return !variants.isEmpty();
     }
+
+    /** Name written on an invoice line: the product, plus the colour when there is one ("СТАТУС ПФ-115 — Ақ"). */
+    public String lineName(ProductVariant variant) {
+        return variant == null ? name : name + " — " + variant.getName();
+    }
 }

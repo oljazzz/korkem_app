@@ -12,13 +12,12 @@ import java.util.Objects;
 import java.util.Set;
 
 import kz.korkem.invoice.entities.Client;
-import kz.korkem.invoice.client.ClientBalances;
+import kz.korkem.invoice.repository.query.ClientBalanceQuery;
 import kz.korkem.invoice.exception.BadRequestException;
 import kz.korkem.invoice.exception.NotFoundException;
 import kz.korkem.invoice.repository.ClientRepository;
+import kz.korkem.invoice.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +37,8 @@ public class ClientMergeService {
     public record Result(Client primary, int movedInvoices, String removedName) {}
 
     private final ClientRepository clients;
-    private final ClientBalances balances;
-    private final NamedParameterJdbcTemplate jdbc;
+    private final ClientBalanceQuery balances;
+    private final InvoiceRepository invoices;
 
     /** Primary = newer last invoice; then more invoices; then the older record. */
     static final Comparator<Side> PRIMARY_FIRST = Comparator
@@ -63,8 +62,7 @@ public class ClientMergeService {
         Client primary = plan.primary().client();
         Client secondary = plan.secondary().client();
 
-        int moved = jdbc.update("update invoice set client_id = :to where client_id = :from",
-                new MapSqlParameterSource("to", primary.getId()).addValue("from", secondary.getId()));
+        int moved = invoices.moveToClient(secondary.getId(), primary.getId());
 
         // Keep the primary's details; take the secondary's only where the primary has none
         primary.setPhone(joinPhones(primary.getPhone(), secondary.getPhone()));

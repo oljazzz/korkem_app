@@ -2,7 +2,6 @@ package kz.korkem.invoice.service;
 
 import kz.korkem.invoice.properties.Messages;
 import kz.korkem.invoice.dto.PageResponse;
-import kz.korkem.invoice.controller.ProductController;
 import kz.korkem.invoice.dto.InvoiceDtos.*;
 import kz.korkem.invoice.entities.*;
 import kz.korkem.invoice.enums.PaymentStatus;
@@ -10,6 +9,7 @@ import kz.korkem.invoice.enums.Unit;
 import kz.korkem.invoice.exception.BadRequestException;
 import kz.korkem.invoice.exception.NotFoundException;
 import kz.korkem.invoice.repository.*;
+import kz.korkem.invoice.repository.query.InvoiceSummaryQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ public class InvoiceService {
     private final CategoryRepository categories;
     private final InvoiceCalculator calculator;
     private final PaymentRepository payments;
-    private final InvoiceStats stats;
+    private final InvoiceSummaryQuery stats;
     private final Messages messages;
 
     @Transactional(readOnly = true)
@@ -94,6 +95,10 @@ public class InvoiceService {
      * The client's most recent invoice, used to repeat an order.
      */
     @Transactional(readOnly = true)
+    public List<UnitDto> units() {
+        return Arrays.stream(Unit.values()).map(u -> new UnitDto(u, messages.label("unit", u))).toList();
+    }
+
     public InvoiceDto lastForClient(Long clientId) {
         return invoices.findFirstByClientIdOrderByCreatedAtDescIdDesc(clientId)
                 .map(i -> toDto(find(i.getId())))
@@ -176,7 +181,7 @@ public class InvoiceService {
                     ? categories.findById(lr.categoryId()).orElse(null)
                     : product != null ? product.getCategory() : null;
 
-            String name = product != null ? ProductController.lineName(product, variant)
+            String name = product != null ? product.lineName(variant)
                     : lr.productName() == null ? "" : lr.productName().trim();
             if (name.isEmpty()) {
                 throw new BadRequestException("error.invoice.line.productMissing", String.valueOf(index));

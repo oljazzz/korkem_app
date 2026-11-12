@@ -10,6 +10,9 @@ public final class ReportDtos {
 
     private ReportDtos() {}
 
+    /** Which invoices the sales report covers; every field is optional. */
+    public record SalesFilter(LocalDate from, LocalDate to, Long clientId, String city, List<Long> invoiceIds) {}
+
     /** {@code groupName} is the product a colour belongs to (equals productName for products without colours). */
     public record SalesRow(String productName, String groupName, String categoryName, BigDecimal quantity,
                            BigDecimal avgPrice, BigDecimal total, BigDecimal vat, long invoices) {}

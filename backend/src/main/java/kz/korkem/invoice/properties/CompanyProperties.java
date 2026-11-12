@@ -1,4 +1,4 @@
-package kz.korkem.invoice.report;
+package kz.korkem.invoice.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

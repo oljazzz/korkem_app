@@ -1,4 +1,4 @@
-package kz.korkem.invoice.client;
+package kz.korkem.invoice.util;
 
 import java.util.regex.Pattern;
 

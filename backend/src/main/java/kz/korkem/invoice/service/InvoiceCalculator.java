@@ -5,7 +5,6 @@ import java.math.RoundingMode;
 
 import kz.korkem.invoice.properties.VatProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,7 +13,6 @@ import org.springframework.stereotype.Component;
  * VAT is included in the price: vat = total × rate / (100 + rate), same as the legacy system.
  */
 @Component
-@EnableConfigurationProperties(VatProperties.class)
 @RequiredArgsConstructor
 public class InvoiceCalculator {
     private static final BigDecimal HUNDRED = new BigDecimal("100");

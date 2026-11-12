@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -50,6 +51,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     @Query("select l.invoice.id, sum(l.total) from InvoiceLine l where l.invoice.id in :ids group by l.invoice.id")
     java.util.List<Object[]> totalsFor(@Param("ids") java.util.Collection<Long> ids);
+
+    /** Moves every invoice of one client to another (client merge); returns how many moved. */
+    @Modifying
+    @Query(value = "update invoice set client_id = :toId where client_id = :fromId", nativeQuery = true)
+    int moveToClient(@Param("fromId") Long fromId, @Param("toId") Long toId);
 
     @Query(value = "select nextval('invoice_number_seq')", nativeQuery = true)
     long nextNumber();

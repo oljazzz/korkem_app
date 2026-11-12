@@ -1,4 +1,4 @@
-package kz.korkem.invoice.common;
+package kz.korkem.invoice.repository.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

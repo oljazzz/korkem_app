@@ -1,4 +1,4 @@
-package kz.korkem.invoice.common;
+package kz.korkem.invoice.repository.query;
 
 import java.sql.Timestamp;
 import java.time.Instant;

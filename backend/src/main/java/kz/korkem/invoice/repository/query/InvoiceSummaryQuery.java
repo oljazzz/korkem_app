@@ -1,21 +1,20 @@
-package kz.korkem.invoice.service;
+package kz.korkem.invoice.repository.query;
 
 import java.time.Instant;
-import kz.korkem.invoice.common.SqlWhere;
 import kz.korkem.invoice.dto.InvoiceDtos.InvoiceSummary;
 import kz.korkem.invoice.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
 /** Invoice list totals in SQL, with the same filters as {@link InvoiceRepository#search}. */
-@Component
+@Repository
 @RequiredArgsConstructor
-public class InvoiceStats {
+public class InvoiceSummaryQuery {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    InvoiceSummary summary(Long number, String q, Long clientId, Instant from, Instant to, boolean dueOnly) {
+    public InvoiceSummary summary(Long number, String q, Long clientId, Instant from, Instant to, boolean dueOnly) {
         SqlWhere where = new SqlWhere()
                 .eq("i.number", "number", number)
                 .contains("(lower(c.name) like :q or lower(coalesce(c.address, '')) like :q)", "q", q)

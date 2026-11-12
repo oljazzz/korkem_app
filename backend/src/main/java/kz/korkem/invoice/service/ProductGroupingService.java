@@ -1,5 +1,11 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.dto.ProductDtos.GroupMember;
+import kz.korkem.invoice.dto.ProductDtos.GroupSuggestion;
+import kz.korkem.invoice.dto.ProductDtos.GroupMemberRequest;
+import kz.korkem.invoice.dto.ProductDtos.GroupResult;
+import kz.korkem.invoice.mapper.ProductMapper;
+import kz.korkem.invoice.repository.InvoiceLineRepository;
 import kz.korkem.invoice.entities.Product;
 import kz.korkem.invoice.entities.ProductVariant;
 import kz.korkem.invoice.enums.PackUnit;
@@ -7,8 +13,6 @@ import kz.korkem.invoice.exception.BadRequestException;
 import kz.korkem.invoice.exception.NotFoundException;
 import kz.korkem.invoice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,34 +29,16 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class ProductGroupingService {
 
-    public record Member(Long productId, String name, String variantName, BigDecimal price, long invoiceLines) {
-    }
-
-    /**
-     * {@code duplicates}: the names differ only in spelling, so they are one product, not colours.
-     */
-    public record Suggestion(String name, Long categoryId, String categoryName, BigDecimal price,
-                             BigDecimal packAmount, PackUnit packUnit, boolean duplicates, List<Member> members) {
-    }
-
-    public record MemberRequest(Long productId, String variantName) {
-    }
-
-    public record Result(Product product, int variants, int removedProducts, int movedLines) {
-    }
-
     private static final Pattern SIZE = Pattern.compile("(?iu)(\\d+(?:[.,]\\d+)?)\\s*(кг|kg|гр|г|g|мл|ml|л|l)(?![\\p{L}])");
 
     private final ProductRepository products;
-    private final NamedParameterJdbcTemplate jdbc;
+    private final InvoiceLineRepository invoiceLines;
+    private final ProductMapper mapper;
 
     @Transactional(readOnly = true)
-    public List<Suggestion> suggestions() {
+    public List<GroupSuggestion> suggestions() {
         Map<Long, Long> lines = new HashMap<>();
-        jdbc.query("select product_id, count(*) from invoice_line where product_id is not null group by product_id",
-                rs -> {
-                    lines.put(rs.getLong(1), rs.getLong(2));
-                });
+        invoiceLines.countByProduct().forEach(r -> lines.put(((Number) r[0]).longValue(), ((Number) r[1]).longValue()));
 
         // 1. Same category, price and pack size
         Map<List<Object>, List<Product>> byKey = new LinkedHashMap<>();
@@ -66,16 +52,16 @@ public class ProductGroupingService {
             byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(p);
         }
 
-        List<Suggestion> result = new ArrayList<>();
+        List<GroupSuggestion> result = new ArrayList<>();
         for (List<Product> group : byKey.values()) {
             if (group.size() < 2) continue;
             for (List<Product> cluster : clusters(group)) {
-                Suggestion s = suggest(cluster, lines);
+                GroupSuggestion s = suggest(cluster, lines);
                 if (s != null) result.add(s);
             }
         }
-        result.sort(Comparator.comparing((Suggestion s) -> s.members().size()).reversed()
-                .thenComparing(Suggestion::name));
+        result.sort(Comparator.comparing((GroupSuggestion s) -> s.members().size()).reversed()
+                .thenComparing(GroupSuggestion::name));
         return result;
     }
 
@@ -113,7 +99,7 @@ public class ProductGroupingService {
     /**
      * 3. Common leading words become the product name; the rest of each name becomes its colour.
      */
-    private static Suggestion suggest(List<Product> cluster, Map<Long, Long> lines) {
+    private static GroupSuggestion suggest(List<Product> cluster, Map<Long, Long> lines) {
         List<List<String>> all = cluster.stream().map(p -> tokens(p.getName())).toList();
         int prefix = 0;
         outer:
@@ -126,22 +112,22 @@ public class ProductGroupingService {
         if (prefix == 0) return null;
         Product first = cluster.get(0);
         String name = String.join(" ", all.get(0).subList(0, prefix)) + packText(first);
-        List<Member> members = new ArrayList<>();
+        List<GroupMember> members = new ArrayList<>();
         for (int i = 0; i < cluster.size(); i++) {
             Product p = cluster.get(i);
             List<String> t = all.get(i);
             String variant = String.join(" ", t.subList(prefix, t.size())).trim();
-            members.add(new Member(p.getId(), p.getName(), variant, p.getPrice(), lines.getOrDefault(p.getId(), 0L)));
+            members.add(new GroupMember(p.getId(), p.getName(), variant, p.getPrice(), lines.getOrDefault(p.getId(), 0L)));
         }
         boolean duplicates = members.stream().allMatch(m -> m.variantName().isEmpty());
         if (!duplicates && members.stream().anyMatch(m -> m.variantName().isEmpty())) {
             // One name is the bare stem ("СТАТУС ПФ-115"): show it in full rather than as a blank colour
             members.replaceAll(m -> m.variantName().isEmpty()
-                    ? new Member(m.productId(), m.name(), m.name(), m.price(), m.invoiceLines()) : m);
+                    ? new GroupMember(m.productId(), m.name(), m.name(), m.price(), m.invoiceLines()) : m);
         }
-        members.sort(Comparator.comparing(Member::variantName, String.CASE_INSENSITIVE_ORDER));
+        members.sort(Comparator.comparing(GroupMember::variantName, String.CASE_INSENSITIVE_ORDER));
         var c = first.getCategory();
-        return new Suggestion(name, c == null ? null : c.getId(), c == null ? null : c.getName(), first.getPrice(),
+        return new GroupSuggestion(name, c == null ? null : c.getId(), c == null ? null : c.getName(), first.getPrice(),
                 first.getPackAmount(), first.getPackUnit(), duplicates, members);
     }
 
@@ -176,7 +162,7 @@ public class ProductGroupingService {
      * invoice lines move to it with their colour, and the other products are deleted.
      */
     @Transactional
-    public Result group(String name, List<MemberRequest> members) {
+    public GroupResult group(String name, List<GroupMemberRequest> members) {
         if (name == null || name.isBlank()) throw new BadRequestException("validation.product.name.required");
         if (members == null || members.size() < 2) throw new BadRequestException("error.grouping.twoProducts");
         Set<Long> ids = new LinkedHashSet<>();
@@ -203,18 +189,17 @@ public class ProductGroupingService {
             int moved = 0;
             for (Long id : ids) {
                 if (Objects.equals(id, base.getId())) continue;
-                moved += jdbc.update("update invoice_line set product_id = :base where product_id = :id",
-                        new MapSqlParameterSource("base", base.getId()).addValue("id", id));
+                moved += invoiceLines.moveProduct(id, base.getId());
                 products.delete(byId.get(id));
             }
             products.flush();
-            return new Result(base, 0, ids.size() - 1, moved);
+            return new GroupResult(mapper.toDto(base), 0, ids.size() - 1, moved);
         }
         // One colour per distinct name; the same colour written twice becomes one
         Map<String, ProductVariant> variantsByName = new LinkedHashMap<>();
         Map<Long, ProductVariant> variantOf = new HashMap<>();
         int order = 0;
-        for (MemberRequest m : members) {
+        for (GroupMemberRequest m : members) {
             Product p = byId.get(m.productId());
             String vName = m.variantName().trim();
             ProductVariant v = variantsByName.get(vName.toLowerCase());
@@ -235,8 +220,7 @@ public class ProductGroupingService {
 
         int moved = 0;
         for (Long id : ids) {
-            moved += jdbc.update("update invoice_line set product_id = :base, variant_id = :variant where product_id = :id",
-                    new MapSqlParameterSource("base", base.getId()).addValue("variant", variantOf.get(id).getId()).addValue("id", id));
+            moved += invoiceLines.moveProductToColour(id, base.getId(), variantOf.get(id).getId());
         }
         int removed = 0;
         for (Long id : ids) {
@@ -246,6 +230,6 @@ public class ProductGroupingService {
             }
         }
         products.flush();
-        return new Result(base, variantsByName.size(), removed, moved);
+        return new GroupResult(mapper.toDto(base), variantsByName.size(), removed, moved);
     }
 }

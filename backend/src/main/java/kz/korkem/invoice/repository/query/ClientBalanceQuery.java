@@ -1,4 +1,4 @@
-package kz.korkem.invoice.client;
+package kz.korkem.invoice.repository.query;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -7,18 +7,19 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import kz.korkem.invoice.dto.ClientDtos.TopProduct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
 /**
  * Client debt and purchase figures, computed in SQL.
  * Debt = opening debt + what is still owed on invoices created after payments were introduced.
  */
-@Component
+@Repository
 @RequiredArgsConstructor
-public class ClientBalances {
+public class ClientBalanceQuery {
 
     // Unpaid amount per client over invoices that are not legacy-paid
     private static final String UNPAID = """
@@ -33,8 +34,6 @@ public class ClientBalances {
     public record Debtor(Long clientId, BigDecimal debt) {}
 
     public record Stats(long invoiceCount, BigDecimal total, Instant lastInvoiceAt) {}
-
-    public record TopProduct(String name, BigDecimal quantity, BigDecimal total, long invoices) {}
 
     private final NamedParameterJdbcTemplate jdbc;
 

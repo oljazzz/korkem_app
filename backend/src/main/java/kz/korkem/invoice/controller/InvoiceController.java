@@ -3,13 +3,10 @@ package kz.korkem.invoice.controller;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
-import kz.korkem.invoice.properties.Messages;
 import kz.korkem.invoice.dto.PageResponse;
 import kz.korkem.invoice.dto.InvoiceDtos.*;
 import kz.korkem.invoice.service.InvoiceService;
-import kz.korkem.invoice.enums.Unit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -20,10 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class InvoiceController {
 
-    public record UnitDto(Unit value, String label) {}
-
     private final InvoiceService service;
-    private final Messages messages;
 
     @GetMapping
     public PageResponse<InvoiceListItem> list(@RequestParam(defaultValue = "") String q,
@@ -48,7 +42,7 @@ public class InvoiceController {
 
     @GetMapping("/units")
     public List<UnitDto> units() {
-        return Arrays.stream(Unit.values()).map(u -> new UnitDto(u, messages.label("unit", u))).toList();
+        return service.units();
     }
 
     @GetMapping("/{id}")
