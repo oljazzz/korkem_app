@@ -69,6 +69,9 @@ cd frontend && npm install && npm run dev
 | `COMPANY_NAME`, `COMPANY_BIN`, `COMPANY_CHIEF_ACCOUNTANT`, `COMPANY_RELEASE_ALLOWED_BY` | Ұйым деректерінің бастапқы мәндері; «Баптаулар» бетінде бір рет сақталғаннан кейін дерекқордағы мәндер қолданылады |
 | `CORS_ORIGINS` | `http://localhost:5173` |
 | `PORT` | `8090` |
+| `API_DOCS_ENABLED` | `true` — Swagger UI мен `/api/docs`; `false` болса өшеді |
+| `TRACING_SAMPLING` | `1.0` — трассаға жазылатын сұраулар үлесі |
+| `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` | бос — трассаларды OTLP коллекторға жіберу үшін, мысалы `http://localhost:4318/v1/traces` |
 
 Фронтенд бэкендке басқа доменде қосылса: `frontend/.env` ішінде `VITE_API_URL=https://api.example.kz`.
 
@@ -130,7 +133,9 @@ cd backend && ./mvnw test
 
 ## API (қысқаша)
 
-Барлығы `Authorization: Bearer <token>` талап етеді (кіруден басқа).
+Толық сипаттама — Swagger UI: `/api/swagger-ui.html` (алдымен қосымшаға кіру керек; сұраулар сол cookie-мен жүреді). OpenAPI JSON: `/api/docs`.
+
+Барлығы кіру cookie-сін немесе `Authorization: Bearer <token>` талап етеді (кіруден басқа).
 
 ```
 POST   /api/auth/login            {username, password} → {token, user}
@@ -146,6 +151,23 @@ GET    /api/settings                    PUT /api/settings/company (ADMIN)
 GET    /api/invoices/units
 GET    /api/users                       POST / PUT /{id} / DELETE /{id}
 ```
+
+## Трассировка
+
+Әр API сұрауына traceId беріледі: ол `X-Trace-Id` жауап header-інде және сол сұраудың барлық лог жолдарында тұр:
+
+```
+... [ee76a811b1839c5b952fbb97a029edc8-4d8496157b510597] k.k.invoice.tracing.TraceIdFilter : GET /api/clients -> 200 in 12 ms
+```
+
+Қате туралы хабарласа, браузердің Network бетіндегі `X-Trace-Id` бойынша логтан сұрауды, баяу SQL-ді (500 мс-тан ұзақ) және қатенің stack trace-ін табуға болады. Span-дарды (HTTP + әр SQL сұрау) көру үшін OTLP коллекторын қосыңыз, мысалы Jaeger:
+
+```bash
+docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:2.21.0
+MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=http://localhost:4318/v1/traces ./mvnw spring-boot:run
+```
+
+Сосын http://localhost:16686. SQL параметрлерінің мәндері span-ға жазылмайды (онда клиент деректері бар).
 
 ## Ескі жүйеден деректерді көшіру
 

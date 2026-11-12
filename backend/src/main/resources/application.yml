@@ -49,3 +49,38 @@ app:
   vat:
     # VAT rate in percent, included in prices. Changing it affects new and edited invoice lines only.
     rate: ${VAT_RATE:16}
+
+# API docs, for logged-in users only: under /api so the auth cookie (path=/api) is sent.
+# UI: /api/swagger-ui.html. Set API_DOCS_ENABLED=false to turn both off.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+    path: /api/docs
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}
+    path: /api/swagger-ui.html
+  paths-to-match: /api/**
+
+# Tracing: every request gets a traceId, shown in log lines and the X-Trace-Id response header.
+# Spans go nowhere unless an OTLP collector is set, e.g. Jaeger:
+#   MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=http://localhost:4318/v1/traces
+management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING:1.0}
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
+
+# SQL spans inside each trace (no parameter values: they hold client data); slow queries are logged
+jdbc:
+  includes: query
+  datasource-proxy:
+    slow-query:
+      enable-logging: true
+      threshold: 500

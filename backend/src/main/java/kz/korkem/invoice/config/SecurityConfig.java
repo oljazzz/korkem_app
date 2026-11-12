@@ -11,6 +11,7 @@ import kz.korkem.invoice.properties.Messages;
 import kz.korkem.invoice.repository.AppUserRepository;
 import kz.korkem.invoice.properties.AuthProperties;
 import kz.korkem.invoice.security.CookieOrHeaderTokenResolver;
+import kz.korkem.invoice.tracing.TraceIdFilter;
 import kz.korkem.invoice.properties.JwtProperties;
 import kz.korkem.invoice.service.UserJwtConverter;
 import kz.korkem.invoice.enums.Role;
@@ -152,6 +153,7 @@ public class SecurityConfig {
         cfg.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).toList());
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        cfg.setExposedHeaders(List.of(TraceIdFilter.HEADER));
         cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cfg);
