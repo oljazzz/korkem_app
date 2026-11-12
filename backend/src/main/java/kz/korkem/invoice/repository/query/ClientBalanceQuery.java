@@ -49,12 +49,12 @@ public class ClientBalanceQuery {
         return result;
     }
 
-    /** Clients that owe money, largest debt first. */
     /** One client's debt; zero when nothing is owed. */
     public BigDecimal debt(Long clientId) {
         return debts(List.of(clientId)).getOrDefault(clientId, BigDecimal.ZERO);
     }
 
+    /** Clients that owe money, largest debt first. */
     public List<Debtor> debtors(int limit) {
         return jdbc.query("""
                 select c.id, c.opening_debt + coalesce(d.unpaid, 0) as debt
@@ -73,6 +73,23 @@ public class ClientBalanceQuery {
                 from client c left join (%s) d on d.client_id = c.id
                 """.formatted(UNPAID), new MapSqlParameterSource(), BigDecimal.class);
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    /** Stats of several clients in one query; clients without invoices get zeros. */
+    public Map<Long, Stats> stats(Collection<Long> clientIds) {
+        Map<Long, Stats> result = new HashMap<>();
+        if (clientIds.isEmpty()) return result;
+        clientIds.forEach(id -> result.put(id, new Stats(0, BigDecimal.ZERO, null)));
+        jdbc.query("""
+                select i.client_id, count(distinct i.id), coalesce(sum(l.total), 0), max(i.created_at)
+                from invoice i left join invoice_line l on l.invoice_id = i.id
+                where i.client_id in (:ids)
+                group by i.client_id
+                """, new MapSqlParameterSource("ids", clientIds), rs -> {
+            Timestamp last = rs.getTimestamp(4);
+            result.put(rs.getLong(1), new Stats(rs.getLong(2), rs.getBigDecimal(3), last == null ? null : last.toInstant()));
+        });
+        return result;
     }
 
     public Stats stats(Long clientId) {

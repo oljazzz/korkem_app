@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import kz.korkem.invoice.dto.UserDtos.UserDto;
@@ -30,6 +31,7 @@ public class AuthService {
     private final JwtProperties jwtProps;
     private final LoginAttemptService attempts;
     private final UserService users;
+    private final Clock clock;
 
     public Login login(String username, String password, String ip) {
         String name = username.trim();
@@ -46,7 +48,7 @@ public class AuthService {
         }
         attempts.recordSuccess(name);
 
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant exp = now.plus(jwtProps.ttlHours(), ChronoUnit.HOURS);
         return new Login(token(auth.getName(), now, exp), now, exp, users.byUsername(auth.getName()));
     }

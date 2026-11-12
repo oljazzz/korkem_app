@@ -6,10 +6,11 @@ import kz.korkem.invoice.dto.ProductDtos.GroupRequest;
 import kz.korkem.invoice.dto.ProductDtos.GroupResult;
 import kz.korkem.invoice.dto.ProductDtos.GroupSuggestion;
 import kz.korkem.invoice.service.ProductGroupingService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/** Grouping colour families into one product. POST is admin-only (SecurityConfig): it deletes products. */
+/** Grouping colour families into one product. Grouping deletes products, so it is admin-only. */
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class ProductGroupingController {
         return grouping.suggestions();
     }
 
+    @AdminOnly
     @PostMapping("/group")
     public GroupResult group(@Valid @RequestBody GroupRequest req) {
         return grouping.group(req.name(), req.members());

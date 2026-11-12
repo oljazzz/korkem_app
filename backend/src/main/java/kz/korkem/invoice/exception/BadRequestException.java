@@ -1,14 +1,11 @@
 package kz.korkem.invoice.exception;
 
-import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
-/** 400 with a user-facing text: {@code key} in messages.properties, {@code args} fill its {0}, {1}… */
-@Getter
-public class BadRequestException extends RuntimeException {
-    private final transient Object[] args;
+/** 400: the request breaks a business rule. */
+public class BadRequestException extends ApiException {
 
     public BadRequestException(String key, Object... args) {
-        super(key);
-        this.args = args;
+        super(HttpStatus.BAD_REQUEST, key, args);
     }
 }

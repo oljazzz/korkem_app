@@ -1,11 +1,12 @@
 package kz.korkem.invoice.service;
 
-import java.time.Instant;
+import java.time.Clock;
 import kz.korkem.invoice.dto.SettingsDtos.Company;
 import kz.korkem.invoice.dto.SettingsDtos.CompanyRequest;
 import kz.korkem.invoice.dto.SettingsDtos.Settings;
 import kz.korkem.invoice.entities.CompanySettings;
 import kz.korkem.invoice.properties.CompanyProperties;
+import kz.korkem.invoice.properties.VatProperties;
 import kz.korkem.invoice.repository.CompanySettingsRepository;
 import kz.korkem.invoice.util.Texts;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,11 @@ public class SettingsService {
 
     private final CompanyProperties defaults;
     private final CompanySettingsRepository settings;
-    private final InvoiceCalculator calculator;
+    private final VatProperties vat;
+    private final Clock clock;
 
     public Settings get() {
-        return new Settings(company(), calculator.rate());
+        return new Settings(company(), vat.rate());
     }
 
     @Transactional
@@ -38,7 +40,7 @@ public class SettingsService {
         s.setPhone(Texts.clean(req.phone()));
         s.setChiefAccountant(Texts.clean(req.chiefAccountant()));
         s.setReleaseAllowedBy(Texts.clean(req.releaseAllowedBy()));
-        s.setUpdatedAt(Instant.now());
+        s.setUpdatedAt(clock.instant());
         s.setUpdatedBy(username);
         settings.save(s);
         return company();

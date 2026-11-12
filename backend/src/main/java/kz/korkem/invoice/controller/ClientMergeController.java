@@ -7,6 +7,7 @@ import kz.korkem.invoice.dto.ClientDtos.MergeRequest;
 import kz.korkem.invoice.dto.ClientDtos.MergeResult;
 import kz.korkem.invoice.dto.ClientDtos.MergeSide;
 import kz.korkem.invoice.service.ClientMergeService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +31,8 @@ public class ClientMergeController {
         return merger.plan(clientId, otherId);
     }
 
-    /** Admin only (SecurityConfig): invoices move to the primary client, the other is deleted. */
+    /** Invoices move to the primary client, the other is deleted. */
+    @AdminOnly
     @PostMapping("/merge")
     public MergeResult merge(@Valid @RequestBody MergeRequest req) {
         return merger.merge(req.clientId(), req.otherId());

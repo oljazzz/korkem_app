@@ -14,7 +14,6 @@ import kz.korkem.invoice.security.CookieOrHeaderTokenResolver;
 import kz.korkem.invoice.tracing.TraceIdFilter;
 import kz.korkem.invoice.properties.JwtProperties;
 import kz.korkem.invoice.service.UserJwtConverter;
-import kz.korkem.invoice.enums.Role;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +23,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
@@ -49,9 +49,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
-
-    private static final String ADMIN = Role.ADMIN.name();
 
     private static final String CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
             + "font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; "
@@ -72,11 +71,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
-                        .requestMatchers("/api/users/**").hasRole(ADMIN)
-                        .requestMatchers(HttpMethod.PUT, "/api/settings/**").hasRole(ADMIN)
-                        .requestMatchers(HttpMethod.POST, "/api/clients/merge").hasRole(ADMIN)
-                        .requestMatchers(HttpMethod.POST, "/api/products/group").hasRole(ADMIN)
-                        .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole(ADMIN)
+                        // Admin-only endpoints are marked @AdminOnly on the controller
                         .requestMatchers("/api/**").authenticated()
                         // The packaged frontend (index.html, /assets, client-side routes) is public
                         .requestMatchers(HttpMethod.GET, "/**").permitAll()

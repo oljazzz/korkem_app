@@ -7,6 +7,7 @@ import kz.korkem.invoice.dto.ProductDtos.ProductDto;
 import kz.korkem.invoice.dto.ProductDtos.ProductOption;
 import kz.korkem.invoice.dto.ProductDtos.ProductRequest;
 import kz.korkem.invoice.service.ProductService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -50,6 +51,7 @@ public class ProductController {
         return products.update(id, req);
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

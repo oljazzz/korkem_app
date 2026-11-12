@@ -1,5 +1,7 @@
 package kz.korkem.invoice.entities;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -43,6 +45,15 @@ public class Invoice {
     @OrderBy("sortOrder ASC, id ASC")
     @Setter(AccessLevel.NONE)
     private List<InvoiceLine> lines = new ArrayList<>();
+
+    /** Sum of the line totals (VAT included). */
+    public BigDecimal total() {
+        return lines.stream().map(InvoiceLine::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal vat() {
+        return lines.stream().map(InvoiceLine::getVat).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
     public void replaceLines(List<InvoiceLine> newLines) {
         lines.clear();

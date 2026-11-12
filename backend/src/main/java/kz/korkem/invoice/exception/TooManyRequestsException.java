@@ -1,16 +1,22 @@
 package kz.korkem.invoice.exception;
 
+import java.util.Map;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
-/** 429 with a Retry-After hint; the text is {@code key} in messages.properties. */
+/** 429 with a Retry-After hint. */
 @Getter
-public class TooManyRequestsException extends RuntimeException {
+public class TooManyRequestsException extends ApiException {
+
     private final long retryAfterSeconds;
-    private final transient Object[] args;
 
     public TooManyRequestsException(long retryAfterSeconds, String key, Object... args) {
-        super(key);
+        super(HttpStatus.TOO_MANY_REQUESTS, key, args);
         this.retryAfterSeconds = retryAfterSeconds;
-        this.args = args;
+    }
+
+    @Override
+    public Map<String, String> headers() {
+        return Map.of("Retry-After", String.valueOf(retryAfterSeconds));
     }
 }

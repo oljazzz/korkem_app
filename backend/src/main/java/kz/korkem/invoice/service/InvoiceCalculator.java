@@ -19,10 +19,6 @@ public class InvoiceCalculator {
 
     private final VatProperties vat;
 
-    public BigDecimal rate() {
-        return vat.rate();
-    }
-
     public BigDecimal total(BigDecimal price, BigDecimal quantity, BigDecimal discount) {
         BigDecimal gross = price.multiply(quantity);
         if (discount != null && discount.signum() > 0) {

@@ -6,11 +6,13 @@ import java.util.List;
 import kz.korkem.invoice.dto.UserDtos.UserDto;
 import kz.korkem.invoice.dto.UserDtos.UserRequest;
 import kz.korkem.invoice.service.UserService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** User management. Restricted to ADMIN in SecurityConfig. */
+/** User management, for admins only. */
+@AdminOnly
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor

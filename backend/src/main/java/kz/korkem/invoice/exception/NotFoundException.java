@@ -1,14 +1,11 @@
 package kz.korkem.invoice.exception;
 
-import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
-/** 404 with a user-facing text: {@code key} in messages.properties, {@code args} fill its {0}, {1}… */
-@Getter
-public class NotFoundException extends RuntimeException {
-    private final transient Object[] args;
+/** 404: the record does not exist. */
+public class NotFoundException extends ApiException {
 
     public NotFoundException(String key, Object... args) {
-        super(key);
-        this.args = args;
+        super(HttpStatus.NOT_FOUND, key, args);
     }
 }

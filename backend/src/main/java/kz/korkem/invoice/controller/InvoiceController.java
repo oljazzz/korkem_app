@@ -7,6 +7,7 @@ import java.util.List;
 import kz.korkem.invoice.dto.PageResponse;
 import kz.korkem.invoice.dto.InvoiceDtos.*;
 import kz.korkem.invoice.service.InvoiceService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -40,11 +41,6 @@ public class InvoiceController {
         return service.summary(q, clientId, from, to, dueOnly);
     }
 
-    @GetMapping("/units")
-    public List<UnitDto> units() {
-        return service.units();
-    }
-
     @GetMapping("/{id}")
     public InvoiceDto get(@PathVariable Long id) {
         return service.get(id);
@@ -53,7 +49,7 @@ public class InvoiceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceDto create(@Valid @RequestBody InvoiceRequest req, Principal principal) {
-        return service.create(req, principal == null ? null : principal.getName());
+        return service.create(req, principal.getName());
     }
 
     @PutMapping("/{id}")
@@ -61,6 +57,7 @@ public class InvoiceController {
         return service.update(id, req);
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

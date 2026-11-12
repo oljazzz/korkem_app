@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import kz.korkem.invoice.properties.AuthProperties;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,12 +25,7 @@ public class LoginAttemptService {
     private final Clock clock;
     private final Map<String, Deque<Instant>> failures = new ConcurrentHashMap<>();
 
-    @Autowired
-    public LoginAttemptService(AuthProperties props) {
-        this(props, Clock.systemUTC());
-    }
-
-    LoginAttemptService(AuthProperties props, Clock clock) {
+    public LoginAttemptService(AuthProperties props, Clock clock) {
         this.maxFailures = props.login().maxFailures();
         this.window = Duration.ofMinutes(props.login().windowMinutes());
         this.clock = clock;

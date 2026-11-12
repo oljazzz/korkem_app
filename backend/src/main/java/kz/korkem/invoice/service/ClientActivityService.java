@@ -35,7 +35,7 @@ public class ClientActivityService {
     public ClientSummary summary(Long id) {
         Client c = find(id);
         var stats = balances.stats(id);
-        var recent = invoices.list("", id, null, null, false, 0, RECENT_INVOICES).items();
+        var recent = invoices.recentForClient(id, RECENT_INVOICES);
         return new ClientSummary(mapper.toDto(c, balances.debt(id)), stats.invoiceCount(), stats.total(),
                 stats.lastInvoiceAt(), recent, balances.topProducts(id, TOP_PRODUCTS));
     }

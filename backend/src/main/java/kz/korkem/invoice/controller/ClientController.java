@@ -7,6 +7,7 @@ import kz.korkem.invoice.dto.ClientDtos.ClientDto;
 import kz.korkem.invoice.dto.ClientDtos.ClientRequest;
 import kz.korkem.invoice.dto.PageResponse;
 import kz.korkem.invoice.service.ClientService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +49,7 @@ public class ClientController {
         return clients.update(id, req);
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

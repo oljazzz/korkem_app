@@ -6,10 +6,11 @@ import kz.korkem.invoice.dto.SettingsDtos.Company;
 import kz.korkem.invoice.dto.SettingsDtos.CompanyRequest;
 import kz.korkem.invoice.dto.SettingsDtos.Settings;
 import kz.korkem.invoice.service.SettingsService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/** Application settings; PUT is admin-only (SecurityConfig). */
+/** Application settings; only admins change them. */
 @RestController
 @RequestMapping("/api/settings")
 @RequiredArgsConstructor
@@ -22,8 +23,9 @@ public class SettingsController {
         return settings.get();
     }
 
+    @AdminOnly
     @PutMapping("/company")
     public Company updateCompany(@Valid @RequestBody CompanyRequest req, Principal principal) {
-        return settings.updateCompany(req, principal == null ? null : principal.getName());
+        return settings.updateCompany(req, principal.getName());
     }
 }

@@ -6,6 +6,7 @@ import kz.korkem.invoice.dto.CategoryDtos.CategoryDto;
 import kz.korkem.invoice.dto.CategoryDtos.CategoryRequest;
 import kz.korkem.invoice.dto.PageResponse;
 import kz.korkem.invoice.service.CategoryService;
+import kz.korkem.invoice.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +47,7 @@ public class CategoryController {
         return categories.update(id, req);
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

@@ -19,8 +19,6 @@ public final class InvoiceDtos {
                                   Instant createdAt, BigDecimal total, BigDecimal paid, BigDecimal due,
                                   PaymentStatus status) {}
 
-    public record UnitDto(Unit value, String label) {}
-
     /** Totals over every invoice that matches the list filters, not just the current page. */
     public record InvoiceSummary(long count, BigDecimal total, BigDecimal due) {}
 

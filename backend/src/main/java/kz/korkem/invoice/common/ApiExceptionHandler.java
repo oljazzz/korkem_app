@@ -4,9 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import kz.korkem.invoice.properties.Messages;
-import kz.korkem.invoice.exception.BadRequestException;
-import kz.korkem.invoice.exception.NotFoundException;
-import kz.korkem.invoice.exception.TooManyRequestsException;
+import kz.korkem.invoice.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -29,21 +27,11 @@ public class ApiExceptionHandler {
 
     private final Messages messages;
 
-    @ExceptionHandler(NotFoundException.class)
-    ResponseEntity<ApiError> notFound(NotFoundException e) {
-        return error(HttpStatus.NOT_FOUND, messages.get(e.getMessage(), e.getArgs()), null);
-    }
-
-    @ExceptionHandler(BadRequestException.class)
-    ResponseEntity<ApiError> badRequest(BadRequestException e) {
-        return error(HttpStatus.BAD_REQUEST, messages.get(e.getMessage(), e.getArgs()), null);
-    }
-
-    @ExceptionHandler(TooManyRequestsException.class)
-    ResponseEntity<ApiError> tooMany(TooManyRequestsException e) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
-                .body(new ApiError(messages.get(e.getMessage(), e.getArgs()), null));
+    @ExceptionHandler(ApiException.class)
+    ResponseEntity<ApiError> api(ApiException e) {
+        var response = ResponseEntity.status(e.getStatus());
+        e.headers().forEach(response::header);
+        return response.body(new ApiError(messages.get(e.getMessage(), e.getArgs()), null));
     }
 
     /** Field texts come already resolved: annotations name their key as message = "{key}". */

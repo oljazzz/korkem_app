@@ -22,5 +22,4 @@ public final class PaymentDtos {
             PaymentMethod method,
             @Size(max = 500, message = "{validation.note.tooLong}") String note) {}
 
-    public record MethodDto(PaymentMethod value, String label) {}
 }

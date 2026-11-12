@@ -4,15 +4,14 @@ import static kz.korkem.invoice.constants.DateProps.ZONE;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
-import kz.korkem.invoice.dto.PaymentDtos.MethodDto;
+import kz.korkem.invoice.domain.InvoiceBalance;
 import kz.korkem.invoice.dto.PaymentDtos.PaymentDto;
 import kz.korkem.invoice.dto.PaymentDtos.PaymentRequest;
 import kz.korkem.invoice.entities.Invoice;
-import kz.korkem.invoice.entities.InvoiceLine;
 import kz.korkem.invoice.entities.Payment;
 import kz.korkem.invoice.enums.PaymentMethod;
 import kz.korkem.invoice.exception.BadRequestException;
@@ -37,10 +36,7 @@ public class PaymentService {
     private final PaymentRepository payments;
     private final InvoiceRepository invoices;
     private final PaymentMapper mapper;
-
-    public List<MethodDto> methods() {
-        return Arrays.stream(PaymentMethod.values()).map(mapper::toDto).toList();
-    }
+    private final Clock clock;
 
     public List<PaymentDto> forInvoice(Long invoiceId) {
         findInvoice(invoiceId);
@@ -53,15 +49,16 @@ public class PaymentService {
         if (invoice.isLegacyPaid()) {
             throw new BadRequestException("error.payment.legacyPaid");
         }
-        LocalDate today = LocalDate.now(ZONE);
+        Instant now = clock.instant();
+        LocalDate today = LocalDate.ofInstant(now, ZONE);
         LocalDate paidOn = req.paidOn() == null ? today : req.paidOn();
         if (paidOn.isAfter(today)) {
             throw new BadRequestException("error.payment.futureDate");
         }
         BigDecimal amount = req.amount().setScale(2, RoundingMode.HALF_UP);
-        BigDecimal due = due(invoice);
-        if (amount.compareTo(due) > 0) {
-            throw new BadRequestException("error.payment.exceedsDue", due.max(BigDecimal.ZERO).toPlainString());
+        InvoiceBalance balance = InvoiceBalance.of(invoice, payments.paidFor(invoice.getId()));
+        if (!balance.accepts(amount)) {
+            throw new BadRequestException("error.payment.exceedsDue", balance.due().toPlainString());
         }
         Payment p = new Payment();
         p.setInvoice(invoice);
@@ -70,19 +67,13 @@ public class PaymentService {
         p.setMethod(req.method() == null ? PaymentMethod.CASH : req.method());
         p.setNote(Texts.clean(req.note()));
         p.setCreatedBy(username);
-        p.setCreatedAt(Instant.now());
+        p.setCreatedAt(now);
         return mapper.toDto(payments.save(p));
     }
 
     @Transactional
     public void delete(Long id) {
         payments.delete(payments.findById(id).orElseThrow(() -> new NotFoundException("error.payment.notFound")));
-    }
-
-    /** Invoice total minus what has been paid so far (negative if overpaid). */
-    private BigDecimal due(Invoice invoice) {
-        BigDecimal total = invoice.getLines().stream().map(InvoiceLine::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return total.subtract(payments.paidFor(invoice.getId()));
     }
 
     private Invoice findInvoice(Long id) {
