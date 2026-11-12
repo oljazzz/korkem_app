@@ -3,8 +3,8 @@ package kz.korkem.invoice;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
-import kz.korkem.invoice.invoice.InvoiceCalculator;
-import kz.korkem.invoice.invoice.VatProperties;
+import kz.korkem.invoice.service.InvoiceCalculator;
+import kz.korkem.invoice.properties.VatProperties;
 import org.junit.jupiter.api.Test;
 
 class InvoiceCalculatorTest {

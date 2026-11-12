@@ -3,6 +3,8 @@ package kz.korkem.invoice.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import kz.korkem.invoice.properties.AuthProperties;
+import kz.korkem.invoice.properties.JwtProperties;
 import org.junit.jupiter.api.Test;
 
 class ProductionGuardTest {

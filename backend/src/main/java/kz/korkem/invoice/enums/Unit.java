@@ -1,0 +1,12 @@
+package kz.korkem.invoice.enums;
+
+
+/** Unit of measure; its label is "unit.NAME" in messages.properties. Add more here when needed. */
+public enum Unit {
+    SHT,
+    KG,
+    M,
+    L,
+    PACK;
+
+}

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
 import java.util.List;
+
+import kz.korkem.invoice.entities.Product;
+import kz.korkem.invoice.service.ProductGroupingService;
 import org.junit.jupiter.api.Test;
 
 class ProductGroupingServiceTest {

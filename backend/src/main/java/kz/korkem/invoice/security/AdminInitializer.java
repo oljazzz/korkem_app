@@ -1,8 +1,8 @@
 package kz.korkem.invoice.security;
 
-import kz.korkem.invoice.user.AppUser;
-import kz.korkem.invoice.user.AppUserRepository;
-import kz.korkem.invoice.user.Role;
+import kz.korkem.invoice.entities.AppUser;
+import kz.korkem.invoice.repository.AppUserRepository;
+import kz.korkem.invoice.enums.Role;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;

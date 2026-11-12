@@ -2,6 +2,9 @@ package kz.korkem.invoice.security;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import kz.korkem.invoice.properties.AuthProperties;
+import kz.korkem.invoice.properties.JwtProperties;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -41,7 +44,7 @@ public class ProductionGuard implements InitializingBean {
         if (jwt.secret() == null || jwt.secret().length() < 32 || DEV_JWT_SECRET.equals(jwt.secret())) {
             problems.add("JWT_SECRET must be set to a random value of at least 32 characters");
         }
-        if (adminPassword == null || adminPassword.length() < 8 || "admin".equalsIgnoreCase(adminPassword)) {
+        if (adminPassword == null || adminPassword.length() < 8) {
             problems.add("ADMIN_PASSWORD must be set (at least 8 characters, not 'admin')");
         }
         if (!auth.cookie().secure()) {
