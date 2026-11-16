@@ -839,5 +839,13 @@
     "invoicesHint": "Таңдалған сүзгілер бойынша барлық жүкқұжаттар — Excel",
     "pricesHint": "Баға тізімі (таңдалған санат) — Excel",
     "debtorsHint": "Қарызы бар барлық клиенттер — Excel"
+  },
+  "fileName": {
+    "invoice": "Жүкқұжат № {{number}}, {{date}}",
+    "act": "Салыстыру актісі — {{client}}, {{from}} – {{to}}",
+    "priceList": "Прайс {{date}}",
+    "priceListCategory": "Прайс {{category}} {{date}}",
+    "sales": "Сатылым есебі {{from}} – {{to}}",
+    "salesSelection": "Сатылым есебі ({{count}} жүкқұжат)"
   }
 }

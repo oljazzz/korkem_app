@@ -8,6 +8,7 @@ import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
 import { ExcelButton } from '../components/ExcelButton'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { SkeletonRows } from '../components/Skeleton'
 import { fmt, fmtDate, fmtMoney, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
@@ -99,6 +100,10 @@ export function ReportsPage() {
   const subtitle = invoiceIds
     ? t('reports.selectedSubtitle', { count: report?.invoiceCount ?? '…' })
     : `${t('reports.periodSubtitle', { from: fmtDate(from), to: fmtDate(to) })}${client ? ` · ${client.label}` : ''}${city ? ` · ${city}` : ''}`
+
+  useDocumentTitle(invoiceIds
+    ? t('fileName.salesSelection', { count: report?.invoiceCount ?? '' })
+    : t('fileName.sales', { from: fmtDate(from), to: fmtDate(to) }))
 
   const exportExcel = () => api.exports.sales(invoiceIds ? { invoiceIds } : { from, to, clientId: client?.id ?? null, city: city || null })
 

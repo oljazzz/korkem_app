@@ -13,6 +13,7 @@ import { actText, phonesOf } from '../lib/whatsapp'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { SHEET_WIDTH, useFitScale } from '../lib/useFitScale'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 /**
  * Reconciliation statement (акт сверки, A4 portrait): the balance at the start of the period, every
@@ -28,6 +29,7 @@ export function ReconciliationPrintPage() {
   const [act, setAct] = useState<Reconciliation | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [zoom, attachSheet] = useFitScale(SHEET_WIDTH)
+  useDocumentTitle(act ? t('fileName.act', { client: act.client.name, from: fmtDate(act.from), to: fmtDate(act.to) }) : null)
   const from = params.get('from') ?? ''
   const to = params.get('to') ?? ''
 

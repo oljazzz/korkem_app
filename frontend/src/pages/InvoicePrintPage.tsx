@@ -9,6 +9,7 @@ import { invoiceText, phonesOf } from '../lib/whatsapp'
 import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { SHEET_WIDTH, useFitScale } from '../lib/useFitScale'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -24,6 +25,8 @@ export function InvoicePrintPage() {
   const [client, setClient] = useState<Client | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [zoom, attachSheet] = useFitScale(SHEET_WIDTH)
+  // "Save as PDF" proposes the page title as the file name
+  useDocumentTitle(inv ? t('fileName.invoice', { number: inv.number, date: fmtDate(inv.createdAt) }) : null)
 
   useEffect(() => {
     api.invoices.get(Number(id))

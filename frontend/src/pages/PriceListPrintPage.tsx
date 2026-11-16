@@ -6,6 +6,7 @@ import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { fmtDayLong, fmtMoney, fmtPack, fmtPricePerBase, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { useTranslation } from 'react-i18next'
 
 /** Customer-facing price list, grouped by category; printed or saved as PDF from the browser (A4 portrait). */
@@ -19,6 +20,9 @@ export function PriceListPrintPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [error, setError] = useState<string | null>(null)
   const [today] = useState(() => isoDay(new Date()))
+  const categoryName = categories.find((c) => c.id === categoryId)?.name
+  useDocumentTitle(t(categoryName ? 'fileName.priceListCategory' : 'fileName.priceList',
+    { date: today.split('-').reverse().join('.'), category: categoryName }))
 
   useEffect(() => {
     api.categories.all().then(setCategories).catch(() => undefined)
