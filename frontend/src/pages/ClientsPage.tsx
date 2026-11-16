@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useIsAdmin } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
+import { ExcelButton } from '../components/ExcelButton'
 import { ApiError } from '../api/http'
 import type { CityCount, Client, Debts, MergeSide } from '../api/types'
 import { Alert } from '../components/Alert'
@@ -102,6 +103,10 @@ export function ClientsPage() {
             {t('clients.viewDuplicates')}
           </button>
         </div>
+        {view === 'debtors' && (
+          <ExcelButton title={t('excel.debtorsHint')} disabled={!debts || debts.debtors.length === 0}
+            onExport={() => api.exports.debtors()} />
+        )}
         {view === 'all' && cities.length > 0 && (
           <select
             className="input toolbar__select"

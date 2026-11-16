@@ -7,6 +7,7 @@ import { PeriodPicker } from '../components/PeriodPicker'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
+import { ExcelButton } from '../components/ExcelButton'
 import { SkeletonRows } from '../components/Skeleton'
 import { fmt, fmtDate, fmtMoney, isoDay } from '../lib/format'
 import { useSettings } from '../lib/settings'
@@ -99,40 +100,13 @@ export function ReportsPage() {
     ? t('reports.selectedSubtitle', { count: report?.invoiceCount ?? '…' })
     : `${t('reports.periodSubtitle', { from: fmtDate(from), to: fmtDate(to) })}${client ? ` · ${client.label}` : ''}${city ? ` · ${city}` : ''}`
 
-  const downloadCsv = () => {
-    if (!report) return
-    const esc = (v: string | number | null) => {
-      let s = v === null ? '' : typeof v === 'number' ? String(v).replace('.', ',') : v
-      // Neutralize spreadsheet formulas in text cells (CSV injection)
-      if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`
-      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-    }
-    const lines = [
-      [t('reports.csvTitle')],
-      [company.name],
-      [subtitle],
-      [],
-      [t('reports.colNo'), t('reports.colName'), t('reports.colCategory'), t('reports.colUnitPrice'), t('reports.colQuantity'), t('reports.colTotal'), t('reports.colInvoices')],
-      ...rows.map((r, i) => [i + 1, r.productName, r.categoryName ?? '', r.avgPrice, r.quantity, r.total, r.invoices]),
-      [],
-      ['', t('reports.totalRow'), '', '', report.totalQuantity, report.total, report.invoiceCount],
-    ]
-    const csv = '﻿' + lines.map((l) => l.map((c) => esc(c as string | number)).join(';')).join('\r\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    a.download = t('reports.csvFile', { suffix: invoiceIds ? t('reports.csvSelection') : `${from}_${to}` })
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
+  const exportExcel = () => api.exports.sales(invoiceIds ? { invoiceIds } : { from, to, clientId: client?.id ?? null, city: city || null })
+
 
   return (
     <section className="page report">
       <PageHeader eyebrow={t('reports.eyebrow')} title={t('reports.title')}>
-        <button className="btn btn--ghost" onClick={downloadCsv} disabled={!report || rows.length === 0}
-          title={t('reports.csvHint')}>
-          <Icon name="download" />
-          {t('reports.csv')}
-        </button>
+        <ExcelButton onExport={exportExcel} disabled={!report || rows.length === 0} />
         <button className="btn btn--primary" onClick={() => window.print()} disabled={!report}>
           <Icon name="print" />
           {t('reports.print')}

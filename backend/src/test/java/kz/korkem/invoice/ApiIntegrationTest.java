@@ -895,4 +895,67 @@ class ApiIntegrationTest {
                         .header("Authorization", admin))
                 .andExpect(status().isBadRequest());
     }
+    /** All the text a workbook holds (shared strings and inline values), to check what an export contains. */
+    private static String xlsxText(byte[] xlsx) throws Exception {
+        // Read through the central directory, as Excel does (the entries are streamed with data descriptors)
+        var file = java.nio.file.Files.createTempFile("export", ".xlsx");
+        try {
+            java.nio.file.Files.write(file, xlsx);
+            StringBuilder sb = new StringBuilder();
+            try (var zip = new java.util.zip.ZipFile(file.toFile())) {
+                for (var e : java.util.Collections.list(zip.entries())) {
+                    if (e.getName().endsWith(".xml")) {
+                        sb.append(new String(zip.getInputStream(e).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+                    }
+                }
+            }
+            // Text is stored as numeric character references (&#x416;…)
+            return java.util.regex.Pattern.compile("&#x([0-9a-fA-F]+);").matcher(sb)
+                    .replaceAll(m -> new String(Character.toChars(Integer.parseInt(m.group(1), 16))));
+        } finally {
+            java.nio.file.Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
+    void listsAndReportsExportToExcel() throws Exception {
+        String admin = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Экспорт клиенті\",\"phone\":\"87011234567\",\"openingDebt\":300}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+        String number = extract(mvc.perform(post("/api/invoices").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Экспорт бояуы\",\"price\":1500,\"quantity\":4}]}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "number");
+        createUser(admin, "exporter1", "MANAGER");
+        String manager = login("exporter1", "secret-123");
+
+        var res = mvc.perform(get("/api/export/invoices").param("clientId", clientId).header("Authorization", manager))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse();
+        org.junit.jupiter.api.Assertions.assertTrue(res.getHeader("Content-Disposition").contains("attachment"));
+        org.junit.jupiter.api.Assertions.assertTrue(res.getHeader("Content-Disposition").contains(".xlsx"));
+        String invoices = xlsxText(res.getContentAsByteArray());
+        org.junit.jupiter.api.Assertions.assertTrue(invoices.contains("Экспорт клиенті"), "client name");
+        org.junit.jupiter.api.Assertions.assertTrue(invoices.contains("t=\"n\"><v>" + number + "</v>"), "invoice number as a number");
+        org.junit.jupiter.api.Assertions.assertTrue(invoices.contains("<v>6000.00</v>"), "total as a number");
+        org.junit.jupiter.api.Assertions.assertTrue(invoices.contains("Төленбеді"), "status label");
+
+        String debtors = xlsxText(mvc.perform(get("/api/export/debtors").header("Authorization", manager))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        org.junit.jupiter.api.Assertions.assertTrue(debtors.contains("Экспорт клиенті") && debtors.contains("<v>6300.00</v>"), "debtor and debt");
+
+        String sales = xlsxText(mvc.perform(get("/api/export/sales").param("clientId", clientId).header("Authorization", admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        org.junit.jupiter.api.Assertions.assertTrue(sales.contains("Экспорт бояуы"), "sold product");
+
+        String act = xlsxText(mvc.perform(get("/api/export/clients/" + clientId + "/reconciliation").header("Authorization", admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        org.junit.jupiter.api.Assertions.assertTrue(act.contains("Жүкқұжат № " + number), "invoice line without digit grouping");
+        org.junit.jupiter.api.Assertions.assertTrue(act.contains("<v>6300.00</v>"), "closing balance");
+
+        mvc.perform(get("/api/export/prices").header("Authorization", admin)).andExpect(status().isOk());
+        mvc.perform(get("/api/export/debtors")).andExpect(status().isUnauthorized());
+    }
 }

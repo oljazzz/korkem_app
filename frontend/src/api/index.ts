@@ -103,6 +103,15 @@ export const api = {
     sales: (p: { from?: string; to?: string; clientId?: number | null; city?: string | null; invoiceIds?: string }) =>
       http.get<SalesReport>('/api/reports/sales', p),
   },
+  /** Excel files; each takes the same filters as the screen it exports. */
+  exports: {
+    invoices: (p: ListParams) => http.download('/api/export/invoices', p),
+    debtors: () => http.download('/api/export/debtors'),
+    prices: (p: ListParams) => http.download('/api/export/prices', p),
+    sales: (p: ListParams) => http.download('/api/export/sales', p),
+    reconciliation: (id: number, from: string | null, to: string | null) =>
+      http.download(`/api/export/clients/${id}/reconciliation`, { from, to }),
+  },
   audit: {
     list: (p: ListParams = {}) => http.get<Page<AuditEntry>>('/api/audit', p),
   },

@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { api } from '../api'
 import { useIsAdmin } from '../auth/AuthContext'
 import { PageHeader } from '../components/Layout'
+import { ExcelButton } from '../components/ExcelButton'
 import { ApiError } from '../api/http'
 import type { Category, Product } from '../api/types'
 import { Alert } from '../components/Alert'
@@ -81,6 +82,7 @@ export function ProductsPage() {
             <Icon name="merge" />{t('products.grouping')}
           </Link>
         )}
+        <ExcelButton title={t('excel.pricesHint')} onExport={() => api.exports.prices({ q: list.q, categoryId })} />
         <Link className="btn btn--outline" to={`/products/print${categoryId ? `?category=${categoryId}` : ''}`}>
           <Icon name="print" />{t('products.print')}
         </Link>

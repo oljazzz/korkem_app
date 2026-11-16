@@ -48,7 +48,16 @@ public class ClientActivityService {
 
     /** Clients that owe money, largest first, with the total owed. */
     public Debts debtors(int limit) {
-        var rows = balances.debtors(PageResponse.clampSize(limit));
+        return debtorsUpTo(PageResponse.clampSize(limit));
+    }
+
+    /** Every client that owes money (for the export, which is not paged). */
+    public Debts allDebtors() {
+        return debtorsUpTo(Integer.MAX_VALUE);
+    }
+
+    private Debts debtorsUpTo(int limit) {
+        var rows = balances.debtors(limit);
         Map<Long, Client> byId = clients.findAllById(rows.stream().map(ClientBalanceQuery.Debtor::clientId).toList())
                 .stream().collect(Collectors.toMap(Client::getId, Function.identity()));
         return new Debts(balances.totalDebt(), rows.stream()

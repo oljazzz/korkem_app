@@ -7,6 +7,7 @@ import { Alert } from '../components/Alert'
 import { DateInput } from '../components/DateInput'
 import { Icon } from '../components/Icon'
 import { PageHeader } from '../components/Layout'
+import { ExcelButton } from '../components/ExcelButton'
 import { ConfirmModal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
 import { PaymentBadge } from '../components/PaymentBadge'
@@ -130,6 +131,9 @@ export function InvoicesPage() {
           />
           {t('invoices.unpaidOnly')}
         </label>
+        <ExcelButton title={t('excel.invoicesHint')} onExport={() => api.exports.invoices({
+          q: list.q, from: from || null, to: to || null, clientId, dueOnly: dueOnly ? 'true' : null,
+        })} />
       </Toolbar>
 
       {clientId && (

@@ -8,6 +8,7 @@ import { Alert } from '../components/Alert'
 import { DateInput } from '../components/DateInput'
 import { Icon } from '../components/Icon'
 import { WhatsAppButton } from '../components/WhatsAppButton'
+import { ExcelButton } from '../components/ExcelButton'
 import { actText, phonesOf } from '../lib/whatsapp'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
@@ -71,6 +72,7 @@ export function ReconciliationPrintPage() {
           <Icon name="print" />
           {t('invoicePrint.print')}
         </button>
+        {act && <ExcelButton onExport={() => api.exports.reconciliation(Number(id), from || null, to || null)} />}
         {act && <WhatsAppButton phones={phonesOf(act.client.phone)} text={() => actText(act, company.name, t)} />}
         <span className="muted">{act ? t('act.attachHint') : t('invoicePrint.paper')}</span>
       </div>

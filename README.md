@@ -162,6 +162,9 @@ GET    /api/invoices/{id}/payments      POST          DELETE /api/payments/{id}
 GET    /api/settings                    PUT /api/settings/company (ADMIN)
 GET    /api/invoices/units
 GET    /api/users                       POST / PUT /{id} / DELETE /{id}   POST /{id}/sign-out
+GET    /api/export/invoices?q=&clientId=&from=&to=&dueOnly=   /debtors   /prices?q=&categoryId=
+GET    /api/export/sales?from=&to=&clientId=&city=&invoiceIds=   /clients/{id}/reconciliation?from=&to=
+       — Excel (.xlsx), экрандағы сүзгілермен; бір файлда ең көбі 20 000 жол
 ```
 
 ## Аудит журналы
