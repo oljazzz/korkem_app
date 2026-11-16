@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,6 +45,7 @@ public class ProductService {
     private final CategoryRepository categories;
     private final ProductOptionQuery optionQuery;
     private final ProductMapper mapper;
+    private final AuditService audit;
 
     public PageResponse<ProductDto> search(String q, Long categoryId, int page, int size) {
         return PageResponse.of(products.search(q.trim(), categoryId, PageRequest.of(page, PageResponse.clampSize(size), SORT)),
@@ -74,20 +76,26 @@ public class ProductService {
     public ProductDto create(ProductRequest req) {
         Product p = new Product();
         apply(p, req);
-        return mapper.toDto(products.save(p));
+        products.save(p);
+        audit.created(AuditEntityType.PRODUCT, p.getId(), p.getName(), mapper.audit(p));
+        return mapper.toDto(p);
     }
 
     @Transactional
     public ProductDto update(Long id, ProductRequest req) {
         Product p = find(id);
+        var before = mapper.audit(p);
         apply(p, req);
         products.flush();
+        audit.updated(AuditEntityType.PRODUCT, id, p.getName(), before, mapper.audit(p));
         return mapper.toDto(p);
     }
 
     @Transactional
     public void delete(Long id) {
-        products.delete(find(id));
+        Product p = find(id);
+        products.delete(p);
+        audit.deleted(AuditEntityType.PRODUCT, id, p.getName(), mapper.audit(p));
     }
 
     private void apply(Product p, ProductRequest req) {

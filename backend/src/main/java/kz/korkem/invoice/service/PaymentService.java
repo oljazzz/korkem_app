@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import static kz.korkem.invoice.constants.DateProps.ZONE;
 
 import java.math.BigDecimal;
@@ -36,6 +37,7 @@ public class PaymentService {
     private final PaymentRepository payments;
     private final InvoiceRepository invoices;
     private final PaymentMapper mapper;
+    private final AuditService audit;
     private final Clock clock;
 
     public List<PaymentDto> forInvoice(Long invoiceId) {
@@ -68,12 +70,21 @@ public class PaymentService {
         p.setNote(Texts.clean(req.note()));
         p.setCreatedBy(username);
         p.setCreatedAt(now);
-        return mapper.toDto(payments.save(p));
+        payments.save(p);
+        audit.created(AuditEntityType.PAYMENT, p.getId(), label(p), mapper.audit(p));
+        return mapper.toDto(p);
     }
 
     @Transactional
     public void delete(Long id) {
-        payments.delete(payments.findById(id).orElseThrow(() -> new NotFoundException("error.payment.notFound")));
+        Payment p = payments.findById(id).orElseThrow(() -> new NotFoundException("error.payment.notFound"));
+        payments.delete(p);
+        audit.deleted(AuditEntityType.PAYMENT, id, label(p), mapper.audit(p));
+    }
+
+    /** "№ 7283 · 5000" */
+    private static String label(Payment p) {
+        return "№ " + p.getInvoice().getNumber() + " · " + p.getAmount().stripTrailingZeros().toPlainString();
     }
 
     private Invoice findInvoice(Long id) {

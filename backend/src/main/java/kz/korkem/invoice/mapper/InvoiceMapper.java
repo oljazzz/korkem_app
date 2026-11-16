@@ -1,6 +1,8 @@
 package kz.korkem.invoice.mapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import kz.korkem.invoice.constants.DateProps;
 import kz.korkem.invoice.domain.InvoiceBalance;
 import kz.korkem.invoice.dto.InvoiceDtos.InvoiceDto;
 import kz.korkem.invoice.dto.InvoiceDtos.InvoiceListItem;
@@ -8,6 +10,7 @@ import kz.korkem.invoice.dto.InvoiceDtos.LineDto;
 import kz.korkem.invoice.entities.Invoice;
 import kz.korkem.invoice.entities.InvoiceLine;
 import kz.korkem.invoice.properties.Messages;
+import kz.korkem.invoice.util.Snapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -45,5 +48,27 @@ public class InvoiceMapper {
                 l.getProductName(), l.getUnit(), messages.label("unit", l.getUnit()), l.getPrice(), l.getQuantity(),
                 l.getDiscount(), l.getTotal(), l.getVat(), l.getSortOrder(),
                 product == null ? null : product.getPackAmount(), product == null ? null : product.getPackUnit());
+    }
+
+    /** State for the audit log: who it is for, its date, every line and the total. */
+    public Snapshot audit(Invoice invoice) {
+        var c = invoice.getClient();
+        return Snapshot.of()
+                .put("number", invoice.getNumber())
+                .put("client", c == null ? null : c.getLabel())
+                .put("date", invoice.getCreatedAt() == null ? null : LocalDate.ofInstant(invoice.getCreatedAt(), DateProps.ZONE))
+                .put("lines", invoice.getLines().stream().map(this::auditLine).toList())
+                .put("total", invoice.total());
+    }
+
+    /** "Статус ПФ-115 ақ — 2 шт × 2700 −5% = 5130" */
+    private String auditLine(InvoiceLine l) {
+        String discount = l.getDiscount() == null || l.getDiscount().signum() == 0 ? "" : " −" + plain(l.getDiscount()) + "%";
+        return l.getProductName() + " — " + plain(l.getQuantity()) + " " + messages.label("unit", l.getUnit())
+                + " × " + plain(l.getPrice()) + discount + " = " + plain(l.getTotal());
+    }
+
+    private static String plain(BigDecimal v) {
+        return v == null ? "" : v.stripTrailingZeros().toPlainString();
     }
 }

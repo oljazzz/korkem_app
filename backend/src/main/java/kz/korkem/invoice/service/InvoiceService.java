@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import static kz.korkem.invoice.constants.DateProps.ZONE;
 import static kz.korkem.invoice.constants.DateProps.endOf;
 import static kz.korkem.invoice.constants.DateProps.startOf;
@@ -44,6 +45,7 @@ public class InvoiceService {
     private final InvoiceSummaryQuery summaries;
     private final InvoiceLineFactory lineFactory;
     private final InvoiceMapper mapper;
+    private final AuditService audit;
     private final Clock clock;
 
     /**
@@ -96,12 +98,15 @@ public class InvoiceService {
         inv.setCreatedAt(documentTime(req.date()));
         inv.setCreatedBy(username);
         apply(inv, req);
-        return toDto(invoices.save(inv));
+        invoices.save(inv);
+        audit.created(AuditEntityType.INVOICE, inv.getId(), label(inv), mapper.audit(inv));
+        return toDto(inv);
     }
 
     @Transactional
     public InvoiceDto update(Long id, InvoiceRequest req) {
         Invoice inv = find(id);
+        var before = mapper.audit(inv);
         if (req.date() != null && !req.date().equals(LocalDate.ofInstant(inv.getCreatedAt(), ZONE))) {
             inv.setCreatedAt(documentTime(req.date()));
         }
@@ -111,6 +116,7 @@ public class InvoiceService {
             throw new BadRequestException("error.invoice.belowPaid", paid.toPlainString());
         }
         invoices.flush();
+        audit.updated(AuditEntityType.INVOICE, id, label(inv), before, mapper.audit(inv));
         return mapper.toDto(inv, paid);
     }
 
@@ -119,7 +125,13 @@ public class InvoiceService {
         if (payments.existsByInvoiceId(id)) {
             throw new BadRequestException("error.invoice.hasPayments");
         }
-        invoices.delete(find(id));
+        Invoice inv = find(id);
+        invoices.delete(inv);
+        audit.deleted(AuditEntityType.INVOICE, id, label(inv), mapper.audit(inv));
+    }
+
+    private static String label(Invoice inv) {
+        return "№ " + inv.getNumber();
     }
 
     /** Today (or no date) → now; a past day → noon of that day in Almaty, so it never shifts across midnight. */

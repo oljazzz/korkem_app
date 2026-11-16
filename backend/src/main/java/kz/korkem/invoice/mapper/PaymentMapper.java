@@ -3,6 +3,7 @@ package kz.korkem.invoice.mapper;
 import kz.korkem.invoice.dto.PaymentDtos.PaymentDto;
 import kz.korkem.invoice.entities.Payment;
 import kz.korkem.invoice.properties.Messages;
+import kz.korkem.invoice.util.Snapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,5 +16,14 @@ public class PaymentMapper {
     public PaymentDto toDto(Payment p) {
         return new PaymentDto(p.getId(), p.getInvoice().getId(), p.getAmount(), p.getPaidOn(), p.getMethod(),
                 messages.label("paymentMethod", p.getMethod()), p.getNote(), p.getCreatedBy(), p.getCreatedAt());
+    }
+
+    public Snapshot audit(Payment p) {
+        return Snapshot.of()
+                .put("invoice", "№ " + p.getInvoice().getNumber())
+                .put("amount", p.getAmount())
+                .put("paidOn", p.getPaidOn())
+                .put("method", messages.label("paymentMethod", p.getMethod()))
+                .put("note", p.getNote());
     }
 }

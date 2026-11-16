@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class ClientService {
     private final ClientRepository clients;
     private final ClientBalanceQuery balances;
     private final ClientMapper mapper;
+    private final AuditService audit;
 
     public PageResponse<ClientDto> search(String q, String city, int page, int size) {
         var result = clients.search(q.trim(), city.trim(),
@@ -52,21 +54,27 @@ public class ClientService {
     public ClientDto create(ClientRequest req) {
         Client c = new Client();
         apply(c, req);
-        return toDto(clients.save(c));
+        clients.save(c);
+        audit.created(AuditEntityType.CLIENT, c.getId(), c.getName(), mapper.audit(c));
+        return toDto(c);
     }
 
     @Transactional
     public ClientDto update(Long id, ClientRequest req) {
         Client c = find(id);
+        var before = mapper.audit(c);
         apply(c, req);
         clients.flush();
+        audit.updated(AuditEntityType.CLIENT, id, c.getName(), before, mapper.audit(c));
         return toDto(c);
     }
 
     @Transactional
     public void delete(Long id) {
-        clients.delete(find(id));
+        Client c = find(id);
+        clients.delete(c);
         clients.flush(); // surface the FK violation here so it maps to 409 when the client has invoices
+        audit.deleted(AuditEntityType.CLIENT, id, c.getName(), mapper.audit(c));
     }
 
     private ClientDto toDto(Client c) {

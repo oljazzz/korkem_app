@@ -764,6 +764,24 @@ input[type='checkbox']:checked {
 .status--partial::before { background: var(--warning); }
 .status--unpaid { background: var(--danger-soft); color: var(--danger); }
 
+/* ---------- Audit log ---------- */
+.page-intro { margin: calc(-1 * var(--kr-mu050)) 0 var(--kr-mu100); color: var(--text-secondary); font-size: var(--kr-font-04); }
+.status--audit-create { background: var(--success-soft, var(--brand-soft)); color: var(--success); }
+.status--audit-update { background: var(--info-soft); color: var(--info); }
+.status--audit-delete { background: var(--danger-soft); color: var(--danger); }
+.status--audit-merge { background: var(--warning-soft); color: var(--text); }
+.status--audit-merge::before { background: var(--warning); }
+.audit-table td { vertical-align: top; }
+.audit-changes, .audit-list { margin: 0; padding: 0; list-style: none; }
+.audit-changes > li + li { margin-top: 2px; }
+.audit-changes__field { color: var(--text-secondary); }
+.audit-list { display: block; margin-top: 2px; }
+.audit-list__removed { color: var(--danger); }
+.audit-list__added { color: var(--success); }
+.audit-old { color: var(--text-muted); }
+.audit-details > summary { cursor: pointer; color: var(--text-secondary); }
+.audit-details[open] > summary { margin-bottom: var(--kr-mu025, 4px); }
+
 .filter-chip-row { margin: calc(-1 * var(--kr-mu050)) 0 var(--kr-mu100); }
 .filter-chip { display: inline-flex; align-items: center; gap: var(--kr-mu050); padding: 2px 2px 2px var(--kr-mu075); border: 1px solid var(--border-strong); border-radius: var(--kr-radius-pill); background: var(--surface); font-size: var(--kr-font-04); }
 .filter-chip .icon-btn { width: 28px; height: 28px; }

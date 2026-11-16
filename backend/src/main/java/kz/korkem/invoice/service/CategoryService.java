@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.util.List;
 import kz.korkem.invoice.dto.CategoryDtos.CategoryDto;
 import kz.korkem.invoice.dto.CategoryDtos.CategoryRequest;
@@ -24,6 +25,7 @@ public class CategoryService {
 
     private final CategoryRepository categories;
     private final CategoryMapper mapper;
+    private final AuditService audit;
 
     public PageResponse<CategoryDto> search(String q, int page, int size) {
         return PageResponse.of(categories.findByNameContainingIgnoreCase(q.trim(),
@@ -42,19 +44,25 @@ public class CategoryService {
     public CategoryDto create(CategoryRequest req) {
         Category c = new Category();
         apply(c, req);
-        return mapper.toDto(categories.save(c));
+        categories.save(c);
+        audit.created(AuditEntityType.CATEGORY, c.getId(), c.getName(), mapper.audit(c));
+        return mapper.toDto(c);
     }
 
     @Transactional
     public CategoryDto update(Long id, CategoryRequest req) {
         Category c = find(id);
+        var before = mapper.audit(c);
         apply(c, req);
+        audit.updated(AuditEntityType.CATEGORY, id, c.getName(), before, mapper.audit(c));
         return mapper.toDto(c);
     }
 
     @Transactional
     public void delete(Long id) {
-        categories.delete(find(id));
+        Category c = find(id);
+        categories.delete(c);
+        audit.deleted(AuditEntityType.CATEGORY, id, c.getName(), mapper.audit(c));
     }
 
     private static void apply(Category c, CategoryRequest req) {

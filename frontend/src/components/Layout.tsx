@@ -17,7 +17,7 @@ function readTheme(): Theme {
 
 type NavItem = { to: string; label: NavKey; short?: NavKey; icon: IconName; end?: boolean; adminOnly?: boolean; tab?: boolean }
 
-type NavKey = 'nav.home' | 'nav.homeShort' | 'nav.invoices' | 'nav.invoicesShort' | 'nav.reports' | 'nav.products' | 'nav.clients' | 'nav.users' | 'nav.settings'
+type NavKey = 'nav.home' | 'nav.homeShort' | 'nav.invoices' | 'nav.invoicesShort' | 'nav.reports' | 'nav.products' | 'nav.clients' | 'nav.users' | 'nav.settings' | 'nav.audit'
 
 // `tab` items sit in the phone tab bar; the rest go under «Тағы». Labels are kk.json keys.
 const NAV: NavItem[] = [
@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { to: '/clients', label: 'nav.clients', icon: 'client', tab: true },
   { to: '/users', label: 'nav.users', icon: 'users', adminOnly: true },
   { to: '/settings', label: 'nav.settings', icon: 'settings', adminOnly: true },
+  { to: '/audit', label: 'nav.audit', icon: 'history', adminOnly: true },
 ]
 
 

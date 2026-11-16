@@ -1,5 +1,7 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.util.Snapshot;
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.time.Clock;
 import kz.korkem.invoice.dto.SettingsDtos.Company;
 import kz.korkem.invoice.dto.SettingsDtos.CompanyRequest;
@@ -26,6 +28,7 @@ public class SettingsService {
     private final CompanySettingsRepository settings;
     private final VatProperties vat;
     private final Clock clock;
+    private final AuditService audit;
 
     public Settings get() {
         return new Settings(company(), vat.rate());
@@ -33,6 +36,7 @@ public class SettingsService {
 
     @Transactional
     public Company updateCompany(CompanyRequest req, String username) {
+        Snapshot before = snapshot(company());
         CompanySettings s = settings.findById(CompanySettings.ID).orElseGet(CompanySettings::new);
         s.setName(req.name().trim());
         s.setBin(Texts.clean(req.bin()));
@@ -43,7 +47,19 @@ public class SettingsService {
         s.setUpdatedAt(clock.instant());
         s.setUpdatedBy(username);
         settings.save(s);
-        return company();
+        Company after = company();
+        audit.updated(AuditEntityType.SETTINGS, CompanySettings.ID, after.name(), before, snapshot(after));
+        return after;
+    }
+
+    private static Snapshot snapshot(Company c) {
+        return Snapshot.of()
+                .put("name", c.name())
+                .put("bin", c.bin())
+                .put("address", c.address())
+                .put("phone", c.phone())
+                .put("chiefAccountant", c.chiefAccountant())
+                .put("releaseAllowedBy", c.releaseAllowedBy());
     }
 
     private Company company() {

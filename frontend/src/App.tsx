@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { AuditPage } from './pages/AuditPage'
 import { ClientPage } from './pages/ClientPage'
 import { ClientsPage } from './pages/ClientsPage'
 import { InvoiceEditPage } from './pages/InvoiceEditPage'
@@ -40,6 +41,7 @@ export default function App() {
         {/* Categories are managed on the price list page now */}
         <Route path="/categories" element={<Navigate to="/products?categories=1" replace />} />
         <Route path="/users" element={user?.role === 'ADMIN' ? <UsersPage /> : <Navigate to="/" replace />} />
+        <Route path="/audit" element={user?.role === 'ADMIN' ? <AuditPage /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={user?.role === 'ADMIN' ? <SettingsPage /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />

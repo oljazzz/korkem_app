@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, CityCount, Client, ClientSummary, GroupSuggestion, InvoiceSummary, ProductOption, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
+import type { AuditEntry, Category, CityCount, Client, ClientSummary, GroupSuggestion, InvoiceSummary, ProductOption, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -100,6 +100,9 @@ export const api = {
     dashboard: (from: string, to: string) => http.get<Dashboard>('/api/reports/dashboard', { from, to }),
     sales: (p: { from?: string; to?: string; clientId?: number | null; city?: string | null; invoiceIds?: string }) =>
       http.get<SalesReport>('/api/reports/sales', p),
+  },
+  audit: {
+    list: (p: ListParams = {}) => http.get<Page<AuditEntry>>('/api/audit', p),
   },
   users: {
     list: () => http.get<User[]>('/api/users'),

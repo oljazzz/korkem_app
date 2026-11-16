@@ -30,6 +30,9 @@ class ApiIntegrationTest {
 
     MockMvc mvc;
 
+    @Autowired
+    org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate jdbc;
+
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(ctx).apply(springSecurity()).build();
@@ -302,6 +305,54 @@ class ApiIntegrationTest {
                         .content("{\"username\":\"victim1\",\"password\":\"secret-123\"}"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"));
+    }
+
+    @Test
+    void auditLogRecordsWhoChangedWhat() throws Exception {
+        String admin = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Аудит клиенті\",\"phone\":\"87010000001\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+        mvc.perform(put("/api/clients/" + clientId).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Аудит клиенті\",\"phone\":\"87010000002\"}"))
+                .andExpect(status().isOk());
+        // Saving without changes logs nothing
+        mvc.perform(put("/api/clients/" + clientId).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Аудит клиенті\",\"phone\":\"87010000002\"}"))
+                .andExpect(status().isOk());
+
+        String invId = extract(createInvoice(admin, clientId, 1000, 2), "id");
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Тауар\",\"price\":1000,\"quantity\":3}]}"))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/invoices/" + invId).header("Authorization", admin)).andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/audit").param("entityType", "CLIENT").param("entityId", clientId).header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.items[0].action").value("UPDATE"))
+                .andExpect(jsonPath("$.items[0].username").value("admin"))
+                .andExpect(jsonPath("$.items[0].changes.phone.old").value("87010000001"))
+                .andExpect(jsonPath("$.items[0].changes.phone.new").value("87010000002"))
+                .andExpect(jsonPath("$.items[0].changes.name").doesNotExist())
+                .andExpect(jsonPath("$.items[1].action").value("CREATE"));
+
+        // The deleted invoice keeps its last state, lines included
+        mvc.perform(get("/api/audit").param("entityType", "INVOICE").param("entityId", invId).header("Authorization", admin))
+                .andExpect(jsonPath("$.items[*].action").value(contains("DELETE", "UPDATE", "CREATE")))
+                .andExpect(jsonPath("$.items[0].entityLabel").value(startsWith("№ ")))
+                .andExpect(jsonPath("$.items[0].changes.lines.old[0]").value("Тауар — 3 дана × 1000 = 3000"))
+                .andExpect(jsonPath("$.items[1].changes.total.old").value(2000))
+                .andExpect(jsonPath("$.items[1].changes.total.new").value(3000));
+
+        // Admins only, and entries cannot be rewritten even from SQL
+        createUser(admin, "auditor1", "MANAGER");
+        mvc.perform(get("/api/audit").header("Authorization", login("auditor1", "secret-123")))
+                .andExpect(status().isForbidden());
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
+                () -> jdbc.update("update audit_log set username = 'x'", java.util.Map.of()));
+        org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
+                () -> jdbc.update("delete from audit_log", java.util.Map.of()));
     }
 
     private String json(String auth, org.springframework.test.web.servlet.RequestBuilder req, int status) throws Exception {

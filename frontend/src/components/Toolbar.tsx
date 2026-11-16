@@ -4,7 +4,8 @@ import { SkeletonRows } from './Skeleton'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  onCreate: () => void
+  /** Without it the toolbar has no create button (read-only lists). */
+  onCreate?: () => void
   search?: string
   onSearch?: (v: string) => void
   searchPlaceholder?: string
@@ -52,10 +53,12 @@ export function Toolbar(p: Props) {
       )}
       {p.children}
       <span className="toolbar__sep" />
-      <button className="btn btn--primary toolbar__create" onClick={p.onCreate} aria-label={createLabel}>
-        <Icon name="plus" />
-        <span className="btn__label">{createLabel}</span>
-      </button>
+      {p.onCreate && (
+        <button className="btn btn--primary toolbar__create" onClick={p.onCreate} aria-label={createLabel}>
+          <Icon name="plus" />
+          <span className="btn__label">{createLabel}</span>
+        </button>
+      )}
     </div>
   )
 }

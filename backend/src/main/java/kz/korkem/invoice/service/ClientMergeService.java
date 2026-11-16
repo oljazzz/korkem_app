@@ -1,5 +1,7 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.util.Snapshot;
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ public class ClientMergeService {
     private final ClientBalanceQuery balances;
     private final InvoiceRepository invoices;
     private final ClientMapper mapper;
+    private final AuditService audit;
 
     /** Which of the two clients would stay and which would be removed. */
     @Transactional(readOnly = true)
@@ -61,6 +64,8 @@ public class ClientMergeService {
         List<Side> sides = order(a, b);
         Client primary = sides.get(0).client();
         Client secondary = sides.get(1).client();
+        var before = mapper.audit(primary);
+        var removed = mapper.audit(secondary);
 
         int moved = invoices.moveToClient(secondary.getId(), primary.getId());
 
@@ -75,6 +80,9 @@ public class ClientMergeService {
         String removedName = secondary.getName();
         clients.delete(secondary);
         clients.flush();
+        audit.merged(AuditEntityType.CLIENT, primary.getId(), primary.getName(), before, mapper.audit(primary),
+                Snapshot.of().put("mergedFrom", removedName).put("movedInvoices", moved));
+        audit.deleted(AuditEntityType.CLIENT, secondary.getId(), removedName, removed);
         return new MergeResult(mapper.toDto(primary, balances.debt(primary.getId())), moved, removedName);
     }
 

@@ -1,5 +1,7 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.util.Snapshot;
+import kz.korkem.invoice.enums.AuditEntityType;
 import kz.korkem.invoice.dto.ProductDtos.GroupSuggestion;
 import kz.korkem.invoice.dto.ProductDtos.GroupMemberRequest;
 import kz.korkem.invoice.dto.ProductDtos.GroupResult;
@@ -28,6 +30,7 @@ public class ProductGroupingService {
     private final InvoiceLineRepository invoiceLines;
     private final ProductMapper mapper;
     private final ProductGroupingSuggester suggester;
+    private final AuditService audit;
 
     /** Families that look like one product in several colours; a person confirms each one. */
     @Transactional(readOnly = true)
@@ -64,6 +67,11 @@ public class ProductGroupingService {
         }
 
         Product base = byId.get(members.get(0).productId());
+        Snapshot before = mapper.audit(base);
+        Map<Long, Snapshot> removed = new LinkedHashMap<>();
+        for (Long id : ids) {
+            if (!Objects.equals(id, base.getId())) removed.put(id, mapper.audit(byId.get(id)));
+        }
         base.setName(name.trim());
         if (plainMerge) {
             int moved = 0;
@@ -73,6 +81,7 @@ public class ProductGroupingService {
                 products.delete(byId.get(id));
             }
             products.flush();
+            logGroup(base, before, removed, moved);
             return new GroupResult(mapper.toDto(base), 0, ids.size() - 1, moved);
         }
         // One colour per distinct name; the same colour written twice becomes one
@@ -102,14 +111,23 @@ public class ProductGroupingService {
         for (Long id : ids) {
             moved += invoiceLines.moveProductToColour(id, base.getId(), variantOf.get(id).getId());
         }
-        int removed = 0;
+        int removedCount = 0;
         for (Long id : ids) {
             if (!Objects.equals(id, base.getId())) {
                 products.delete(byId.get(id));
-                removed++;
+                removedCount++;
             }
         }
         products.flush();
-        return new GroupResult(mapper.toDto(base), variantsByName.size(), removed, moved);
+        logGroup(base, before, removed, moved);
+        return new GroupResult(mapper.toDto(base), variantsByName.size(), removedCount, moved);
+    }
+
+    /** One MERGE entry on the product that stays, and the last state of each product that went away. */
+    private void logGroup(Product base, Snapshot before, Map<Long, Snapshot> removed, int movedLines) {
+        List<Object> names = removed.values().stream().map(r -> r.fields().get("name")).toList();
+        audit.merged(AuditEntityType.PRODUCT, base.getId(), base.getName(), before, mapper.audit(base),
+                Snapshot.of().put("mergedFrom", names).put("movedLines", movedLines));
+        removed.forEach((id, state) -> audit.deleted(AuditEntityType.PRODUCT, id, (String) state.fields().get("name"), state));
     }
 }

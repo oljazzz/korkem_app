@@ -289,3 +289,24 @@ export interface Dashboard {
   categories: Ranked[]
   lastInvoiceAt: string | null
 }
+
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'MERGE'
+export type AuditEntityType = 'INVOICE' | 'PAYMENT' | 'CLIENT' | 'PRODUCT' | 'CATEGORY' | 'USER' | 'SETTINGS'
+
+/** One field's change: `old` is missing on creation, `new` on deletion. */
+export interface AuditChange {
+  old?: unknown
+  new?: unknown
+}
+
+export interface AuditEntry {
+  id: number
+  at: string
+  username: string | null
+  action: AuditAction
+  entityType: AuditEntityType
+  entityId: number | null
+  entityLabel: string | null
+  changes: Record<string, AuditChange>
+  traceId: string | null
+}

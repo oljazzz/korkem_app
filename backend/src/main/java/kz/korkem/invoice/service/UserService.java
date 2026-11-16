@@ -1,5 +1,6 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditEntityType;
 import java.util.List;
 import kz.korkem.invoice.dto.UserDtos.UserDto;
 import kz.korkem.invoice.dto.UserDtos.UserRequest;
@@ -24,6 +25,7 @@ public class UserService {
     private final AppUserRepository repo;
     private final PasswordEncoder encoder;
     private final UserMapper mapper;
+    private final AuditService audit;
 
     public List<UserDto> all() {
         return repo.findAll(Sort.by("username")).stream().map(mapper::toDto).toList();
@@ -49,12 +51,15 @@ public class UserService {
         }
         AppUser u = new AppUser();
         apply(u, req);
-        return mapper.toDto(repo.save(u));
+        repo.save(u);
+        audit.created(AuditEntityType.USER, u.getId(), u.getUsername(), mapper.audit(u));
+        return mapper.toDto(u);
     }
 
     @Transactional
     public UserDto update(Long id, UserRequest req, String currentUsername) {
         AppUser u = find(id);
+        var before = mapper.audit(u);
         if (!u.getUsername().equalsIgnoreCase(req.username().trim())
                 && repo.existsByUsernameIgnoreCase(req.username().trim())) {
             throw new BadRequestException("error.user.usernameTaken");
@@ -72,6 +77,11 @@ public class UserService {
             throw new BadRequestException("error.user.lastAdmin");
         }
         apply(u, req);
+        var after = mapper.audit(u);
+        if (req.password() != null && !req.password().isBlank()) {
+            after.put("password", "***"); // the fact that it changed, never the value
+        }
+        audit.updated(AuditEntityType.USER, id, u.getUsername(), before, after);
         return mapper.toDto(u);
     }
 
@@ -85,6 +95,7 @@ public class UserService {
             throw new BadRequestException("error.user.lastAdmin");
         }
         repo.delete(u);
+        audit.deleted(AuditEntityType.USER, id, u.getUsername(), mapper.audit(u));
     }
 
     private boolean isLastAdmin() {
