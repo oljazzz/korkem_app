@@ -1,7 +1,7 @@
 # Single container: the backend jar also serves the built frontend (Railway and similar platforms).
 # The two-container setup in docker-compose.yml (nginx + backend) keeps working as before.
 
-FROM node:22-alpine AS web
+FROM node:26-alpine AS web
 WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
