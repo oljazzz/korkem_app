@@ -3,7 +3,7 @@
 invoice-jmix.herokuapp.com жүйесінің жаңа нұсқасы: фронтенд пен бэкенд бөлек.
 
 ```
-backend/   Spring Boot 4 (Java 21) REST API + PostgreSQL + Flyway, JWT арқылы кіру
+backend/   Spring Boot 4 (Java 25) REST API + PostgreSQL + Flyway, JWT арқылы кіру
 frontend/  React 19 + TypeScript + Vite
 ```
 
@@ -39,7 +39,7 @@ frontend/  React 19 + TypeScript + Vite
 
 ## Жергілікті іске қосу
 
-Қажет: Java 21+, Node 20+, PostgreSQL.
+Қажет: Java 25+, Node 20+, PostgreSQL.
 
 ```bash
 createdb korkem_invoice
