@@ -1,0 +1,8 @@
+{
+  "name": "korkem-infra",
+  "private": true,
+  "description": "Railway Infrastructure-as-Code tooling (.railway/railway.ts). The app itself lives in backend/ and frontend/.",
+  "devDependencies": {
+    "railway": "^3.17.0"
+  }
+}
