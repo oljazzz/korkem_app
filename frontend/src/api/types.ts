@@ -223,6 +223,8 @@ export interface User {
   timeZone: string | null
   role: Role
   active: boolean
+  /** The password was set by an admin; nothing else works until the user replaces it. */
+  mustChangePassword: boolean
 }
 
 export interface Company {
@@ -290,7 +292,7 @@ export interface Dashboard {
   lastInvoiceAt: string | null
 }
 
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'MERGE'
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'MERGE' | 'LOGIN' | 'LOGIN_FAILED' | 'LOGOUT_ALL'
 export type AuditEntityType = 'INVOICE' | 'PAYMENT' | 'CLIENT' | 'PRODUCT' | 'CATEGORY' | 'USER' | 'SETTINGS'
 
 /** One field's change: `old` is missing on creation, `new` on deletion. */
@@ -309,4 +311,5 @@ export interface AuditEntry {
   entityLabel: string | null
   changes: Record<string, AuditChange>
   traceId: string | null
+  ip: string | null
 }

@@ -54,7 +54,7 @@ export type InvoiceRequest = {
     sortOrder: number | null
   }[]
 }
-export type UserRequest = Omit<User, 'id'> & { password: string | null }
+export type UserRequest = Omit<User, 'id' | 'mustChangePassword'> & { password: string | null }
 
 export const api = {
   settings: () => http.get<Settings>('/api/settings'),
@@ -109,5 +109,7 @@ export const api = {
     create: (body: UserRequest) => http.post<User>('/api/users', body),
     update: (id: number, body: UserRequest) => http.put<User>(`/api/users/${id}`, body),
     remove: (id: number) => http.delete(`/api/users/${id}`),
+    /** Ends every session of the user, on all devices. */
+    signOut: (id: number) => http.post<void>(`/api/users/${id}/sign-out`, {}),
   },
 }

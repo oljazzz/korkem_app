@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 class ProductionGuardTest {
 
     private static final String STRONG = "f3a9c1d7e5b24680a1c3e5f7092b4d6f8a0c2e4f";
-    private final AuthProperties secureCookie = new AuthProperties(new AuthProperties.Cookie("t", true), new AuthProperties.Login(5, 15));
-    private final AuthProperties insecureCookie = new AuthProperties(new AuthProperties.Cookie("t", false), new AuthProperties.Login(5, 15));
+    private final AuthProperties secureCookie = new AuthProperties(new AuthProperties.Cookie("t", true), new AuthProperties.Login(5, 15), 120);
+    private final AuthProperties insecureCookie = new AuthProperties(new AuthProperties.Cookie("t", false), new AuthProperties.Login(5, 15), 120);
 
     @Test
     void devAllowsDefaults() {

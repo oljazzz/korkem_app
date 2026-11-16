@@ -7,6 +7,7 @@ import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import kz.korkem.invoice.enums.Role;
 import kz.korkem.invoice.properties.Messages;
 import kz.korkem.invoice.repository.AppUserRepository;
 import kz.korkem.invoice.properties.AuthProperties;
@@ -59,8 +60,11 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, UserJwtConverter jwtConverter, AuthProperties authProps,
                                     Messages messages) throws Exception {
-        String forbidden = JsonMapper.builder().build().writeValueAsString(
-                Map.of("message", messages.get("error.forbidden")));
+        JsonMapper json = JsonMapper.builder().build();
+        String forbidden = json.writeValueAsString(Map.of("message", messages.get("error.forbidden")));
+        // The frontend shows its password form on this code instead of an error
+        String passwordChange = json.writeValueAsString(Map.of("message", messages.get("error.password.changeRequired"),
+                "code", UserJwtConverter.PASSWORD_CHANGE_REQUIRED));
         http
                 // CSRF tokens are not needed: the auth cookie is SameSite=Strict, so cross-site requests carry no credentials
                 .csrf(AbstractHttpConfigurer::disable)
@@ -71,8 +75,13 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
-                        // Admin-only endpoints are marked @AdminOnly on the controller
-                        .requestMatchers("/api/**").authenticated()
+                        // Reachable while the user must still replace an admin-set password
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/password", "/api/auth/logout-all").authenticated()
+                        // The API description lists every endpoint: admins only
+                        .requestMatchers("/api/docs/**", "/api/swagger-ui/**", "/api/swagger-ui.html").hasRole(Role.ADMIN.name())
+                        // Everything else needs a role. Admin-only endpoints are marked @AdminOnly on the controller.
+                        .requestMatchers("/api/**").hasAnyRole(Arrays.stream(Role.values()).map(Role::name).toArray(String[]::new))
                         // The packaged frontend (index.html, /assets, client-side routes) is public
                         .requestMatchers(HttpMethod.GET, "/**").permitAll()
                         .anyRequest().denyAll())
@@ -83,7 +92,10 @@ public class SecurityConfig {
                     res.setStatus(403);
                     res.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     res.setCharacterEncoding(StandardCharsets.UTF_8.name());
-                    res.getWriter().write(forbidden);
+                    var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                    boolean mustChange = auth != null && auth.getAuthorities().stream()
+                            .anyMatch(a -> UserJwtConverter.PASSWORD_CHANGE_REQUIRED.equals(a.getAuthority()));
+                    res.getWriter().write(mustChange ? passwordChange : forbidden);
                 }))
                 .headers(h -> h
                         // Same policy as frontend/security-headers.conf, for when Spring serves the frontend itself

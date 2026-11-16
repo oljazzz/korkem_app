@@ -11,7 +11,9 @@ import { fmtDate, fmtMoney } from '../lib/format'
 import { useList } from '../lib/useList'
 import { useTranslation } from 'react-i18next'
 
-const ACTIONS: AuditAction[] = ['CREATE', 'UPDATE', 'DELETE', 'MERGE']
+const ACTIONS: AuditAction[] = ['CREATE', 'UPDATE', 'DELETE', 'MERGE', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT_ALL']
+/** Shown in full; for the rest (a created or deleted record's whole state) the fields fold away. */
+const INLINE: AuditAction[] = ['UPDATE', 'MERGE', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT_ALL']
 const TYPES: AuditEntityType[] = ['INVOICE', 'PAYMENT', 'CLIENT', 'PRODUCT', 'CATEGORY', 'USER', 'SETTINGS']
 /** Fields holding money; shown with thousands separators. */
 const MONEY = new Set(['total', 'amount', 'price', 'openingDebt'])
@@ -128,7 +130,10 @@ export function AuditPage() {
                   <td className="muted-cell" data-label={t('audit.colTime')} title={e.traceId ? t('audit.requestId', { id: e.traceId }) : undefined}>
                     {fmtDate(e.at)} <span className="mono">{time.format(new Date(e.at))}</span>
                   </td>
-                  <td className="strong" data-label={t('audit.colUser')}>{e.username ?? t('audit.system')}</td>
+                  <td data-label={t('audit.colUser')}>
+                    <span className="strong">{e.username ?? (e.action === 'LOGIN_FAILED' ? t('audit.unknownUser') : t('audit.system'))}</span>
+                    {e.ip && <span className="cell-sub mono">{e.ip}</span>}
+                  </td>
                   <td data-label={t('audit.colAction')}>
                     <span className={`status status--audit-${e.action.toLowerCase()}`}>{t(`audit.action.${e.action}`)}</span>
                   </td>
@@ -159,6 +164,7 @@ export function AuditPage() {
 function Changes({ entry }: { entry: AuditEntry }) {
   const { t } = useTranslation()
   const fields = Object.entries(entry.changes)
+  if (fields.length === 0) return null
   const rows = (
     <ul className="audit-changes">
       {fields.map(([field, change]) => (
@@ -169,7 +175,7 @@ function Changes({ entry }: { entry: AuditEntry }) {
       ))}
     </ul>
   )
-  if (entry.action === 'UPDATE' || entry.action === 'MERGE') return rows
+  if (INLINE.includes(entry.action)) return rows
   return (
     <details className="audit-details">
       <summary>{t('audit.fields', { count: fields.length })}</summary>
@@ -185,6 +191,7 @@ function ChangeValue({ field, change }: { field: string; change: AuditChange }) 
     if (field === 'password') return t('audit.passwordChanged')
     if (typeof v === 'boolean') return v ? t('common.yes') : t('common.no')
     if (field === 'role' && typeof v === 'string') return t(`role.${v}`, { defaultValue: v })
+    if (field === 'reason' && typeof v === 'string') return t(`audit.reason.${v}`, { defaultValue: v })
     if (typeof v === 'number' && MONEY.has(field)) return `${fmtMoney(v)} ₸`
     if (typeof v === 'string' && DAY.test(v)) return fmtDate(v)
     return String(v)

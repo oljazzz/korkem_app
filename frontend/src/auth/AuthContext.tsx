@@ -7,6 +7,10 @@ interface AuthState {
   loading: boolean
   login: (username: string, password: string, remember: boolean) => Promise<void>
   logout: () => Promise<void>
+  /** Replaces the password; other sessions end, this one continues. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  /** Ends every session of the user, here and on other devices. */
+  logoutAll: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -77,7 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     broadcast('logout')
   }, [])
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const res = await http.post<{ user: User }>('/api/auth/password', { currentPassword, newPassword })
+    setUser(res.user)
+    broadcast('login') // the other tabs share the renewed cookie
+  }, [])
+
+  const logoutAll = useCallback(async () => {
+    await http.post('/api/auth/logout-all', {})
+    setUser(null)
+    broadcast('logout')
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout, changePassword, logoutAll }}>{children}</AuthContext.Provider>
+  )
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

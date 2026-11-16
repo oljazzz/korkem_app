@@ -1199,3 +1199,20 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
   .modal__title { font-size: var(--kr-font-06); margin-bottom: var(--kr-mu100); }
   .modal__footer .btn { flex: 1 1 0; }
 }
+
+/* Login events in the audit log */
+.status--audit-login { background: var(--brand-soft); color: var(--brand); }
+.status--audit-login_failed { background: var(--danger-soft); color: var(--danger); }
+.status--audit-logout_all { background: var(--warning-soft); color: var(--text); }
+.status--audit-logout_all::before { background: var(--warning); }
+
+/* The user's own security: password form, sessions */
+.password-form { display: flex; flex-direction: column; gap: var(--kr-mu100); }
+.account__heading { margin: 0 0 var(--kr-mu075); font-size: var(--kr-font-05); font-weight: var(--kr-weight-semibold); }
+.account__sessions { margin-top: var(--kr-mu200); padding-top: var(--kr-mu150); border-top: 1px solid var(--border); }
+.account__sessions + .muted { margin-top: 0; }
+.account__confirm, .user-sessions .account__confirm { display: flex; flex-wrap: wrap; gap: var(--kr-mu075); }
+.user-sessions { display: flex; flex-direction: column; align-items: flex-start; gap: var(--kr-mu050); margin-top: var(--kr-mu100); }
+.user-sessions p { margin: 0; }
+.forced-password { min-height: 100dvh; display: grid; place-items: center; padding: var(--kr-mu100); background: var(--surface-page); }
+.forced-password .login__card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--kr-radius-l); }

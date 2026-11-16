@@ -1,6 +1,10 @@
 package kz.korkem.invoice.service;
 
+import kz.korkem.invoice.enums.AuditAction;
 import kz.korkem.invoice.enums.AuditEntityType;
+import java.time.Clock;
+import kz.korkem.invoice.domain.PasswordPolicy;
+import kz.korkem.invoice.util.Snapshot;
 import java.util.List;
 import kz.korkem.invoice.dto.UserDtos.UserDto;
 import kz.korkem.invoice.dto.UserDtos.UserRequest;
@@ -16,7 +20,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** User management. {@code currentUsername} is the admin doing the change: nobody can lock themselves out. */
+/**
+ * User management. {@code currentUsername} is the admin doing the change: nobody can lock themselves out.
+ * A password an admin sets is temporary: the user must replace it at the next login, so only they know it.
+ * Admins change their own password like everyone else (AuthService), proving they know the current one.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,6 +34,7 @@ public class UserService {
     private final PasswordEncoder encoder;
     private final UserMapper mapper;
     private final AuditService audit;
+    private final Clock clock;
 
     public List<UserDto> all() {
         return repo.findAll(Sort.by("username")).stream().map(mapper::toDto).toList();
@@ -49,6 +58,7 @@ public class UserService {
         if (repo.existsByUsernameIgnoreCase(req.username().trim())) {
             throw new BadRequestException("error.user.usernameTaken");
         }
+        PasswordPolicy.check(req.password(), req.username());
         AppUser u = new AppUser();
         apply(u, req);
         repo.save(u);
@@ -65,6 +75,13 @@ public class UserService {
             throw new BadRequestException("error.user.usernameTaken");
         }
         boolean self = u.getUsername().equalsIgnoreCase(currentUsername);
+        boolean newPassword = req.password() != null && !req.password().isBlank();
+        if (self && newPassword) {
+            throw new BadRequestException("error.user.ownPasswordInProfile");
+        }
+        if (newPassword) {
+            PasswordPolicy.check(req.password(), req.username());
+        }
         if (self && !req.active()) {
             throw new BadRequestException("error.user.cannotDisableSelf");
         }
@@ -78,11 +95,19 @@ public class UserService {
         }
         apply(u, req);
         var after = mapper.audit(u);
-        if (req.password() != null && !req.password().isBlank()) {
+        if (newPassword) {
             after.put("password", "***"); // the fact that it changed, never the value
         }
         audit.updated(AuditEntityType.USER, id, u.getUsername(), before, after);
         return mapper.toDto(u);
+    }
+
+    /** Ends every session of the user, e.g. after a lost phone. */
+    @Transactional
+    public void signOut(Long id) {
+        AppUser u = find(id);
+        u.revokeTokens();
+        audit.event(AuditAction.LOGOUT_ALL, AuditEntityType.USER, id, u.getUsername(), Snapshot.of());
     }
 
     @Transactional
@@ -112,6 +137,9 @@ public class UserService {
         u.setActive(req.active());
         if (req.password() != null && !req.password().isBlank()) {
             u.setPasswordHash(encoder.encode(req.password()));
+            u.setPasswordChangedAt(clock.instant());
+            u.setMustChangePassword(true);
+            u.revokeTokens(); // a reset password also ends the sessions opened with the old one
         }
     }
 

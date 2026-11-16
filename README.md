@@ -69,7 +69,9 @@ cd frontend && npm install && npm run dev
 | `COMPANY_NAME`, `COMPANY_BIN`, `COMPANY_CHIEF_ACCOUNTANT`, `COMPANY_RELEASE_ALLOWED_BY` | Ұйым деректерінің бастапқы мәндері; «Баптаулар» бетінде бір рет сақталғаннан кейін дерекқордағы мәндер қолданылады |
 | `CORS_ORIGINS` | `http://localhost:5173` |
 | `PORT` | `8090` |
-| `API_DOCS_ENABLED` | `true` — Swagger UI мен `/api/docs`; `false` болса өшеді |
+| `API_DOCS_ENABLED` | `true` — Swagger UI мен `/api/docs` (тек admin); `false` болса өшеді |
+| `SESSION_IDLE_MINUTES` | `120` — сонша уақыт қолданылмаған сессия аяқталады (`0` — өшірулі) |
+| `RATE_LIMIT_PER_MINUTE` | `600` — бір IP-ден минутына API сұраулар шегі, асса 429 (`0` — өшірулі) |
 | `TRACING_SAMPLING` | `1.0` — трассаға жазылатын сұраулар үлесі |
 | `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` | бос — трассаларды OTLP коллекторға жіберу үшін, мысалы `http://localhost:4318/v1/traces` |
 
@@ -116,8 +118,14 @@ docker compose up --build
 ## Қауіпсіздік
 
 - Кіргенде JWT **httpOnly, SameSite=Strict** cookie ретінде беріледі: JavaScript оны оқи алмайды, басқа сайттардан келген сұраныстарға қосылмайды (CSRF-тен қорғаныс). Сондықтан фронтенд пен API бір доменде болуы керек (nginx `/api` арқылы).
-- Бір логинге 15 минут ішінде 5 сәтсіз әрекеттен кейін (бір IP-ден 20) кіру уақытша бұғатталады (429).
+- Бір логинге 15 минут ішінде 5 сәтсіз әрекеттен кейін (бір IP-ден 20) кіру уақытша бұғатталады (429). Сәтсіз әрекеттер аудит журналынан саналады, сондықтан сервер қайта қосылса да шектеу сақталады.
+- Сессия кіргеннен бастап ең көбі 12 сағат жүреді, ал 2 сағат (`SESSION_IDLE_MINUTES`) қолданылмаса, ертерек аяқталады. Жұмыс істеп отырғанда токен өздігінен жаңарып тұрады.
+- Әр JWT-де пайдаланушының токен нұсқасы (`ver`) бар. Құпиясөз ауысқанда, әкімші құпиясөзді қайта орнатқанда немесе «Барлық құрылғылардан шығу» басылғанда нұсқа өседі де, ескі токендердің бәрі бірден жарамсыз болады.
 - Бұғатталған/жойылған пайдаланушының сессиясы бірден тоқтайды; рөл әр сұраныста базадан алынады.
+- Құпиясөз: кемінде 10 таңба, әріп пен сан болуы керек, логинді қамтымауы және оңай табылатын болмауы керек. Әкімші берген құпиясөз уақытша: пайдаланушы алғаш кіргенде оны өзі ауыстырмайынша басқа ешбір API жұмыс істемейді (403). Әр адам өз құпиясөзін «Қауіпсіздік» терезесінде (бүйір мәзірдегі құлып белгісі) қазіргі құпиясөзін енгізіп ауыстырады.
+- Бір IP-ден минутына 600-ден көп API сұрау келсе, сервер 429 қайтарады.
+- Swagger UI мен `/api/docs` тек admin-ге ашық.
+- CI (`.github/workflows/ci.yml`): әр push пен PR-да бэкенд тесттері, фронтендтің lint пен build-і және `npm audit` (high/critical) жүреді. Dependabot (`.github/dependabot.yml`) апта сайын Maven, npm, Docker және GitHub Actions тәуелділіктерін тексереді.
 - nginx: CSP (тек `'self'`), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`. Тақырыптар `frontend/security-headers.conf` файлында, әр `location`-ға қосылады. HSTS-ті TLS аяқталатын жерде қосыңыз.
 - Roboto қаріпі жобаның ішінен беріледі (`@fontsource-variable/roboto`): үшінші тарап серверлеріне сұраныс жоқ.
 - Бір қойындыдан шыққанда (немесе сессия аяқталғанда) басқа қойындылар да шығады.
@@ -133,12 +141,15 @@ cd backend && ./mvnw test
 
 ## API (қысқаша)
 
-Толық сипаттама — Swagger UI: `/api/swagger-ui.html` (алдымен қосымшаға кіру керек; сұраулар сол cookie-мен жүреді). OpenAPI JSON: `/api/docs`.
+Толық сипаттама — Swagger UI: `/api/swagger-ui.html` (алдымен admin ретінде кіру керек; сұраулар сол cookie-мен жүреді). OpenAPI JSON: `/api/docs`.
 
 Барлығы кіру cookie-сін немесе `Authorization: Bearer <token>` талап етеді (кіруден басқа).
 
 ```
-POST   /api/auth/login            {username, password} → {token, user}
+POST   /api/auth/login            {username, password, remember} → {expiresAt, user} + cookie
+POST   /api/auth/logout           осы браузерден шығу
+POST   /api/auth/logout-all       барлық құрылғылардан шығу
+POST   /api/auth/password         {currentPassword, newPassword}
 GET    /api/auth/me
 GET    /api/clients?q=&city=&page=&size=   /cities   POST / PUT /{id} / DELETE /{id}
 GET    /api/clients/{id}/summary  /{id}/last-invoice  /debtors?limit=  /duplicates
@@ -149,12 +160,14 @@ GET    /api/invoices?q=&clientId=&from=&to=&dueOnly=   /summary (сол сүзг
 GET    /api/invoices/{id}/payments      POST          DELETE /api/payments/{id}
 GET    /api/settings                    PUT /api/settings/company (ADMIN)
 GET    /api/invoices/units
-GET    /api/users                       POST / PUT /{id} / DELETE /{id}
+GET    /api/users                       POST / PUT /{id} / DELETE /{id}   POST /{id}/sign-out
 ```
 
 ## Аудит журналы
 
 Жүкқұжаттардың, төлемдердің, клиенттердің, тауарлардың, санаттардың, пайдаланушылардың және ұйым деректерінің әр өзгерісі `audit_log` кестесіне жазылады: кім, қашан, не істеді, өрістің бұрынғы және жаңа мәні, сұраудың traceId-і. Жойылған жазбаның соңғы толық күйі де сақталады (жүкқұжаттың жолдарымен бірге). Құпиясөз ешқашан жазылмайды, тек «өзгертілді» белгісі қалады.
+
+Кіру оқиғалары да осында жазылады: сәтті кіру, сәтсіз кіру (себебімен: құпиясөз қате, логин жоқ, пайдаланушы бұғатталған) және «барлық құрылғылардан шығу». Әр жазбада IP мекенжайы бар. Белгісіз логинмен кіру әрекетінде терілген логин сақталмайды, өйткені адамдар кейде құпиясөзді логин өрісіне жазып қояды.
 
 - Журнал өзгерістің өз транзакциясында жазылады: сәтсіз өзгеріс журналда қалмайды.
 - Кесте тек толықтырылады: дерекқор триггері `update`, `delete` және `truncate`-ке тыйым салады.
@@ -165,7 +178,7 @@ GET    /api/users                       POST / PUT /{id} / DELETE /{id}
 Әр API сұрауына traceId беріледі: ол `X-Trace-Id` жауап header-інде және сол сұраудың барлық лог жолдарында тұр:
 
 ```
-... [ee76a811b1839c5b952fbb97a029edc8-4d8496157b510597] k.k.invoice.tracing.TraceIdFilter : GET /api/clients -> 200 in 12 ms
+... [ee76a811b1839c5b952fbb97a029edc8-4d8496157b510597] k.k.invoice.tracing.TraceIdFilter : GET /api/clients -> 200 in 12 ms user=admin ip=127.0.0.1
 ```
 
 Қате туралы хабарласа, браузердің Network бетіндегі `X-Trace-Id` бойынша логтан сұрауды, баяу SQL-ді (500 мс-тан ұзақ) және қатенің stack trace-ін табуға болады. Span-дарды (HTTP + әр SQL сұрау) көру үшін OTLP коллекторын қосыңыз, мысалы Jaeger:

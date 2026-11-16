@@ -1,6 +1,7 @@
 package kz.korkem.invoice.entities;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import kz.korkem.invoice.enums.Role;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -35,4 +36,20 @@ public class AppUser {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    /** Carried in every JWT; a token with another version is rejected. */
+    @Column(nullable = false)
+    @Setter(AccessLevel.NONE)
+    private int tokenVersion;
+
+    /** The password was set by an admin: the user must replace it before doing anything else. */
+    @Column(nullable = false)
+    private boolean mustChangePassword;
+
+    private Instant passwordChangedAt;
+
+    /** Ends every session of the user: tokens issued before this call stop working. */
+    public void revokeTokens() {
+        tokenVersion++;
+    }
 }

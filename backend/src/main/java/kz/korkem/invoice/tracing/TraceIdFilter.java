@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import kz.korkem.invoice.security.RequestUserFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Returns the request's traceId in {@value #HEADER} and writes one access-log line per API call.
+ * Returns the request's traceId in {@value #HEADER} and writes one access-log line per API call
+ * (with the user, if signed in, and the client IP).
  * Runs right after the observation filter that starts the trace, and before Spring Security,
  * so rejected requests (401/403) are traced too. A user reporting an error can quote the id,
  * and grepping the log for it shows the request, its slow queries and any exception.
@@ -45,12 +47,19 @@ public class TraceIdFilter extends OncePerRequestFilter {
         long start = System.nanoTime();
         try {
             chain.doFilter(request, response);
-            log.info("{} {} -> {} in {} ms", request.getMethod(), request.getRequestURI(), response.getStatus(), since(start));
+            log.info("{} {} -> {} in {} ms user={} ip={}", request.getMethod(), request.getRequestURI(), response.getStatus(),
+                    since(start), user(request), request.getRemoteAddr());
         } catch (IOException | ServletException | RuntimeException e) {
             // Logged here, while the trace is still current, so the stack trace carries the traceId
-            log.error("{} {} -> 500 in {} ms", request.getMethod(), request.getRequestURI(), since(start), e);
+            log.error("{} {} -> 500 in {} ms user={} ip={}", request.getMethod(), request.getRequestURI(), since(start),
+                    user(request), request.getRemoteAddr(), e);
             throw e;
         }
+    }
+
+    private static Object user(HttpServletRequest request) {
+        Object user = request.getAttribute(RequestUserFilter.ATTRIBUTE);
+        return user == null ? "-" : user;
     }
 
     private static long since(long start) {

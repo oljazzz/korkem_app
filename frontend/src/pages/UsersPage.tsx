@@ -80,7 +80,10 @@ export function UsersPage() {
                   <td data-label={t('users.lastName')}>{u.lastName}</td>
                   <td data-label={t('users.role')}>{t(`role.${u.role}`)}</td>
                   <td data-label="Email">{u.email}</td>
-                  <td className={u.active ? '' : 'muted-cell'} data-label={t('users.status')}>{u.active ? t('users.active') : t('users.blocked')}</td>
+                  <td className={u.active ? '' : 'muted-cell'} data-label={t('users.status')}>
+                    {u.active ? t('users.active') : t('users.blocked')}
+                    {u.active && u.mustChangePassword && <span className="cell-sub">{t('users.mustChangePassword')}</span>}
+                  </td>
                   <RowActions name={u.username} onEdit={() => setEditing(u)} onDelete={del} />
                 </tr>
               )
@@ -134,6 +137,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
     password: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [signedOut, setSignedOut] = useState<'confirm' | 'done' | null>(null)
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
 
   const save = async () => {
@@ -153,6 +157,17 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
     }
   }
 
+  const signOut = async () => {
+    if (!user) return
+    try {
+      await api.users.signOut(user.id)
+      setSignedOut('done')
+    } catch (e) {
+      setErrors({ _: (e as Error).message })
+      setSignedOut(null)
+    }
+  }
+
   return (
     <Modal
       title={user ? t('users.editTitle') : t('users.newTitle')}
@@ -168,16 +183,21 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
         <Field label={t('users.username')} required error={errors.username}>
           <input className="input" autoFocus value={form.username} onChange={(e) => set('username', e.target.value)} />
         </Field>
-        <Field label={user ? t('users.newPassword') : t('users.password')} required={!user} error={errors.password}>
-          <input
-            className="input"
-            type="password"
-            autoComplete="new-password"
-            placeholder={user ? t('users.keepPassword') : t('users.minPassword')}
-            value={form.password}
-            onChange={(e) => set('password', e.target.value)}
-          />
-        </Field>
+        {isSelf ? (
+          <p className="field__hint field__offset">{t('users.ownPasswordHint')}</p>
+        ) : (
+          <Field label={user ? t('users.newPassword') : t('users.password')} required={!user} error={errors.password}
+            hint={t('users.temporaryPasswordHint')}>
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              placeholder={user ? t('users.keepPassword') : t('users.minPassword')}
+              value={form.password}
+              onChange={(e) => set('password', e.target.value)}
+            />
+          </Field>
+        )}
         <Field label={t('users.role')} required error={errors.role}>
           <select className="input" value={form.role} disabled={isSelf} onChange={(e) => set('role', e.target.value as Role)}>
             <option value="MANAGER">{t('users.managerRole', { role: t('role.MANAGER') })}</option>
@@ -197,6 +217,23 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
           <input type="checkbox" checked={form.active} disabled={isSelf} onChange={(e) => set('active', e.target.checked)} />
           {t('users.activeHint')}
         </label>
+        {user && !isSelf && (
+          <div className="user-sessions field__offset">
+            {signedOut === 'done' ? (
+              <p className="muted" role="status">{t('users.signedOut')}</p>
+            ) : signedOut === 'confirm' ? (
+              <>
+                <p className="muted">{t('users.signOutText', { name: user.username })}</p>
+                <div className="account__confirm">
+                  <button type="button" className="btn btn--danger-solid" onClick={signOut}>{t('users.signOutConfirm')}</button>
+                  <button type="button" className="btn btn--ghost" onClick={() => setSignedOut(null)}>{t('common.cancel')}</button>
+                </div>
+              </>
+            ) : (
+              <button type="button" className="btn btn--outline" onClick={() => setSignedOut('confirm')}>{t('users.signOut')}</button>
+            )}
+          </div>
+        )}
         {errors._ && <Alert>{errors._}</Alert>}
         <button hidden />
       </form>

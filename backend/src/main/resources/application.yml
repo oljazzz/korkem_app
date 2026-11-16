@@ -30,9 +30,15 @@ app:
       # Required true in prod (HTTPS only)
       secure: ${COOKIE_SECURE:false}
     login:
-      # Lock a username/IP pair after this many failed logins within the window
+      # Lock a username after this many failed logins within the window (an IP after 4x as many).
+      # Counted from the audit log, so restarts do not reset it.
       max-failures: 5
       window-minutes: 15
+    # A session unused for this long ends (0 = off); none lasts longer than jwt.ttl-hours from login
+    idle-minutes: ${SESSION_IDLE_MINUTES:120}
+  rate-limit:
+    # API requests per minute from one IP (0 = off); above it the server answers 429
+    per-minute: ${RATE_LIMIT_PER_MINUTE:600}
   cors:
     origins: ${CORS_ORIGINS:http://localhost:5173}
   admin:
@@ -50,7 +56,7 @@ app:
     # VAT rate in percent, included in prices. Changing it affects new and edited invoice lines only.
     rate: ${VAT_RATE:16}
 
-# API docs, for logged-in users only: under /api so the auth cookie (path=/api) is sent.
+# API docs, for admins only: under /api so the auth cookie (path=/api) is sent.
 # UI: /api/swagger-ui.html. Set API_DOCS_ENABLED=false to turn both off.
 springdoc:
   api-docs:

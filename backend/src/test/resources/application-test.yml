@@ -3,3 +3,6 @@ app:
   vat:
     # Tests assert legacy figures computed at 12%, independent of the configured default
     rate: 12
+  # Every test request comes from 127.0.0.1; RequestRateLimiterTest covers the limiter
+  rate-limit:
+    per-minute: 0

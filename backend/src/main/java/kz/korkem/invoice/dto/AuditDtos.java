@@ -18,7 +18,8 @@ public final class AuditDtos {
     public record Change(Object old, @JsonProperty("new") Object next) {}
 
     public record AuditEntryDto(Long id, Instant at, String username, AuditAction action, AuditEntityType entityType,
-                                Long entityId, String entityLabel, Map<String, Change> changes, String traceId) {}
+                                Long entityId, String entityLabel, Map<String, Change> changes, String traceId,
+                                String ip) {}
 
     /** Every field is optional; [from, to] are Almaty days, both inclusive. */
     public record AuditFilter(AuditEntityType entityType, Long entityId, String username, AuditAction action,

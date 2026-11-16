@@ -60,8 +60,17 @@ class ApiIntegrationTest {
                                 + "\",\"active\":true}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value(role))
+                .andExpect(jsonPath("$.mustChangePassword").value(true))
                 .andReturn().getResponse().getContentAsString();
+        // As if the user had already replaced the temporary password (that flow has its own test)
+        jdbc.update("update app_user set must_change_password = false where username = :u", java.util.Map.of("u", username));
         return extract(body, "id");
+    }
+
+    private String loginCookie(String username, String password) throws Exception {
+        return cookieValue(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getHeader("Set-Cookie"));
     }
 
     private static String extract(String json, String field) {
@@ -732,5 +741,112 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/reports/dashboard").param("from", today).param("to", today).header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categories[?(@.name == 'Санатсыз')].revenue").value(hasItem(greaterThanOrEqualTo(1000.0))));
+    }
+    @Test
+    void loginsAreAudited() throws Exception {
+        String admin = login();
+        String id = createUser(admin, "logger1", "MANAGER");
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"logger1\",\"password\":\"wrong-pass\"}"))
+                .andExpect(status().isUnauthorized());
+        login("LOGGER1", "secret-123");
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"my-password-typed-here\",\"password\":\"x\"}"))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/audit").param("entityType", "USER").param("entityId", id).header("Authorization", admin))
+                .andExpect(jsonPath("$.items[0].action").value("LOGIN"))
+                .andExpect(jsonPath("$.items[0].username").value("logger1"))
+                .andExpect(jsonPath("$.items[0].ip").value("127.0.0.1"))
+                .andExpect(jsonPath("$.items[1].action").value("LOGIN_FAILED"))
+                .andExpect(jsonPath("$.items[1].changes.reason.new").value("BAD_PASSWORD"))
+                .andExpect(jsonPath("$.items[2].action").value("CREATE"));
+        // What was typed as an unknown login is not kept: it may be someone's password
+        mvc.perform(get("/api/audit").param("action", "LOGIN_FAILED").header("Authorization", admin))
+                .andExpect(jsonPath("$.items[0].username").doesNotExist())
+                .andExpect(jsonPath("$.items[0].changes.reason.new").value("UNKNOWN_USER"));
+        org.junit.jupiter.api.Assertions.assertEquals(0, jdbc.queryForObject(
+                "select count(*) from audit_log where changes::text like '%my-password%' or entity_label like '%my-password%'",
+                java.util.Map.of(), Integer.class));
+    }
+
+    @Test
+    void temporaryPasswordMustBeReplaced() throws Exception {
+        String admin = login();
+        mvc.perform(post("/api/users").header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"newbie1\",\"password\":\"temporary-1\",\"role\":\"MANAGER\",\"active\":true}"))
+                .andExpect(status().isCreated());
+        String temp = "Bearer " + loginCookie("newbie1", "temporary-1");
+
+        // Only the password form works until then
+        mvc.perform(get("/api/auth/me").header("Authorization", temp))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mustChangePassword").value(true));
+        mvc.perform(get("/api/clients").header("Authorization", temp))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+
+        mvc.perform(post("/api/auth/password").header("Authorization", temp).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"nope-nope-1\",\"newPassword\":\"Жаңа-құпия-77\"}"))
+                .andExpect(status().isBadRequest());
+        for (String weak : new String[] {"short-1", "onlyletters", "newbie1-pass-2", "password123", "1111111111"}) {
+            mvc.perform(post("/api/auth/password").header("Authorization", temp).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"currentPassword\":\"temporary-1\",\"newPassword\":\"" + weak + "\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+        String setCookie = mvc.perform(post("/api/auth/password").header("Authorization", temp).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"temporary-1\",\"newPassword\":\"Жаңа-құпия-77\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.mustChangePassword").value(false))
+                .andReturn().getResponse().getHeader("Set-Cookie");
+
+        // The old token is revoked; the one issued with the change works
+        mvc.perform(get("/api/auth/me").header("Authorization", temp)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/clients").header("Authorization", "Bearer " + cookieValue(setCookie))).andExpect(status().isOk());
+        login("newbie1", "Жаңа-құпия-77");
+    }
+
+    @Test
+    void sessionsCanBeRevoked() throws Exception {
+        String admin = login();
+        String id = createUser(admin, "phone1", "MANAGER");
+        String first = login("phone1", "secret-123");
+        String second = login("phone1", "secret-123");
+
+        // An admin ends every session of the user
+        mvc.perform(post("/api/users/" + id + "/sign-out").header("Authorization", admin)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/clients").header("Authorization", first)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/clients").header("Authorization", second)).andExpect(status().isUnauthorized());
+
+        // The user does it themselves
+        String third = login("phone1", "secret-123");
+        String fourth = login("phone1", "secret-123");
+        mvc.perform(post("/api/users/" + id + "/sign-out").header("Authorization", third)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/auth/logout-all").header("Authorization", third)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/clients").header("Authorization", fourth)).andExpect(status().isUnauthorized());
+
+        // A password reset by an admin ends them too, and is temporary
+        String fifth = login("phone1", "secret-123");
+        mvc.perform(put("/api/users/" + id).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"phone1\",\"role\":\"MANAGER\",\"active\":true,\"password\":\"reset-pass-42\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mustChangePassword").value(true));
+        mvc.perform(get("/api/clients").header("Authorization", fifth)).andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/audit").param("entityType", "USER").param("entityId", id).param("action", "LOGOUT_ALL")
+                        .header("Authorization", admin))
+                .andExpect(jsonPath("$.items[*].username").value(contains("phone1", "admin")));
+
+        // Admins change their own password with the current one, not through the user form
+        String me = mvc.perform(get("/api/auth/me").header("Authorization", admin)).andReturn().getResponse().getContentAsString();
+        mvc.perform(put("/api/users/" + extract(me, "id")).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"role\":\"ADMIN\",\"active\":true,\"password\":\"another-pass-9\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void apiDocsAreForAdmins() throws Exception {
+        String admin = login();
+        createUser(admin, "reader1", "MANAGER");
+        mvc.perform(get("/api/docs").header("Authorization", login("reader1", "secret-123"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/docs").header("Authorization", admin)).andExpect(status().isOk());
     }
 }

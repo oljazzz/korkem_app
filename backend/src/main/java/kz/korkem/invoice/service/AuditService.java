@@ -63,8 +63,30 @@ public class AuditService {
     @Transactional(propagation = Propagation.MANDATORY)
     public void merged(AuditEntityType type, Long id, String label, Snapshot before, Snapshot after, Snapshot extra) {
         Map<String, Map<String, Object>> changes = diff(before.fields(), after.fields());
-        extra.fields().forEach((k, v) -> changes.put(k, Map.of("new", v)));
+        changes.putAll(facts(extra));
         write(AuditAction.MERGE, type, id, label, changes);
+    }
+
+    /** Facts with no "before" side, stored as new values. */
+    private static Map<String, Map<String, Object>> facts(Snapshot s) {
+        Map<String, Map<String, Object>> changes = new LinkedHashMap<>();
+        s.fields().forEach((k, v) -> changes.put(k, Map.of("new", v)));
+        return changes;
+    }
+
+    /**
+     * A sign-in event of {@code username} (the request is not authenticated yet, or not as them).
+     * Runs in a transaction of its own: a failed login is recorded although the login itself fails.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void session(AuditAction action, String username, Long userId, Snapshot details) {
+        insert(username, action, AuditEntityType.USER, userId, username, facts(details));
+    }
+
+    /** Something done to a record that is not a change of its fields (e.g. its sessions were ended). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void event(AuditAction action, AuditEntityType type, Long id, String label, Snapshot details) {
+        write(action, type, id, label, facts(details));
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +94,7 @@ public class AuditService {
         int pageSize = PageResponse.clampSize(size);
         var items = log.find(filter, page, pageSize).stream()
                 .map(r -> new AuditEntryDto(r.id(), r.at(), r.username(), r.action(), r.entityType(), r.entityId(),
-                        r.entityLabel(), json.readValue(r.changes(), CHANGES), r.traceId()))
+                        r.entityLabel(), json.readValue(r.changes(), CHANGES), r.traceId(), r.ip()))
                 .toList();
         return new PageResponse<>(items, log.count(filter), page, pageSize);
     }
@@ -96,8 +118,13 @@ public class AuditService {
 
     private void write(AuditAction action, AuditEntityType type, Long id, String label,
                        Map<String, Map<String, Object>> changes) {
-        log.insert(clock.instant(), currentUser.username(), action, type, id, label,
-                json.writeValueAsString(changes), traceId());
+        insert(currentUser.username(), action, type, id, label, changes);
+    }
+
+    private void insert(String username, AuditAction action, AuditEntityType type, Long id, String label,
+                        Map<String, Map<String, Object>> changes) {
+        log.insert(clock.instant(), username, action, type, id, label, json.writeValueAsString(changes), traceId(),
+                currentUser.ip());
     }
 
     private String traceId() {

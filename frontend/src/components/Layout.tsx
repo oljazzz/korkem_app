@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { AccountModal } from './AccountModal'
 import { Icon, type IconName } from './Icon'
 import { Logo } from './Ornament'
 import { useTranslation } from 'react-i18next'
@@ -36,6 +37,7 @@ export function Layout() {
   const { user, logout } = useAuth()
   const { t } = useTranslation()
   const [theme, setTheme] = useState<Theme>(readTheme)
+  const [account, setAccount] = useState(false)
   const nav = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN')
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light')
 
@@ -90,6 +92,9 @@ export function Layout() {
             >
               <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             </button>
+            <button className="icon-btn" title={t('account.open')} aria-label={t('account.open')} onClick={() => setAccount(true)}>
+              <Icon name="lock" />
+            </button>
             <button className="icon-btn" title={t('auth.logout')} aria-label={t('auth.logout')} onClick={logout}>
               <Icon name="logout" />
             </button>
@@ -101,16 +106,18 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <TabBar items={nav} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} />
+      <TabBar items={nav} theme={theme} onToggleTheme={toggleTheme} onAccount={() => setAccount(true)} onLogout={logout} />
+      {account && <AccountModal onClose={() => setAccount(false)} />}
     </div>
   )
 }
 
 /** Phone navigation: four main sections at the bottom, the rest (and account actions) under «Тағы». */
-function TabBar({ items, theme, onToggleTheme, onLogout }: {
+function TabBar({ items, theme, onToggleTheme, onAccount, onLogout }: {
   items: NavItem[]
   theme: Theme
   onToggleTheme: () => void
+  onAccount: () => void
   onLogout: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -148,6 +155,10 @@ function TabBar({ items, theme, onToggleTheme, onLogout }: {
           <button type="button" role="menuitem" className="tabbar__sheet-link" onClick={onToggleTheme}>
             <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             {theme === 'light' ? t('theme.dark') : t('theme.light')}
+          </button>
+          <button type="button" role="menuitem" className="tabbar__sheet-link" onClick={() => { setOpen(false); onAccount() }}>
+            <Icon name="lock" />
+            {t('account.open')}
           </button>
           <button type="button" role="menuitem" className="tabbar__sheet-link" onClick={() => { setOpen(false); onLogout() }}>
             <Icon name="logout" />

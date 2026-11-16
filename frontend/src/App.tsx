@@ -10,6 +10,7 @@ import { InvoiceEditPage } from './pages/InvoiceEditPage'
 import { InvoicePrintPage } from './pages/InvoicePrintPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
+import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { PriceListPrintPage } from './pages/PriceListPrintPage'
 import { ProductGroupingPage } from './pages/ProductGroupingPage'
 import { ProductsPage } from './pages/ProductsPage'
@@ -22,6 +23,8 @@ export default function App() {
   const { t } = useTranslation()
 
   if (loading) return <div className="splash">{t('common.loading')}</div>
+  // An admin-set password must be replaced before anything else (the server enforces it too)
+  if (user?.mustChangePassword) return <ChangePasswordPage />
 
   return (
     <Routes>

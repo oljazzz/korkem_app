@@ -41,6 +41,13 @@ public class UserController {
         return users.update(id, req, principal.getName());
     }
 
+    /** Ends every session of the user, on all devices (a lost phone, a person who left). */
+    @PostMapping("/{id}/sign-out")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void signOut(@PathVariable Long id) {
+        users.signOut(id);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Principal principal) {
