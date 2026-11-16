@@ -218,7 +218,7 @@ function UserForm({ user, isSelf, onClose, onSaved }: {
           {t('users.activeHint')}
         </label>
         {user && !isSelf && (
-          <div className="user-sessions field__offset">
+          <div className="user-sessions">
             {signedOut === 'done' ? (
               <p className="muted" role="status">{t('users.signedOut')}</p>
             ) : signedOut === 'confirm' ? (
