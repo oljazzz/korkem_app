@@ -849,4 +849,50 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/docs").header("Authorization", login("reader1", "secret-123"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/docs").header("Authorization", admin)).andExpect(status().isOk());
     }
+    @Test
+    void reconciliationStatementMatchesTheDebt() throws Exception {
+        String admin = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Акт клиенті\",\"openingDebt\":5000}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+        String invId = extract(createInvoice(admin, clientId, 1000, 2), "id");
+        mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":500,\"method\":\"CASH\"}"))
+                .andExpect(status().isCreated());
+        // An invoice from before payments were tracked is settled as issued: it shows, but leaves the balance alone
+        String legacyId = extract(createInvoice(admin, clientId, 700, 1), "id");
+        jdbc.update("update invoice set legacy_paid = true where id = :id", java.util.Map.of("id", Long.parseLong(legacyId)));
+
+        String today = LocalDate.now(ZoneId.of("Asia/Almaty")).toString();
+        mvc.perform(get("/api/clients/" + clientId + "/reconciliation").header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value(today.substring(0, 4) + "-01-01"))
+                .andExpect(jsonPath("$.to").value(today))
+                .andExpect(jsonPath("$.opening").value(5000))
+                .andExpect(jsonPath("$.entries.length()").value(3))
+                .andExpect(jsonPath("$.entries[0].kind").value("INVOICE"))
+                .andExpect(jsonPath("$.entries[0].debit").value(2000))
+                .andExpect(jsonPath("$.entries[0].credit").value(0))
+                .andExpect(jsonPath("$.entries[1].legacyPaid").value(true))
+                .andExpect(jsonPath("$.entries[1].debit").value(700))
+                .andExpect(jsonPath("$.entries[1].credit").value(700))
+                .andExpect(jsonPath("$.entries[2].kind").value("PAYMENT"))
+                .andExpect(jsonPath("$.entries[2].method").value("CASH"))
+                .andExpect(jsonPath("$.entries[2].credit").value(500))
+                .andExpect(jsonPath("$.debit").value(2700))
+                .andExpect(jsonPath("$.credit").value(1200))
+                .andExpect(jsonPath("$.closing").value(6500))
+                .andExpect(jsonPath("$.client.debt").value(6500));
+
+        // A later period starts from that balance and has no movements
+        String tomorrow = LocalDate.now(ZoneId.of("Asia/Almaty")).plusDays(1).toString();
+        mvc.perform(get("/api/clients/" + clientId + "/reconciliation").param("from", tomorrow).param("to", tomorrow)
+                        .header("Authorization", admin))
+                .andExpect(jsonPath("$.opening").value(6500))
+                .andExpect(jsonPath("$.entries.length()").value(0))
+                .andExpect(jsonPath("$.closing").value(6500));
+        mvc.perform(get("/api/clients/" + clientId + "/reconciliation").param("from", tomorrow).param("to", today)
+                        .header("Authorization", admin))
+                .andExpect(status().isBadRequest());
+    }
 }

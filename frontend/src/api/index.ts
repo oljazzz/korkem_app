@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { AuditEntry, Category, CityCount, Client, ClientSummary, GroupSuggestion, InvoiceSummary, ProductOption, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, SalesReport, Settings, Unit, User } from './types'
+import type { AuditEntry, Category, CityCount, Client, ClientSummary, GroupSuggestion, InvoiceSummary, ProductOption, Company, Dashboard, Debts, MergePlan, MergeResult, MergeSide, Invoice, InvoiceListItem, Page, Payment, PaymentMethod, Product, Reconciliation, SalesReport, Settings, Unit, User } from './types'
 
 export interface ListParams {
   q?: string
@@ -63,6 +63,8 @@ export const api = {
     ...crud<Client, ClientRequest>('/api/clients'),
     summary: (id: number) => http.get<ClientSummary>(`/api/clients/${id}/summary`),
     lastInvoice: (id: number) => http.get<Invoice>(`/api/clients/${id}/last-invoice`),
+    reconciliation: (id: number, from: string | null, to: string | null) =>
+      http.get<Reconciliation>(`/api/clients/${id}/reconciliation`, { from, to }),
     debtors: (limit = 50) => http.get<Debts>('/api/clients/debtors', { limit }),
     cities: () => http.get<CityCount[]>('/api/clients/cities'),
     duplicates: () => http.get<MergeSide[][]>('/api/clients/duplicates'),

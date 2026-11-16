@@ -1216,3 +1216,15 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
 .user-sessions p { margin: 0; }
 .forced-password { min-height: 100dvh; display: grid; place-items: center; padding: var(--kr-mu100); background: var(--surface-page); }
 .forced-password .login__card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--kr-radius-l); }
+
+/* Reconciliation statement (printed like the invoice, black on white) */
+.act__title { margin-bottom: 4px; }
+.act__period, .act__parties { margin: 0 0 6px; text-align: center; }
+.act__parties { margin-bottom: 12px; }
+.act__table thead tr:first-child th { font-weight: 700; }
+.act__balance td, .act__table tfoot td { font-weight: 700; }
+.act__empty { color: #555; font-style: italic; }
+.act__result { margin: 14px 0 0; font-weight: 700; }
+.act__signs { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 22px; break-inside: avoid; }
+.act__side { margin: 0 0 14px; font-weight: 700; }
+.act__stamp { margin: 10px 0 0; }

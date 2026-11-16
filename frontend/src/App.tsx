@@ -6,6 +6,7 @@ import { ReportsPage } from './pages/ReportsPage'
 import { AuditPage } from './pages/AuditPage'
 import { ClientPage } from './pages/ClientPage'
 import { ClientsPage } from './pages/ClientsPage'
+import { ReconciliationPrintPage } from './pages/ReconciliationPrintPage'
 import { InvoiceEditPage } from './pages/InvoiceEditPage'
 import { InvoicePrintPage } from './pages/InvoicePrintPage'
 import { InvoicesPage } from './pages/InvoicesPage'
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/invoices/:id/print" element={<InvoicePrintPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientPage />} />
+        <Route path="/clients/:id/act" element={<ReconciliationPrintPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/print" element={<PriceListPrintPage />} />
         <Route path="/products/grouping" element={user?.role === 'ADMIN' ? <ProductGroupingPage /> : <Navigate to="/products" replace />} />

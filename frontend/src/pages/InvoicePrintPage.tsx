@@ -6,6 +6,7 @@ import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
+import { SHEET_WIDTH, useFitScale } from '../lib/useFitScale'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -20,7 +21,7 @@ export function InvoicePrintPage() {
   const [inv, setInv] = useState<Invoice | null>(null)
   const [client, setClient] = useState<Client | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const scale = useFitScale(SHEET_WIDTH)
+  const [zoom, attachSheet] = useFitScale(SHEET_WIDTH)
 
   useEffect(() => {
     api.invoices.get(Number(id))
@@ -55,8 +56,8 @@ export function InvoicePrintPage() {
       </div>
 
       <style>{'@media print { @page { size: A4 portrait; margin: 10mm; } }'}</style>
-      <div className="nak-scroll" ref={scale.ref}>
-        <article className="nak" style={{ zoom: scale.value }} lang="kk">
+      <div className="nak-scroll" ref={attachSheet}>
+        <article className="nak" style={{ zoom }} lang="kk">
           <div className="nak__frame">
           <h1 className="nak__title">{t('invoicePrint.title', { number: inv.number, date: fmtDate(inv.createdAt) })}</h1>
 
@@ -133,9 +134,6 @@ export function InvoicePrintPage() {
   )
 }
 
-/** A4 portrait at 96 dpi. */
-const SHEET_WIDTH = 794
-
 /**
  * Weight of a line: goods sold by the kilo or litre weigh their quantity; pieces weigh
  * their pack size times the quantity (24 × 0,1 л = 2,4 л). Unknown when the product has no pack size.
@@ -168,20 +166,4 @@ function Sign({ role, name }: { role: string; name?: string | null }) {
       <span className="nak__line">{name}</span>
     </div>
   )
-}
-
-/** Zoom factor that fits a sheet of the given width into its container (never enlarges). */
-function useFitScale(width: number) {
-  // Callback ref: the container mounts only after the invoice has loaded
-  const [el, ref] = useState<HTMLDivElement | null>(null)
-  const [value, setValue] = useState(1)
-  useEffect(() => {
-    if (!el) return
-    const update = () => setValue(Math.min(1, el.clientWidth / width))
-    update()
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [el, width])
-  return { ref, value }
 }

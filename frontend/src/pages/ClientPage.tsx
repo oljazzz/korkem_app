@@ -70,6 +70,9 @@ export function ClientPage() {
               <Icon name="merge" />{t('client.merge')}
             </button>
           )}
+          <Link className="btn btn--ghost" to={`/clients/${id}/act`} title={t('client.actTitle')}>
+            <Icon name="report" />{t('client.act')}
+          </Link>
           <button
             className="btn btn--outline"
             disabled={!data || data.invoiceCount === 0}

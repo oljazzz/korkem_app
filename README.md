@@ -153,6 +153,7 @@ POST   /api/auth/password         {currentPassword, newPassword}
 GET    /api/auth/me
 GET    /api/clients?q=&city=&page=&size=   /cities   POST / PUT /{id} / DELETE /{id}
 GET    /api/clients/{id}/summary  /{id}/last-invoice  /debtors?limit=  /duplicates
+GET    /api/clients/{id}/reconciliation?from=&to=   салыстыру актісі (әдепкі: 1 қаңтардан бүгінге дейін)
 GET    /api/clients/merge-plan?clientId=&otherId=   POST /api/clients/merge (ADMIN)
 GET    /api/categories?q=  /all         POST / PUT /{id} / DELETE /{id}
 GET    /api/products?q=&categoryId=     POST / PUT /{id} / DELETE /{id}

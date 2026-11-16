@@ -227,6 +227,31 @@ export interface User {
   mustChangePassword: boolean
 }
 
+/** A line of the reconciliation statement: an invoice (debit) or a payment on it (credit). */
+export interface ReconciliationEntry {
+  date: string
+  kind: 'INVOICE' | 'PAYMENT'
+  invoiceId: number
+  invoiceNumber: number
+  method: PaymentMethod | null
+  /** From before payments were tracked: settled as issued (debit and credit are both its total). */
+  legacyPaid: boolean
+  debit: number
+  credit: number
+}
+
+/** Opening and closing balances: positive when the client owes us. */
+export interface Reconciliation {
+  client: Client
+  from: string
+  to: string
+  opening: number
+  entries: ReconciliationEntry[]
+  debit: number
+  credit: number
+  closing: number
+}
+
 export interface Company {
   name: string
   bin: string | null
