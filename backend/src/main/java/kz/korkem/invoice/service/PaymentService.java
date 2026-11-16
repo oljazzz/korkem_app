@@ -21,6 +21,7 @@ import kz.korkem.invoice.mapper.PaymentMapper;
 import kz.korkem.invoice.repository.InvoiceRepository;
 import kz.korkem.invoice.repository.PaymentRepository;
 import kz.korkem.invoice.util.Texts;
+import kz.korkem.invoice.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +61,7 @@ public class PaymentService {
         BigDecimal amount = req.amount().setScale(2, RoundingMode.HALF_UP);
         InvoiceBalance balance = InvoiceBalance.of(invoice, payments.paidFor(invoice.getId()));
         if (!balance.accepts(amount)) {
-            throw new BadRequestException("error.payment.exceedsDue", balance.due().toPlainString());
+            throw new BadRequestException("error.payment.exceedsDue", Money.format(balance.due()));
         }
         Payment p = new Payment();
         p.setInvoice(invoice);

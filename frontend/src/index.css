@@ -678,6 +678,9 @@ input[type='checkbox']:checked {
 
 /* Invoice total in the sticky action bar */
 .editor-actions__status { flex: 1; min-width: 0; }
+.editor-actions__status.is-error { color: var(--danger); font-weight: var(--kr-weight-semibold); }
+.editor-actions__error { flex-basis: 100%; order: -2; }
+.editor-actions__error .alert { margin: 0; }
 .editor-total { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: var(--kr-mu075); margin-left: auto; text-align: right; }
 .editor-total__label { font-size: var(--kr-font-04); color: var(--text-secondary); }
 .editor-total__value { font-size: var(--kr-font-08); font-weight: var(--kr-weight-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }

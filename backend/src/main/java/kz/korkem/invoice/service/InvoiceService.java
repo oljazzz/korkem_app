@@ -27,6 +27,7 @@ import kz.korkem.invoice.repository.InvoiceRepository;
 import kz.korkem.invoice.repository.PaymentRepository;
 import kz.korkem.invoice.repository.query.InvoiceSummaryQuery;
 import kz.korkem.invoice.util.InvoiceSearch;
+import kz.korkem.invoice.util.Money;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -113,7 +114,7 @@ public class InvoiceService {
         apply(inv, req);
         BigDecimal paid = payments.paidFor(id);
         if (!InvoiceBalance.of(inv, paid).coversPaid()) {
-            throw new BadRequestException("error.invoice.belowPaid", paid.toPlainString());
+            throw new BadRequestException("error.invoice.belowPaid", Money.format(paid));
         }
         invoices.flush();
         audit.updated(AuditEntityType.INVOICE, id, label(inv), before, mapper.audit(inv));

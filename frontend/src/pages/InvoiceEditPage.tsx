@@ -182,7 +182,10 @@ export function InvoiceEditPage() {
   const unitLabel = (u: UnitCode) => units.find((x) => x.value === u)?.label ?? u
 
   const missing = [!client && t('invoiceEdit.missingClient'), lines.length === 0 && t('invoiceEdit.missingLines')].filter(Boolean)
-  const canSave = missing.length === 0 && !busy
+  // Lines cut below what was already paid: the server would refuse, so say it now (compared in tiyn)
+  const belowPaid = !isNew && payment !== null && !payment.legacyPaid
+    && Math.round(totals.total * 100) < Math.round(payment.paid * 100)
+  const canSave = missing.length === 0 && !belowPaid && !busy
 
   const save = useCallback(async (): Promise<number | null> => {
     if (!client || lines.length === 0) return null
@@ -461,9 +464,13 @@ export function InvoiceEditPage() {
         />
       )}
 
-      {error && <Alert onClose={() => setError(null)}>{error}</Alert>}
-
       <div className="editor-actions">
+        {/* In the sticky bar, so an error is seen right where Save was pressed */}
+        {error && (
+          <div className="editor-actions__error">
+            <Alert onClose={() => setError(null)}>{error}</Alert>
+          </div>
+        )}
         {phone && (
           <button className="btn btn--outline editor-actions__add" onClick={() => setProductSheet('new')} aria-label={t('invoiceEdit.addProduct')}>
             <Icon name="plus" />{t('invoiceEdit.addShort')}
@@ -475,8 +482,10 @@ export function InvoiceEditPage() {
           title={t('invoiceEdit.print')} aria-label={t('invoiceEdit.print')}>
           <Icon name="print" /><span className="btn__label">{t('invoiceEdit.print')}</span>
         </button>
-        <span className="muted editor-actions__status" role="status">
-          {missing.length > 0 ? t('invoiceEdit.toSave', { list: missing.join(t('invoiceEdit.and')) }) : dirty ? t('invoiceEdit.unsaved') : ''}
+        <span className={`editor-actions__status ${belowPaid ? 'is-error' : 'muted'}`} role="status">
+          {belowPaid ? t('invoiceEdit.belowPaid', { paid: fmtMoney(payment.paid) })
+            : missing.length > 0 ? t('invoiceEdit.toSave', { list: missing.join(t('invoiceEdit.and')) })
+              : dirty ? t('invoiceEdit.unsaved') : ''}
         </span>
         <div className="editor-total" aria-live="polite">
           <span className="editor-total__label">{t('invoiceEdit.total')}</span>

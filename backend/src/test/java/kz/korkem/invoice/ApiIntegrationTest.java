@@ -958,4 +958,24 @@ class ApiIntegrationTest {
         mvc.perform(get("/api/export/prices").header("Authorization", admin)).andExpect(status().isOk());
         mvc.perform(get("/api/export/debtors")).andExpect(status().isUnauthorized());
     }
+    @Test
+    void amountsInPaymentErrorsAreReadable() throws Exception {
+        String admin = login();
+        String clientId = extract(mvc.perform(post("/api/clients").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Төлем қатесі\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id");
+        String invId = extract(createInvoice(admin, clientId, 1000, 10), "id");
+        mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":4000,\"method\":\"CASH\"}"))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/invoices/" + invId + "/payments").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":7000,\"method\":\"CASH\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("6 000")));
+        mvc.perform(put("/api/invoices/" + invId).header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clientId\":" + clientId + ",\"lines\":[{\"productName\":\"Тауар\",\"price\":1000,\"quantity\":3}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("4 000 ₸")))
+                .andExpect(jsonPath("$.message").value(not(containsString("4000.00"))));
+    }
 }
