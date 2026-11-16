@@ -17,7 +17,8 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
   - package-ecosystem: docker
-    directory: /
+    # The single-image build (/) and the two-container setup (frontend/, backend/)
+    directories: [/, /frontend, /backend]
     schedule:
       interval: weekly
   - package-ecosystem: github-actions
