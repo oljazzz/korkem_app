@@ -4,6 +4,8 @@ import { api } from '../api'
 import type { Client, Invoice, InvoiceLine } from '../api/types'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
+import { WhatsAppButton } from '../components/WhatsAppButton'
+import { invoiceText, phonesOf } from '../lib/whatsapp'
 import { fmt, fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { SHEET_WIDTH, useFitScale } from '../lib/useFitScale'
@@ -52,6 +54,7 @@ export function InvoicePrintPage() {
           <Icon name="print" />
           {t('invoicePrint.print')}
         </button>
+        <WhatsAppButton phones={phonesOf(client?.phone)} text={() => invoiceText(inv, company.name, t)} />
         <span className="muted">{t('invoicePrint.paper')}</span>
       </div>
 

@@ -807,6 +807,33 @@
     "from": "{{name}} атынан",
     "chiefAccountant": "Бас бухгалтер",
     "signature": "Қолы",
-    "stamp": "М.О."
+    "stamp": "М.О.",
+    "attachHint": "WhatsApp тек мәтін жібереді: PDF-ті «Басып шығару / PDF» арқылы сақтап, хатқа тіркеңіз"
+  },
+  "whatsapp": {
+    "send": "WhatsApp",
+    "remind": "Қарызды еске салу",
+    "to": "WhatsApp арқылы жіберу: {{phone}}",
+    "noPhone": "Клиенттің нөмірі жоқ: WhatsApp кімге жіберетініңізді сұрайды",
+    "pickPhone": "Қай нөмірге жіберу керек",
+    "invoiceHead": "Сәлеметсіз бе! {{company}} — жүкқұжат № {{number}}, {{date}}:",
+    "invoiceLine": "{{n}}. {{name}} — {{quantity}} {{unit}} × {{price}} = {{sum}} ₸",
+    "moreLines": "… тағы {{count}} тауар",
+    "total": "Жиыны: {{total}} ₸",
+    "paid": "Төленді. Рахмет!",
+    "partlyPaid": "Төленді: {{paid}} ₸, қалды: {{due}} ₸.",
+    "toPay": "Төлеуге: {{due}} ₸.",
+    "debtHead": "Сәлеметсіз бе, {{name}}! {{company}} хабарлайды: {{date}} күнгі жағдай бойынша қарызыңыз {{debt}} ₸.",
+    "debtList": "Оның ішінде:",
+    "debtInvoice": "• жүкқұжат № {{number}}, {{date}} — {{due}} ₸",
+    "debtOpening": "• бұрынғы қарыз — {{amount}} ₸",
+    "debtContact": "Сұрақтар болса: {{phone}}",
+    "thanks": "Рахмет!",
+    "actHead": "Сәлеметсіз бе! {{company}} мен {{client}} арасындағы салыстыру актісі, {{from}} – {{to}}:",
+    "actOpening": "Бастапқы қалдық: {{amount}} ₸",
+    "actDebit": "Жөнелтілді: {{amount}} ₸",
+    "actCredit": "Төленді: {{amount}} ₸",
+    "actClosing": "Соңғы қалдық: {{amount}} ₸",
+    "actAsk": "Актінің PDF нұсқасын тіркедік. Тексеріп, қол қойып қайтаруыңызды сұраймыз."
   }
 }

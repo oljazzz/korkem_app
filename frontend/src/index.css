@@ -1233,3 +1233,16 @@ html.has-sheet, html.has-sheet body { overflow: hidden; }
 .act__signs { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 22px; break-inside: avoid; }
 .act__side { margin: 0 0 14px; font-weight: 700; }
 .act__stamp { margin: 10px 0 0; }
+
+/* WhatsApp: a list of the client's numbers when there are several */
+.wa-menu { position: relative; display: inline-flex; }
+.wa-menu__list {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%; margin: 0; padding: var(--kr-mu025) 0;
+  list-style: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--kr-radius-m);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+.wa-menu__item {
+  display: block; width: 100%; padding: var(--kr-mu050) var(--kr-mu100); border: 0; background: none;
+  color: var(--text); font: inherit; text-align: left; white-space: nowrap; cursor: pointer;
+}
+.wa-menu__item:hover, .wa-menu__item:focus-visible { background: var(--brand-soft); }

@@ -7,6 +7,8 @@ import type { Reconciliation, ReconciliationEntry } from '../api/types'
 import { Alert } from '../components/Alert'
 import { DateInput } from '../components/DateInput'
 import { Icon } from '../components/Icon'
+import { WhatsAppButton } from '../components/WhatsAppButton'
+import { actText, phonesOf } from '../lib/whatsapp'
 import { fmtDate, fmtMoney } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { SHEET_WIDTH, useFitScale } from '../lib/useFitScale'
@@ -69,7 +71,8 @@ export function ReconciliationPrintPage() {
           <Icon name="print" />
           {t('invoicePrint.print')}
         </button>
-        <span className="muted">{t('invoicePrint.paper')}</span>
+        {act && <WhatsAppButton phones={phonesOf(act.client.phone)} text={() => actText(act, company.name, t)} />}
+        <span className="muted">{act ? t('act.attachHint') : t('invoicePrint.paper')}</span>
       </div>
 
       {error && <Alert onClose={() => setError(null)}>{error}</Alert>}

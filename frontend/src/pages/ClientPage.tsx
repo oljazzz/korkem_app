@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
-import type { ClientSummary } from '../api/types'
+import type { ClientSummary, InvoiceListItem } from '../api/types'
 import { useIsAdmin } from '../auth/AuthContext'
 import { Alert } from '../components/Alert'
 import { Icon } from '../components/Icon'
 import { MergeClientsModal } from '../components/MergeClientsModal'
+import { WhatsAppButton } from '../components/WhatsAppButton'
+import { useSettings } from '../lib/settings'
+import { debtText, phonesOf } from '../lib/whatsapp'
 import { PaymentBadge } from '../components/PaymentBadge'
 import { rowProps } from '../components/RowActions'
 import { SkeletonList } from '../components/Skeleton'
@@ -26,6 +29,9 @@ export function ClientPage() {
   const [editing, setEditing] = useState(false)
   const [merging, setMerging] = useState(false)
   const [version, setVersion] = useState(0)
+  const { company } = useSettings()
+  // Unpaid invoices, listed in the debt reminder
+  const [unpaid, setUnpaid] = useState<InvoiceListItem[]>([])
 
   useEffect(() => {
     let alive = true
@@ -34,6 +40,18 @@ export function ClientPage() {
       alive = false
     }
   }, [id, version])
+
+  const hasDebt = (data?.client.debt ?? 0) > 0
+  useEffect(() => {
+    if (!hasDebt) return
+    let alive = true
+    api.invoices.list({ clientId: Number(id), dueOnly: 'true', size: 30 })
+      .then((p) => alive && setUnpaid(p.items))
+      .catch(() => alive && setUnpaid([]))
+    return () => {
+      alive = false
+    }
+  }, [id, version, hasDebt])
 
   if (error) return <section className="page"><Alert>{error}</Alert></section>
   const c = data?.client
@@ -69,6 +87,10 @@ export function ClientPage() {
               title={t('client.mergeTitle')}>
               <Icon name="merge" />{t('client.merge')}
             </button>
+          )}
+          {c && hasDebt && (
+            <WhatsAppButton phones={phonesOf(c.phone)} label={t('whatsapp.remind')} className="btn btn--ghost"
+              text={() => debtText(c, unpaid, company.name, company.phone, t)} />
           )}
           <Link className="btn btn--ghost" to={`/clients/${id}/act`} title={t('client.actTitle')}>
             <Icon name="report" />{t('client.act')}
